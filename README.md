@@ -44,7 +44,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/devtools-desktop.git
+git clone https://github.com/me-shaon/devtools.git
 cd devtools-desktop
 npm install
 
