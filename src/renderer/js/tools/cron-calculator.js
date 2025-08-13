@@ -367,6 +367,6 @@ const cronStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const cronCalculatorStyle = document.createElement('style');
 style.textContent = cronStyles;
-document.head.appendChild(style);
+document.head.appendChild(cronCalculatorStyle);

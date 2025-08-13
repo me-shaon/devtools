@@ -377,6 +377,6 @@ const qrStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const qrGeneratorStyle = document.createElement('style');
 style.textContent = qrStyles;
-document.head.appendChild(style);
+document.head.appendChild(qrGeneratorStyle);

@@ -512,6 +512,6 @@ const regexStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const regexGeneratorStyle = document.createElement('style');
 style.textContent = regexStyles;
-document.head.appendChild(style);
+document.head.appendChild(regexGeneratorStyle);

@@ -1,118 +1,140 @@
-const { ipcRenderer } = require('electron');
+// Check if we're in Electron or browser environment
+const isElectron =
+  typeof require !== 'undefined' &&
+  window.process &&
+  window.process.type === 'renderer';
+const ipcRenderer = isElectron ? require('electron').ipcRenderer : null;
 
 class DevToolsApp {
-    constructor() {
-        this.currentTool = 'home';
-        this.init();
+  constructor() {
+    this.currentTool = 'home';
+    this.init();
+  }
+
+  init() {
+    this.setupNavigation();
+    this.setupMenuListeners();
+    this.setupToolCards();
+  }
+
+  setupNavigation() {
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    navLinks.forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tool = link.dataset.tool;
+        this.switchTool(tool);
+      });
+    });
+  }
+
+  setupMenuListeners() {
+    if (ipcRenderer) {
+      ipcRenderer.on('navigate-to', (_, tool) => {
+        this.switchTool(tool);
+      });
+    }
+  }
+
+  setupToolCards() {
+    const toolCards = document.querySelectorAll('.tool-card');
+
+    toolCards.forEach((card) => {
+      card.addEventListener('click', () => {
+        const tool = card.dataset.tool;
+        this.switchTool(tool);
+      });
+    });
+  }
+
+  switchTool(toolName) {
+    document.querySelectorAll('.tool-container').forEach((container) => {
+      container.classList.remove('active');
+    });
+
+    document.querySelectorAll('.nav-link').forEach((link) => {
+      link.classList.remove('active');
+    });
+
+    const targetContainer = document.getElementById(toolName);
+    const targetNavLink = document.querySelector(`[data-tool="${toolName}"]`);
+
+    if (targetContainer) {
+      targetContainer.classList.add('active');
+      this.currentTool = toolName;
     }
 
-    init() {
-        this.setupNavigation();
-        this.setupMenuListeners();
-        this.setupToolCards();
+    if (targetNavLink) {
+      targetNavLink.classList.add('active');
     }
 
-    setupNavigation() {
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const tool = link.dataset.tool;
-                this.switchTool(tool);
-            });
-        });
+    if (toolName === 'uuid-generator' && window.UUIDGenerator) {
+      window.UUIDGenerator.init();
+    }
+    if (toolName === 'json-viewer' && window.JSONViewer) {
+      window.JSONViewer.init();
+    }
+    if (toolName === 'lorem-generator' && window.LoremGenerator) {
+      console.log('Lorem Generator activated - reinitializing');
+      window.LoremGenerator.init();
+    }
+  }
+
+  async saveFile(content, filters = []) {
+    if (!ipcRenderer) {
+      console.log('Save functionality not available in browser mode');
+      return { success: false, error: 'Not available in browser' };
     }
 
-    setupMenuListeners() {
-        ipcRenderer.on('navigate-to', (_, tool) => {
-            this.switchTool(tool);
-        });
+    try {
+      const result = await ipcRenderer.invoke('save-file', {
+        content,
+        filters,
+      });
+      return result;
+    } catch (error) {
+      console.error('Error saving file:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async openFile(filters = []) {
+    if (!ipcRenderer) {
+      console.log('Open file functionality not available in browser mode');
+      return { success: false, error: 'Not available in browser' };
     }
 
-    setupToolCards() {
-        const toolCards = document.querySelectorAll('.tool-card');
-        
-        toolCards.forEach(card => {
-            card.addEventListener('click', () => {
-                const tool = card.dataset.tool;
-                this.switchTool(tool);
-            });
-        });
+    try {
+      const result = await ipcRenderer.invoke('open-file', filters);
+      return result;
+    } catch (error) {
+      console.error('Error opening file:', error);
+      return { success: false, error: error.message };
     }
+  }
 
-    switchTool(toolName) {
-        document.querySelectorAll('.tool-container').forEach(container => {
-            container.classList.remove('active');
-        });
+  showMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `notification notification-${type}`;
 
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
+    const icon =
+      {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle',
+      }[type] || 'fa-info-circle';
 
-        const targetContainer = document.getElementById(toolName);
-        const targetNavLink = document.querySelector(`[data-tool="${toolName}"]`);
-
-        if (targetContainer) {
-            targetContainer.classList.add('active');
-            this.currentTool = toolName;
-        }
-
-        if (targetNavLink) {
-            targetNavLink.classList.add('active');
-        }
-
-        if (toolName === 'uuid-generator' && window.UUIDGenerator) {
-            window.UUIDGenerator.init();
-        }
-        if (toolName === 'json-viewer' && window.JSONViewer) {
-            window.JSONViewer.init();
-        }
-    }
-
-    async saveFile(content, filters = []) {
-        try {
-            const result = await ipcRenderer.invoke('save-file', {
-                content,
-                filters
-            });
-            return result;
-        } catch (error) {
-            console.error('Error saving file:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    async openFile(filters = []) {
-        try {
-            const result = await ipcRenderer.invoke('open-file', filters);
-            return result;
-        } catch (error) {
-            console.error('Error opening file:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    showMessage(message, type = 'info') {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `notification notification-${type}`;
-        
-        const icon = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        }[type] || 'fa-info-circle';
-        
-        messageDiv.innerHTML = `
+    messageDiv.innerHTML = `
             <i class="fas ${icon}"></i>
             <span>${message}</span>
             <button class="notification-close" onclick="this.parentElement.remove()">
                 <i class="fas fa-times"></i>
             </button>
         `;
-        
-        messageDiv.style.cssText = `
+
+    messageDiv.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
@@ -130,31 +152,31 @@ class DevToolsApp {
             font-weight: 500;
         `;
 
-        const colors = {
-            success: {
-                bg: 'linear-gradient(135deg, rgba(45, 206, 137, 0.95), rgba(45, 206, 137, 0.85))',
-                color: 'white'
-            },
-            error: {
-                bg: 'linear-gradient(135deg, rgba(245, 54, 92, 0.95), rgba(245, 54, 92, 0.85))',
-                color: 'white'
-            },
-            warning: {
-                bg: 'linear-gradient(135deg, rgba(251, 99, 64, 0.95), rgba(251, 99, 64, 0.85))',
-                color: 'white'
-            },
-            info: {
-                bg: 'linear-gradient(135deg, rgba(94, 114, 228, 0.95), rgba(94, 114, 228, 0.85))',
-                color: 'white'
-            }
-        };
+    const colors = {
+      success: {
+        bg: 'linear-gradient(135deg, rgba(45, 206, 137, 0.95), rgba(45, 206, 137, 0.85))',
+        color: 'white',
+      },
+      error: {
+        bg: 'linear-gradient(135deg, rgba(245, 54, 92, 0.95), rgba(245, 54, 92, 0.85))',
+        color: 'white',
+      },
+      warning: {
+        bg: 'linear-gradient(135deg, rgba(251, 99, 64, 0.95), rgba(251, 99, 64, 0.85))',
+        color: 'white',
+      },
+      info: {
+        bg: 'linear-gradient(135deg, rgba(94, 114, 228, 0.95), rgba(94, 114, 228, 0.85))',
+        color: 'white',
+      },
+    };
 
-        const colorScheme = colors[type] || colors.info;
-        messageDiv.style.background = colorScheme.bg;
-        messageDiv.style.color = colorScheme.color;
+    const colorScheme = colors[type] || colors.info;
+    messageDiv.style.background = colorScheme.bg;
+    messageDiv.style.color = colorScheme.color;
 
-        const style = document.createElement('style');
-        style.textContent = `
+    const style = document.createElement('style');
+    style.textContent = `
             @keyframes slideIn {
                 from {
                     transform: translateX(100%);
@@ -179,22 +201,25 @@ class DevToolsApp {
                 opacity: 1;
             }
         `;
-        if (!document.querySelector('#notification-styles')) {
-            style.id = 'notification-styles';
-            document.head.appendChild(style);
-        }
-
-        document.body.appendChild(messageDiv);
-
-        setTimeout(() => {
-            messageDiv.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => messageDiv.remove(), 300);
-        }, 4000);
+    if (!document.querySelector('#notification-styles')) {
+      style.id = 'notification-styles';
+      document.head.appendChild(style);
     }
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+      messageDiv.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => messageDiv.remove(), 300);
+    }, 4000);
+  }
 }
 
-window.app = new DevToolsApp();
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new DevToolsApp();
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Dev Tools Desktop loaded successfully');
+  console.log('Dev Tools Desktop loaded successfully');
 });

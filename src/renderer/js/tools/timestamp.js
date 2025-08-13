@@ -1,96 +1,100 @@
 class TimestampConverter {
-    constructor() {
-        this.init();
-        this.updateCurrentTime();
-        this.startClock();
+  constructor() {
+    this.init();
+    this.updateCurrentTime();
+    this.startClock();
+  }
+
+  init() {
+    const tabButtons = document.querySelectorAll('#timestamp .tab-btn');
+    const refreshBtn = document.getElementById('refresh-time');
+    const convertTsBtn = document.getElementById('convert-ts-to-date');
+    const convertDateBtn = document.getElementById('convert-date-to-ts');
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        this.switchTab(button.dataset.tab);
+      });
+    });
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.updateCurrentTime());
     }
 
-    init() {
-        const tabButtons = document.querySelectorAll('#timestamp .tab-btn');
-        const refreshBtn = document.getElementById('refresh-time');
-        const convertTsBtn = document.getElementById('convert-ts-to-date');
-        const convertDateBtn = document.getElementById('convert-date-to-ts');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                this.switchTab(button.dataset.tab);
-            });
-        });
-
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.updateCurrentTime());
-        }
-
-        if (convertTsBtn) {
-            convertTsBtn.addEventListener('click', () => this.convertTimestampToDate());
-        }
-
-        if (convertDateBtn) {
-            convertDateBtn.addEventListener('click', () => this.convertDateToTimestamp());
-        }
-
-        const inputs = document.querySelectorAll('#timestamp-input, #date-input');
-        inputs.forEach(input => {
-            input.addEventListener('input', () => this.clearOutputs());
-        });
+    if (convertTsBtn) {
+      convertTsBtn.addEventListener('click', () =>
+        this.convertTimestampToDate()
+      );
     }
 
-    startClock() {
-        this.clockInterval = setInterval(() => {
-            this.updateCurrentTime();
-        }, 1000);
+    if (convertDateBtn) {
+      convertDateBtn.addEventListener('click', () =>
+        this.convertDateToTimestamp()
+      );
     }
 
-    updateCurrentTime() {
-        const now = new Date();
-        const timestamp = Math.floor(now.getTime() / 1000);
-        const dateString = now.toLocaleString();
+    const inputs = document.querySelectorAll('#timestamp-input, #date-input');
+    inputs.forEach((input) => {
+      input.addEventListener('input', () => this.clearOutputs());
+    });
+  }
 
-        document.getElementById('current-timestamp').textContent = timestamp;
-        document.getElementById('current-date').textContent = dateString;
+  startClock() {
+    this.clockInterval = setInterval(() => {
+      this.updateCurrentTime();
+    }, 1000);
+  }
+
+  updateCurrentTime() {
+    const now = new Date();
+    const timestamp = Math.floor(now.getTime() / 1000);
+    const dateString = now.toLocaleString();
+
+    document.getElementById('current-timestamp').textContent = timestamp;
+    document.getElementById('current-date').textContent = dateString;
+  }
+
+  switchTab(tabName) {
+    const container = document.getElementById('timestamp');
+
+    container.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.classList.remove('active');
+    });
+    container.querySelectorAll('.tab-content').forEach((content) => {
+      content.classList.remove('active');
+    });
+
+    container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    container.getElementById(`${tabName}-tab`).classList.add('active');
+
+    this.clearOutputs();
+  }
+
+  convertTimestampToDate() {
+    const input = document.getElementById('timestamp-input').value;
+    const output = document.getElementById('date-output');
+
+    if (!input.trim()) {
+      window.app?.showMessage('Please enter a timestamp.', 'error');
+      return;
     }
 
-    switchTab(tabName) {
-        const container = document.getElementById('timestamp');
-        
-        container.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        container.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
+    try {
+      let timestamp = parseInt(input);
 
-        container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        container.getElementById(`${tabName}-tab`).classList.add('active');
+      if (timestamp.toString().length === 10) {
+        timestamp = timestamp * 1000;
+      } else if (timestamp.toString().length !== 13) {
+        throw new Error('Invalid timestamp format');
+      }
 
-        this.clearOutputs();
-    }
+      const date = new Date(timestamp);
 
-    convertTimestampToDate() {
-        const input = document.getElementById('timestamp-input').value;
-        const output = document.getElementById('date-output');
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid timestamp');
+      }
 
-        if (!input.trim()) {
-            window.app?.showMessage('Please enter a timestamp.', 'error');
-            return;
-        }
-
-        try {
-            let timestamp = parseInt(input);
-            
-            if (timestamp.toString().length === 10) {
-                timestamp = timestamp * 1000;
-            } else if (timestamp.toString().length !== 13) {
-                throw new Error('Invalid timestamp format');
-            }
-
-            const date = new Date(timestamp);
-            
-            if (isNaN(date.getTime())) {
-                throw new Error('Invalid timestamp');
-            }
-
-            const result = `
+      const result = `
 Local Time: ${date.toLocaleString()}
 UTC Time: ${date.toUTCString()}
 ISO String: ${date.toISOString()}
@@ -101,34 +105,34 @@ Timestamp (seconds): ${Math.floor(timestamp / 1000)}
 Timestamp (milliseconds): ${timestamp}
             `.trim();
 
-            output.value = result;
-            window.app?.showMessage('Timestamp converted successfully!', 'success');
-        } catch (error) {
-            window.app?.showMessage('Error: ' + error.message, 'error');
-            output.value = '';
-        }
+      output.value = result;
+      window.app?.showMessage('Timestamp converted successfully!', 'success');
+    } catch (error) {
+      window.app?.showMessage('Error: ' + error.message, 'error');
+      output.value = '';
+    }
+  }
+
+  convertDateToTimestamp() {
+    const input = document.getElementById('date-input').value;
+    const output = document.getElementById('timestamp-output');
+
+    if (!input.trim()) {
+      window.app?.showMessage('Please select a date and time.', 'error');
+      return;
     }
 
-    convertDateToTimestamp() {
-        const input = document.getElementById('date-input').value;
-        const output = document.getElementById('timestamp-output');
+    try {
+      const date = new Date(input);
 
-        if (!input.trim()) {
-            window.app?.showMessage('Please select a date and time.', 'error');
-            return;
-        }
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+      }
 
-        try {
-            const date = new Date(input);
-            
-            if (isNaN(date.getTime())) {
-                throw new Error('Invalid date');
-            }
+      const timestamp = date.getTime();
+      const timestampSeconds = Math.floor(timestamp / 1000);
 
-            const timestamp = date.getTime();
-            const timestampSeconds = Math.floor(timestamp / 1000);
-
-            const result = `
+      const result = `
 Date: ${date.toLocaleString()}
 UTC: ${date.toUTCString()}
 ISO: ${date.toISOString()}
@@ -137,24 +141,24 @@ Timestamp (seconds): ${timestampSeconds}
 Timestamp (milliseconds): ${timestamp}
             `.trim();
 
-            output.value = result;
-            window.app?.showMessage('Date converted successfully!', 'success');
-        } catch (error) {
-            window.app?.showMessage('Error: ' + error.message, 'error');
-            output.value = '';
-        }
+      output.value = result;
+      window.app?.showMessage('Date converted successfully!', 'success');
+    } catch (error) {
+      window.app?.showMessage('Error: ' + error.message, 'error');
+      output.value = '';
     }
+  }
 
-    clearOutputs() {
-        document.getElementById('date-output').value = '';
-        document.getElementById('timestamp-output').value = '';
-    }
+  clearOutputs() {
+    document.getElementById('date-output').value = '';
+    document.getElementById('timestamp-output').value = '';
+  }
 
-    destroy() {
-        if (this.clockInterval) {
-            clearInterval(this.clockInterval);
-        }
+  destroy() {
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
     }
+  }
 }
 
 window.TimestampConverter = new TimestampConverter();
@@ -210,6 +214,6 @@ const timestampStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = timestampStyles;
-document.head.appendChild(style);
+const timestampStyle = document.createElement('style');
+timestampStyle.textContent = timestampStyles;
+document.head.appendChild(timestampStyle);
