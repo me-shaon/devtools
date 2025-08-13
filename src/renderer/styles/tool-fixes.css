@@ -34,9 +34,67 @@
     font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
-    white-space: pre;
+    white-space: pre-wrap; /* allow wrapping for long lines */
     margin: 0;
     box-sizing: border-box;
+}
+
+/* JSON Tree Styles */
+.json-node {
+    margin-left: 16px;
+    line-height: 1.5;
+    font-family: inherit;
+    position: relative;
+}
+
+.json-key {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.arrow {
+    display: inline-block;
+    width: 12px;
+    user-select: none;
+    color: var(--primary-color);
+    margin-right: 4px;
+}
+
+/* Collapse children */
+.json-collapsed > .json-children {
+    display: none;
+}
+
+/* Type-based coloring */
+.json-node span.value-string {
+    color: #c41a16;
+}
+
+.json-node span.value-number {
+    color: #1c00cf;
+}
+
+.json-node span.value-boolean {
+    color: #aa0d91;
+}
+
+.json-node span.value-null {
+    color: #808080;
+}
+
+/* Optional hover effect for keys */
+.json-key:hover {
+    text-decoration: underline;
+}
+
+/* Info box below tree */
+.json-info {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.85rem;
 }
 
 /* Text Compare specific */
