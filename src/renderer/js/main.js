@@ -1,5 +1,4 @@
-const { ipcRenderer } = require('electron');
-
+// Tauri-compatible main.js for DevTools application
 class DevToolsApp {
     constructor() {
         this.currentTool = 'home';
@@ -8,8 +7,8 @@ class DevToolsApp {
 
     init() {
         this.setupNavigation();
-        this.setupMenuListeners();
         this.setupToolCards();
+        this.initializeCurrentTool();
     }
 
     setupNavigation() {
@@ -21,12 +20,6 @@ class DevToolsApp {
                 const tool = link.dataset.tool;
                 this.switchTool(tool);
             });
-        });
-    }
-
-    setupMenuListeners() {
-        ipcRenderer.on('navigate-to', (_, tool) => {
-            this.switchTool(tool);
         });
     }
 
@@ -42,14 +35,17 @@ class DevToolsApp {
     }
 
     switchTool(toolName) {
+        // Hide all tool containers
         document.querySelectorAll('.tool-container').forEach(container => {
             container.classList.remove('active');
         });
 
+        // Remove active class from all nav links
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
 
+        // Show target container and activate nav link
         const targetContainer = document.getElementById(toolName);
         const targetNavLink = document.querySelector(`[data-tool="${toolName}"]`);
 
@@ -62,34 +58,127 @@ class DevToolsApp {
             targetNavLink.classList.add('active');
         }
 
-        if (toolName === 'uuid-generator' && window.UUIDGenerator) {
-            window.UUIDGenerator.init();
-        }
-        if (toolName === 'json-viewer' && window.JSONViewer) {
-            window.JSONViewer.init();
+        // Initialize tool-specific functionality
+        this.initializeTool(toolName);
+    }
+
+    initializeTool(toolName) {
+        // Initialize specific tools when they become active
+        switch(toolName) {
+            case 'uuid-generator':
+                if (window.UUIDGenerator) {
+                    window.UUIDGenerator.init();
+                }
+                break;
+            case 'json-viewer':
+                if (window.JSONViewer) {
+                    window.JSONViewer.init();
+                }
+                break;
+            case 'timestamp':
+                if (window.TimestampTool) {
+                    window.TimestampTool.init();
+                }
+                break;
+            case 'hash-generator':
+                if (window.HashGenerator) {
+                    window.HashGenerator.init();
+                }
+                break;
+            case 'base64-converter':
+                if (window.Base64Converter) {
+                    window.Base64Converter.init();
+                }
+                break;
+            case 'jwt-decoder':
+                if (window.JWTDecoder) {
+                    window.JWTDecoder.init();
+                }
+                break;
+            case 'case-converter':
+                if (window.CaseConverter) {
+                    window.CaseConverter.init();
+                }
+                break;
+            case 'text-compare':
+                if (window.TextCompare) {
+                    window.TextCompare.init();
+                }
+                break;
+            case 'json-to-ts':
+                if (window.JSONToTS) {
+                    window.JSONToTS.init();
+                }
+                break;
+            case 'sql-formatter':
+                if (window.SQLFormatter) {
+                    window.SQLFormatter.init();
+                }
+                break;
+            case 'number-base':
+                if (window.NumberBase) {
+                    window.NumberBase.init();
+                }
+                break;
+            case 'csv-json':
+                if (window.CSVJSON) {
+                    window.CSVJSON.init();
+                }
+                break;
+            case 'image-converter':
+                if (window.ImageConverter) {
+                    window.ImageConverter.init();
+                }
+                break;
+            case 'markdown-editor':
+                if (window.MarkdownEditor) {
+                    window.MarkdownEditor.init();
+                }
+                break;
+            case 'cron-calculator':
+                if (window.CronCalculator) {
+                    window.CronCalculator.init();
+                }
+                break;
+            case 'regex-generator':
+                if (window.RegexGenerator) {
+                    window.RegexGenerator.init();
+                }
+                break;
+            case 'code-playground':
+                if (window.CodePlayground) {
+                    window.CodePlayground.init();
+                }
+                break;
+            case 'qr-generator':
+                if (window.QRGenerator) {
+                    window.QRGenerator.init();
+                }
+                break;
+            case 'color-palette':
+                if (window.ColorPalette) {
+                    window.ColorPalette.init();
+                }
+                break;
+            case 'url-encoder':
+                if (window.URLEncoder) {
+                    window.URLEncoder.init();
+                }
+                break;
+            case 'lorem-generator':
+                if (window.LoremGenerator) {
+                    window.LoremGenerator.init();
+                }
+                break;
         }
     }
 
-    async saveFile(content, filters = []) {
-        try {
-            const result = await ipcRenderer.invoke('save-file', {
-                content,
-                filters
-            });
-            return result;
-        } catch (error) {
-            console.error('Error saving file:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    async openFile(filters = []) {
-        try {
-            const result = await ipcRenderer.invoke('open-file', filters);
-            return result;
-        } catch (error) {
-            console.error('Error opening file:', error);
-            return { success: false, error: error.message };
+    initializeCurrentTool() {
+        // Initialize the currently active tool on page load
+        const activeContainer = document.querySelector('.tool-container.active');
+        if (activeContainer) {
+            const toolName = activeContainer.id;
+            this.initializeTool(toolName);
         }
     }
 
@@ -165,6 +254,16 @@ class DevToolsApp {
                     opacity: 1;
                 }
             }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
             .notification-close {
                 background: none;
                 border: none;
@@ -191,10 +290,29 @@ class DevToolsApp {
             setTimeout(() => messageDiv.remove(), 300);
         }, 4000);
     }
+
+    // Tauri-compatible file operations using mainApp
+    async saveFile(content, filters = []) {
+        if (window.mainApp && window.mainApp.saveFile) {
+            return await window.mainApp.saveFile(content, filters);
+        } else {
+            this.showMessage('File operations not available', 'error');
+            return { success: false, error: 'File operations not available' };
+        }
+    }
+
+    async openFile(filters = []) {
+        if (window.mainApp && window.mainApp.openFile) {
+            return await window.mainApp.openFile(filters);
+        } else {
+            this.showMessage('File operations not available', 'error');
+            return { success: false, error: 'File operations not available' };
+        }
+    }
 }
 
-window.app = new DevToolsApp();
-
+// Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Dev Tools Desktop loaded successfully');
+    window.app = new DevToolsApp();
+    console.log('Dev Tools Desktop loaded successfully with Tauri');
 });

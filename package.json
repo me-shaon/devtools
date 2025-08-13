@@ -1,56 +1,14 @@
 {
-  "name": "dev-tools-desktop",
-  "version": "1.0.0",
-  "description": "Desktop version of dev-tool.dev - Ultimate Developer Toolkit",
-  "main": "src/main.js",
+  "name": "devtools-taori",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
-    "build": "electron-builder",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --publish=never"
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
   },
-  "keywords": [
-    "electron",
-    "developer-tools",
-    "utilities",
-    "json",
-    "base64",
-    "uuid",
-    "converter"
-  ],
-  "author": "Dev Tools Desktop",
-  "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.0.0"
-  },
-  "dependencies": {
-    "crypto-js": "^4.2.0",
-    "jsonwebtoken": "^9.0.2",
-    "marked": "^12.0.0",
-    "node-cron": "^3.0.3",
-    "qrcode": "^1.5.3",
-    "uuid": "^9.0.1"
-  },
-  "build": {
-    "appId": "com.devtools.desktop",
-    "productName": "Dev Tools Desktop",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "src/**/*",
-      "node_modules/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.developer-tools"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "@tauri-apps/cli": "^2"
   }
 }
