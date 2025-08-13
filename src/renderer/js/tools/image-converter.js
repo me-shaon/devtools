@@ -290,6 +290,6 @@ const imageStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const imageConverterStyle = document.createElement('style');
 style.textContent = imageStyles;
-document.head.appendChild(style);
+document.head.appendChild(imageConverterStyle);
