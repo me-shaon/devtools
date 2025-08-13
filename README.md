@@ -40,7 +40,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ```bash
 # Clone and install
 git clone https://github.com/me-shaon/devtools.git
-cd devtools-desktop
+cd devtools
 npm install
 
 # Run locally
