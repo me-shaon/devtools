@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Tools Desktop</title>
+    <title>Dev Tools Desktop - Professional Developer Toolkit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="app-container">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h1><i class="fas fa-tools"></i> Dev Tools</h1>
+                <h1><i class="fas fa-code"></i> DevTools</h1>
+                <div class="sidebar-subtitle">Professional Toolkit</div>
             </div>
             <ul class="nav-menu">
                 <li><a href="#" data-tool="home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
@@ -42,38 +46,69 @@
         <main class="main-content">
             <div id="home" class="tool-container active">
                 <div class="home-content">
-                    <h1>Your Ultimate Developer Toolkit</h1>
-                    <p>Unlock your productivity with tools designed for developers, by a developer.</p>
+                    <div class="home-hero">
+                        <h1>Your Ultimate Developer Toolkit</h1>
+                        <p>21 professional tools to boost your productivity. Privacy-first, offline-ready, and lightning fast.</p>
+                        <div class="home-stats">
+                            <div class="stat-item">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>100% Private</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-bolt"></i>
+                                <span>Blazing Fast</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-cloud-download-alt"></i>
+                                <span>Works Offline</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="tools-grid">
                         <div class="tool-card" data-tool="json-viewer">
-                            <i class="fas fa-code"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
                             <h3>JSON Viewer</h3>
-                            <p>Easily view and format JSON data for better readability.</p>
+                            <p>Format, minify, and validate JSON with syntax highlighting</p>
+                            <span class="tool-badge">Popular</span>
                         </div>
                         <div class="tool-card" data-tool="text-compare">
-                            <i class="fas fa-not-equal"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-code-compare"></i>
+                            </div>
                             <h3>Text Compare</h3>
-                            <p>Compare two pieces of text to identify differences quickly.</p>
+                            <p>Compare texts with line-by-line diff and similarity metrics</p>
                         </div>
                         <div class="tool-card" data-tool="case-converter">
-                            <i class="fas fa-text-height"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-font"></i>
+                            </div>
                             <h3>Case Converter</h3>
-                            <p>Convert text between camelCase, snake_case, kebab-case and more.</p>
+                            <p>Convert between camelCase, snake_case, kebab-case and more</p>
                         </div>
                         <div class="tool-card" data-tool="uuid-generator">
-                            <i class="fas fa-fingerprint"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-fingerprint"></i>
+                            </div>
                             <h3>UUID Generator</h3>
-                            <p>Generate unique identifiers for your applications.</p>
+                            <p>Generate UUID v1/v4 with batch generation support</p>
+                            <span class="tool-badge">New</span>
                         </div>
                         <div class="tool-card" data-tool="base64-converter">
-                            <i class="fas fa-exchange-alt"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
                             <h3>Base64 Converter</h3>
-                            <p>Encode or decode Base64 strings effortlessly.</p>
+                            <p>Bidirectional Base64 encoding and decoding</p>
                         </div>
                         <div class="tool-card" data-tool="jwt-decoder">
-                            <i class="fas fa-key"></i>
+                            <div class="tool-icon">
+                                <i class="fas fa-user-lock"></i>
+                            </div>
                             <h3>JWT Decoder</h3>
-                            <p>Decode and verify JSON Web Tokens (JWT) securely.</p>
+                            <p>Decode JWT tokens with expiration validation</p>
+                            <span class="tool-badge">Security</span>
                         </div>
                     </div>
                 </div>
