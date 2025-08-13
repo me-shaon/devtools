@@ -36,6 +36,11 @@
             >
           </li>
           <li>
+            <a href="#" data-tool="api-response-formatter" class="nav-link"
+              ><i class="fas fa-code-branch"></i> API Response Formatter</a
+            >
+          </li>
+          <li>
             <a href="#" data-tool="text-compare" class="nav-link"
               ><i class="fas fa-not-equal"></i> Text Compare</a
             >
@@ -183,6 +188,14 @@
                 </p>
                 <span class="tool-badge">Popular</span>
               </div>
+              <div class="tool-card" data-tool="api-response-formatter">
+                <div class="tool-icon">
+                  <i class="fas fa-code-branch"></i>
+                </div>
+                <h3>API Response Formatter</h3>
+                <p>Format REST/GraphQL responses with interactive tree view</p>
+                <span class="tool-badge">New</span>
+              </div>
               <div class="tool-card" data-tool="text-compare">
                 <div class="tool-icon">
                   <i class="fas fa-code-compare"></i>
@@ -269,6 +282,62 @@
                 </button>
               </div>
               <pre id="json-output"></pre>
+            </div>
+          </div>
+        </div>
+
+        <div id="api-response-formatter" class="tool-container">
+          <h2><i class="fas fa-code-branch"></i> API Response Formatter</h2>
+          <div class="tool-content">
+            <div class="input-section">
+              <div class="input-controls">
+                <label for="response-type">Response Type:</label>
+                <select id="response-type">
+                  <option value="json">JSON</option>
+                  <option value="graphql">GraphQL</option>
+                </select>
+              </div>
+              <textarea
+                id="response-input"
+                placeholder="Paste your API response here..."
+              ></textarea>
+            </div>
+            <div class="output-section">
+              <div class="controls">
+                <button id="format-response" class="btn btn-primary">
+                  Format Response
+                </button>
+                <button id="validate-response" class="btn btn-info">
+                  Validate
+                </button>
+                <button id="expand-all" class="btn btn-secondary">
+                  Expand All
+                </button>
+                <button id="collapse-all" class="btn btn-secondary">
+                  Collapse All
+                </button>
+                <button id="copy-response" class="btn btn-outline">Copy</button>
+                <button id="clear-response" class="btn btn-outline">
+                  Clear
+                </button>
+              </div>
+              <div class="search-controls">
+                <div class="search-input-group">
+                  <input
+                    type="text"
+                    id="search-response"
+                    placeholder="Search in response..."
+                  />
+                  <button id="search-prev" class="btn btn-sm" title="Previous">
+                    <i class="fas fa-chevron-up"></i>
+                  </button>
+                  <button id="search-next" class="btn btn-sm" title="Next">
+                    <i class="fas fa-chevron-down"></i>
+                  </button>
+                </div>
+                <span id="search-stats" class="search-stats"></span>
+              </div>
+              <div id="response-output" class="tree-output"></div>
             </div>
           </div>
         </div>
@@ -1402,7 +1471,9 @@
 
     <script src="js/main.js"></script>
     <script src="../utils/unit-converter-utils.js"></script>
+    <script src="../utils/api-formatter-utils.js"></script>
     <script src="js/tools/json-viewer.js"></script>
+    <script src="js/tools/api-response-formatter.js"></script>
     <script src="js/tools/text-compare.js"></script>
     <script src="js/tools/case-converter.js"></script>
     <script src="js/tools/uuid-generator.js"></script>

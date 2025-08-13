@@ -251,3 +251,8 @@ class UnitConverterUtils {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = UnitConverterUtils;
 }
+
+// Export for browser
+if (typeof window !== 'undefined') {
+  window.UnitConverterUtils = UnitConverterUtils;
+}

@@ -1,6 +1,6 @@
 {
   "name": "dev-tools-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop version of dev-tool.dev - Ultimate Developer Toolkit",
   "main": "src/main.js",
   "scripts": {
