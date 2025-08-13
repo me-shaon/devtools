@@ -214,6 +214,7 @@ class PasswordGenerator {
     const lengthSlider = document.getElementById('password-length');
     const lengthDisplay = document.getElementById('length-display');
     const copyBtn = document.getElementById('copy-password');
+    const copyPassphraseBtn = document.getElementById('copy-passphrase');
     const regenerateBtn = document.getElementById('regenerate-password');
     const generateMultipleBtn = document.getElementById('generate-multiple');
     const passphraseBtn = document.getElementById('generate-passphrase');
@@ -241,6 +242,12 @@ class PasswordGenerator {
 
     if (copyBtn) {
       copyBtn.addEventListener('click', () => this.copyToClipboard());
+    }
+
+    if (copyPassphraseBtn) {
+      copyPassphraseBtn.addEventListener('click', () =>
+        this.copyPassphraseToClipboard()
+      );
     }
 
     if (regenerateBtn) {
@@ -320,7 +327,7 @@ class PasswordGenerator {
       const options = this.getPassphraseOptions();
       const passphrase = PasswordUtils.generatePassphrase(options);
 
-      this.displayPassword(passphrase);
+      this.displayPassphrase(passphrase);
       this.checkPasswordStrength(passphrase);
 
       window.app?.showMessage('Passphrase generated successfully!', 'success');
@@ -355,6 +362,14 @@ class PasswordGenerator {
     if (output) {
       output.value = password;
       output.style.color = this.getPasswordStrengthColor(password);
+    }
+  }
+
+  displayPassphrase(passphrase) {
+    const output = document.getElementById('passphrase-output');
+    if (output) {
+      output.value = passphrase;
+      output.style.color = this.getPasswordStrengthColor(passphrase);
     }
   }
 
@@ -427,6 +442,20 @@ class PasswordGenerator {
         })
         .catch(() => {
           window.app?.showMessage('Failed to copy password', 'error');
+        });
+    }
+  }
+
+  copyPassphraseToClipboard() {
+    const output = document.getElementById('passphrase-output');
+    if (output && output.value) {
+      navigator.clipboard
+        .writeText(output.value)
+        .then(() => {
+          window.app?.showMessage('Passphrase copied to clipboard!', 'success');
+        })
+        .catch(() => {
+          window.app?.showMessage('Failed to copy passphrase', 'error');
         });
     }
   }
