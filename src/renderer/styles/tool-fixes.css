@@ -1,0 +1,555 @@
+/* Tool-specific UI fixes for consistent styling */
+
+/* JSON Viewer specific */
+#json-viewer .input-section {
+    margin-bottom: 1.5rem;
+}
+
+#json-viewer .output-section {
+    margin-top: 1.5rem;
+}
+
+#json-viewer #json-input {
+    width: 100%;
+    min-height: 250px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#json-viewer #json-output {
+    width: 100%;
+    min-height: 300px;
+    max-height: 500px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--background);
+    overflow: auto;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Text Compare specific */
+#text-compare .compare-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+#text-compare textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* Case Converter specific */
+#case-converter #case-input,
+#case-converter #case-output {
+    width: 100%;
+    min-height: 150px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+}
+
+#case-converter #case-output {
+    background: var(--background);
+}
+
+/* UUID Generator specific */
+#uuid-generator .uuid-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background: var(--background);
+    border-radius: var(--border-radius-lg);
+}
+
+#uuid-generator #uuid-output {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--background);
+    resize: vertical;
+    box-sizing: border-box;
+    line-height: 1.8;
+}
+
+/* Base64 Converter specific */
+#base64-converter textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#base64-converter textarea[readonly] {
+    background: var(--background);
+}
+
+/* JWT Decoder specific */
+#jwt-decoder #jwt-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* JSON to TypeScript specific */
+#json-to-ts #json-to-ts-input {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#json-to-ts #typescript-output {
+    width: 100%;
+    min-height: 300px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--background);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow: auto;
+    white-space: pre;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Hash Generator specific */
+#hash-generator #hash-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#hash-generator .hash-result textarea {
+    width: 100%;
+    height: 60px;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.75rem;
+    background: var(--background);
+    resize: none;
+    box-sizing: border-box;
+}
+
+/* URL Encoder specific */
+#url-encoder textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#url-encoder textarea[readonly] {
+    background: var(--background);
+}
+
+/* Timestamp Converter specific */
+#timestamp input[type="number"],
+#timestamp input[type="datetime-local"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.9375rem;
+    background: var(--surface);
+    box-sizing: border-box;
+}
+
+#timestamp textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--background);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* Lorem Generator specific */
+#lorem-generator .lorem-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--background);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+#lorem-generator #lorem-output {
+    width: 100%;
+    min-height: 300px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.9375rem;
+    background: var(--background);
+    resize: vertical;
+    box-sizing: border-box;
+    line-height: 1.8;
+}
+
+/* SQL Formatter specific */
+#sql-formatter #sql-input {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#sql-formatter #sql-output {
+    width: 100%;
+    min-height: 300px;
+    max-height: 500px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--background);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow: auto;
+    white-space: pre;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Number Base Converter specific */
+#number-base .base-input-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.9375rem;
+    background: var(--surface);
+    box-sizing: border-box;
+}
+
+/* CSV JSON Converter specific */
+#csv-json textarea,
+#csv-json pre {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#csv-json pre {
+    background: var(--background);
+    overflow: auto;
+    white-space: pre;
+}
+
+/* QR Generator specific */
+#qr-generator #qr-text {
+    width: 100%;
+    min-height: 100px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.9375rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* Color Palette specific */
+#color-palette .color-input-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#color-palette #base-color {
+    width: 60px;
+    height: 40px;
+    padding: 0;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+#color-palette #base-color-hex {
+    flex: 0 0 150px;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.9375rem;
+    background: var(--surface);
+    text-transform: uppercase;
+}
+
+/* Markdown Editor specific */
+#markdown-editor #markdown-input {
+    width: 100%;
+    height: 400px;
+    padding: 1.5rem;
+    border: none;
+    border-right: 1px solid var(--border-color);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: none;
+    box-sizing: border-box;
+    line-height: 1.8;
+}
+
+/* Cron Calculator specific */
+#cron-calculator .cron-field input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    box-sizing: border-box;
+}
+
+#cron-calculator #cron-expression {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-align: center;
+    background: var(--background);
+    box-sizing: border-box;
+}
+
+/* Regex Generator specific */
+#regex-generator #regex-pattern {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.9375rem;
+    background: transparent;
+}
+
+#regex-generator #regex-flags {
+    width: 80px;
+    padding: 0.75rem 0.5rem;
+    border: none;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--background);
+}
+
+#regex-generator #test-string {
+    width: 100%;
+    min-height: 150px;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* Code Playground specific */
+#code-playground #code-input {
+    width: 100%;
+    height: 500px;
+    padding: 1.5rem;
+    border: none;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.875rem;
+    background: var(--surface);
+    resize: none;
+    box-sizing: border-box;
+    line-height: 1.6;
+}
+
+/* Image Converter specific */
+#image-converter .file-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--background);
+}
+
+#image-converter .file-drop-zone:hover {
+    border-color: var(--primary-color);
+    background: var(--surface);
+}
+
+/* Global fixes for all tools */
+.tool-content {
+    padding: 1.5rem;
+}
+
+.controls {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.controls .btn {
+    margin: 0;
+}
+
+/* Fix for all labels */
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+/* Ensure consistent spacing */
+.input-section,
+.output-section {
+    margin-bottom: 1.5rem;
+}
+
+.input-section:last-child,
+.output-section:last-child {
+    margin-bottom: 0;
+}
+
+/* Fix checkbox alignment */
+input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+label input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .compare-inputs {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .uuid-controls,
+    .lorem-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .control-group {
+        width: 100%;
+    }
+    
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .controls .btn {
+        width: 100%;
+    }
+}
