@@ -7,6 +7,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ## Features
 
 ### Text & Code
+
 - **JSON Viewer** - Format, validate, and minify JSON with syntax highlighting
 - **Text Compare** - Diff viewer with line-by-line comparison
 - **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
@@ -15,6 +16,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 
 ### Converters
+
 - **Base64** - Encode/decode text and files
 - **URL Encoder** - Encode/decode URLs and URI components
 - **CSV ↔ JSON** - Bidirectional conversion with custom delimiters
@@ -22,13 +24,16 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Number Base** - Convert between decimal, binary, octal, hex
 
 ### Generators
+
 - **UUID** - Generate v1/v4 UUIDs with batch support
+- **Password Generator** - Generate secure passwords and passphrases with strength analysis
 - **Hash** - MD5, SHA-1, SHA-256, SHA-512
 - **QR Code** - Generate QR codes with custom size and error correction
 - **Color Palette** - Create monochromatic, analogous, complementary schemes
 - **Lorem Ipsum** - Generate placeholder text
 
 ### Developer Utilities
+
 - **JWT Decoder** - Decode and inspect JWT tokens
 - **Regex Builder** - Interactive regex construction with live testing
 - **Cron Parser** - Build cron expressions with plain English descriptions
@@ -48,7 +53,27 @@ npm start
 
 # Build for distribution
 npm run dist
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
 ```
+
+## Testing
+
+This project uses Jest for unit testing with comprehensive test coverage for utility functions:
+
+- **Base64Utils** - Complete test coverage for encoding/decoding functionality
+- **PasswordUtils** - Comprehensive testing for password generation and strength analysis
+- **jsdom environment** - Tests run in a simulated browser environment
+- **Mocked browser APIs** - Navigator, clipboard, and DOM APIs are properly mocked
+
+Run `npm test` to execute all tests or `npm run test:watch` for development with auto-reload.
 
 ## Requirements
 
