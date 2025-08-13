@@ -295,6 +295,6 @@ const csvJsonStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = csvJsonStyles;
-document.head.appendChild(style);
+const csvJsonStyle = document.createElement('style');
+csvJsonStyle.textContent = csvJsonStyles;
+document.head.appendChild(csvJsonStyle);

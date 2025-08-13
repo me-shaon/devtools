@@ -398,6 +398,6 @@ const markdownStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const markdownEditorStyle = document.createElement('style');
 style.textContent = markdownStyles;
-document.head.appendChild(style);
+document.head.appendChild(markdownEditorStyle);

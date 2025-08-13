@@ -269,6 +269,6 @@ const additionalStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const textCompareStyle = document.createElement('style');
 style.textContent = additionalStyles;
-document.head.appendChild(style);
+document.head.appendChild(textCompareStyle);
