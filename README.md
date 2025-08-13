@@ -2,6 +2,8 @@
 
 Offline-first developer utilities for macOS, Windows, and Linux. No cloud dependencies, no data collection.
 
+![DevTools Desktop](https://github.com/me-shaon/devtools/blob/main/assets/screenshot.png?raw=true)
+
 ## Features
 
 ### Text & Code
