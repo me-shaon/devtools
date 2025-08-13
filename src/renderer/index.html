@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Tools Desktop</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-tools"></i> Dev Tools</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" data-tool="home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" data-tool="json-viewer" class="nav-link"><i class="fas fa-code"></i> JSON Viewer</a></li>
+                <li><a href="#" data-tool="text-compare" class="nav-link"><i class="fas fa-not-equal"></i> Text Compare</a></li>
+                <li><a href="#" data-tool="case-converter" class="nav-link"><i class="fas fa-text-height"></i> Case Converter</a></li>
+                <li><a href="#" data-tool="uuid-generator" class="nav-link"><i class="fas fa-fingerprint"></i> UUID Generator</a></li>
+                <li><a href="#" data-tool="base64-converter" class="nav-link"><i class="fas fa-exchange-alt"></i> Base64 Converter</a></li>
+                <li><a href="#" data-tool="jwt-decoder" class="nav-link"><i class="fas fa-key"></i> JWT Decoder</a></li>
+                <li><a href="#" data-tool="json-to-ts" class="nav-link"><i class="fas fa-file-code"></i> JSON to TypeScript</a></li>
+                <li><a href="#" data-tool="sql-formatter" class="nav-link"><i class="fas fa-database"></i> SQL Formatter</a></li>
+                <li><a href="#" data-tool="number-base" class="nav-link"><i class="fas fa-calculator"></i> Number Base</a></li>
+                <li><a href="#" data-tool="csv-json" class="nav-link"><i class="fas fa-table"></i> CSV ↔ JSON</a></li>
+                <li><a href="#" data-tool="image-converter" class="nav-link"><i class="fas fa-image"></i> Image Converter</a></li>
+                <li><a href="#" data-tool="markdown-editor" class="nav-link"><i class="fab fa-markdown"></i> Markdown</a></li>
+                <li><a href="#" data-tool="cron-calculator" class="nav-link"><i class="fas fa-clock"></i> Cron Calculator</a></li>
+                <li><a href="#" data-tool="regex-generator" class="nav-link"><i class="fas fa-search"></i> Regex Generator</a></li>
+                <li><a href="#" data-tool="code-playground" class="nav-link"><i class="fas fa-play"></i> Playground</a></li>
+                <li><a href="#" data-tool="timestamp" class="nav-link"><i class="fas fa-calendar-alt"></i> Timestamp</a></li>
+                <li><a href="#" data-tool="hash-generator" class="nav-link"><i class="fas fa-hashtag"></i> Hash Generator</a></li>
+                <li><a href="#" data-tool="url-encoder" class="nav-link"><i class="fas fa-link"></i> URL Encoder</a></li>
+                <li><a href="#" data-tool="lorem-generator" class="nav-link"><i class="fas fa-paragraph"></i> Lorem Generator</a></li>
+                <li><a href="#" data-tool="qr-generator" class="nav-link"><i class="fas fa-qrcode"></i> QR Generator</a></li>
+                <li><a href="#" data-tool="color-palette" class="nav-link"><i class="fas fa-palette"></i> Color Palette</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div id="home" class="tool-container active">
+                <div class="home-content">
+                    <h1>Your Ultimate Developer Toolkit</h1>
+                    <p>Unlock your productivity with tools designed for developers, by a developer.</p>
+                    <div class="tools-grid">
+                        <div class="tool-card" data-tool="json-viewer">
+                            <i class="fas fa-code"></i>
+                            <h3>JSON Viewer</h3>
+                            <p>Easily view and format JSON data for better readability.</p>
+                        </div>
+                        <div class="tool-card" data-tool="text-compare">
+                            <i class="fas fa-not-equal"></i>
+                            <h3>Text Compare</h3>
+                            <p>Compare two pieces of text to identify differences quickly.</p>
+                        </div>
+                        <div class="tool-card" data-tool="case-converter">
+                            <i class="fas fa-text-height"></i>
+                            <h3>Case Converter</h3>
+                            <p>Convert text between camelCase, snake_case, kebab-case and more.</p>
+                        </div>
+                        <div class="tool-card" data-tool="uuid-generator">
+                            <i class="fas fa-fingerprint"></i>
+                            <h3>UUID Generator</h3>
+                            <p>Generate unique identifiers for your applications.</p>
+                        </div>
+                        <div class="tool-card" data-tool="base64-converter">
+                            <i class="fas fa-exchange-alt"></i>
+                            <h3>Base64 Converter</h3>
+                            <p>Encode or decode Base64 strings effortlessly.</p>
+                        </div>
+                        <div class="tool-card" data-tool="jwt-decoder">
+                            <i class="fas fa-key"></i>
+                            <h3>JWT Decoder</h3>
+                            <p>Decode and verify JSON Web Tokens (JWT) securely.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="json-viewer" class="tool-container">
+                <h2><i class="fas fa-code"></i> JSON Viewer</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="json-input" placeholder="Paste your JSON here..."></textarea>
+                    </div>
+                    <div class="output-section">
+                        <div class="controls">
+                            <button id="format-json" class="btn btn-primary">Format JSON</button>
+                            <button id="minify-json" class="btn btn-secondary">Minify JSON</button>
+                            <button id="validate-json" class="btn btn-info">Validate</button>
+                        </div>
+                        <pre id="json-output"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div id="text-compare" class="tool-container">
+                <h2><i class="fas fa-not-equal"></i> Text Compare</h2>
+                <div class="tool-content">
+                    <div class="compare-inputs">
+                        <div class="input-group">
+                            <label for="text1">Text 1:</label>
+                            <textarea id="text1" placeholder="Enter first text..."></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="text2">Text 2:</label>
+                            <textarea id="text2" placeholder="Enter second text..."></textarea>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button id="compare-texts" class="btn btn-primary">Compare</button>
+                        <button id="clear-comparison" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <div id="comparison-result"></div>
+                </div>
+            </div>
+
+            <div id="case-converter" class="tool-container">
+                <h2><i class="fas fa-text-height"></i> Case Converter</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="case-input" placeholder="Enter text to convert..."></textarea>
+                    </div>
+                    <div class="case-options">
+                        <button class="case-btn" data-case="camel">camelCase</button>
+                        <button class="case-btn" data-case="pascal">PascalCase</button>
+                        <button class="case-btn" data-case="snake">snake_case</button>
+                        <button class="case-btn" data-case="kebab">kebab-case</button>
+                        <button class="case-btn" data-case="upper">UPPERCASE</button>
+                        <button class="case-btn" data-case="lower">lowercase</button>
+                        <button class="case-btn" data-case="title">Title Case</button>
+                    </div>
+                    <div class="output-section">
+                        <textarea id="case-output" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uuid-generator" class="tool-container">
+                <h2><i class="fas fa-fingerprint"></i> UUID Generator</h2>
+                <div class="tool-content">
+                    <div class="uuid-controls">
+                        <div class="control-group">
+                            <label for="uuid-version">Version:</label>
+                            <select id="uuid-version">
+                                <option value="4" selected>UUID v4 (Random)</option>
+                                <option value="1">UUID v1 (Timestamp)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="uuid-count">Count:</label>
+                            <input type="number" id="uuid-count" value="1" min="1" max="100">
+                        </div>
+                        <button id="generate-uuid" class="btn btn-primary">Generate UUID</button>
+                    </div>
+                    <div class="output-section">
+                        <textarea id="uuid-output" readonly placeholder="Generated UUIDs will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="base64-converter" class="tool-container">
+                <h2><i class="fas fa-exchange-alt"></i> Base64 Converter</h2>
+                <div class="tool-content">
+                    <div class="converter-tabs">
+                        <button class="tab-btn active" data-tab="encode">Encode</button>
+                        <button class="tab-btn" data-tab="decode">Decode</button>
+                    </div>
+                    <div id="encode-tab" class="tab-content active">
+                        <textarea id="text-to-encode" placeholder="Enter text to encode..."></textarea>
+                        <button id="encode-btn" class="btn btn-primary">Encode to Base64</button>
+                        <textarea id="encoded-output" readonly placeholder="Encoded result..."></textarea>
+                    </div>
+                    <div id="decode-tab" class="tab-content">
+                        <textarea id="base64-to-decode" placeholder="Enter Base64 to decode..."></textarea>
+                        <button id="decode-btn" class="btn btn-primary">Decode from Base64</button>
+                        <textarea id="decoded-output" readonly placeholder="Decoded result..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="jwt-decoder" class="tool-container">
+                <h2><i class="fas fa-key"></i> JWT Decoder</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="jwt-input" placeholder="Paste your JWT token here..."></textarea>
+                        <button id="decode-jwt" class="btn btn-primary">Decode JWT</button>
+                    </div>
+                    <div class="jwt-sections">
+                        <div class="jwt-section">
+                            <h3>Header</h3>
+                            <pre id="jwt-header"></pre>
+                        </div>
+                        <div class="jwt-section">
+                            <h3>Payload</h3>
+                            <pre id="jwt-payload"></pre>
+                        </div>
+                        <div class="jwt-section">
+                            <h3>Signature</h3>
+                            <pre id="jwt-signature"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="json-to-ts" class="tool-container">
+                <h2><i class="fas fa-file-code"></i> JSON to TypeScript</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="json-to-ts-input" placeholder="Paste your JSON here..."></textarea>
+                    </div>
+                    <div class="controls">
+                        <button id="convert-to-ts" class="btn btn-primary">Convert to TypeScript</button>
+                        <button id="clear-ts" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <div class="output-section">
+                        <pre id="typescript-output"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div id="hash-generator" class="tool-container">
+                <h2><i class="fas fa-hashtag"></i> Hash Generator</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="hash-input" placeholder="Enter text to hash..."></textarea>
+                    </div>
+                    <div class="hash-options">
+                        <button class="hash-btn" data-type="md5">MD5</button>
+                        <button class="hash-btn" data-type="sha1">SHA-1</button>
+                        <button class="hash-btn" data-type="sha256">SHA-256</button>
+                        <button class="hash-btn" data-type="sha512">SHA-512</button>
+                    </div>
+                    <div class="hash-results">
+                        <div class="hash-result" id="md5-result">
+                            <label>MD5:</label>
+                            <textarea readonly placeholder="MD5 hash will appear here..."></textarea>
+                        </div>
+                        <div class="hash-result" id="sha1-result">
+                            <label>SHA-1:</label>
+                            <textarea readonly placeholder="SHA-1 hash will appear here..."></textarea>
+                        </div>
+                        <div class="hash-result" id="sha256-result">
+                            <label>SHA-256:</label>
+                            <textarea readonly placeholder="SHA-256 hash will appear here..."></textarea>
+                        </div>
+                        <div class="hash-result" id="sha512-result">
+                            <label>SHA-512:</label>
+                            <textarea readonly placeholder="SHA-512 hash will appear here..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="url-encoder" class="tool-container">
+                <h2><i class="fas fa-link"></i> URL Encoder/Decoder</h2>
+                <div class="tool-content">
+                    <div class="converter-tabs">
+                        <button class="tab-btn active" data-tab="url-encode">Encode</button>
+                        <button class="tab-btn" data-tab="url-decode">Decode</button>
+                    </div>
+                    <div id="url-encode-tab" class="tab-content active">
+                        <textarea id="url-to-encode" placeholder="Enter URL or text to encode..."></textarea>
+                        <button id="url-encode-btn" class="btn btn-primary">Encode URL</button>
+                        <textarea id="url-encoded-output" readonly placeholder="Encoded URL..."></textarea>
+                    </div>
+                    <div id="url-decode-tab" class="tab-content">
+                        <textarea id="url-to-decode" placeholder="Enter encoded URL to decode..."></textarea>
+                        <button id="url-decode-btn" class="btn btn-primary">Decode URL</button>
+                        <textarea id="url-decoded-output" readonly placeholder="Decoded URL..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="timestamp" class="tool-container">
+                <h2><i class="fas fa-calendar-alt"></i> Timestamp Converter</h2>
+                <div class="tool-content">
+                    <div class="timestamp-section">
+                        <h3>Current Timestamp</h3>
+                        <div class="current-time">
+                            <div class="time-display">
+                                <strong id="current-timestamp">---</strong>
+                                <span id="current-date">---</span>
+                            </div>
+                            <button id="refresh-time" class="btn btn-secondary">Refresh</button>
+                        </div>
+                    </div>
+                    <div class="converter-tabs">
+                        <button class="tab-btn active" data-tab="ts-to-date">Timestamp to Date</button>
+                        <button class="tab-btn" data-tab="date-to-ts">Date to Timestamp</button>
+                    </div>
+                    <div id="ts-to-date-tab" class="tab-content active">
+                        <input type="number" id="timestamp-input" placeholder="Enter timestamp (seconds or milliseconds)">
+                        <button id="convert-ts-to-date" class="btn btn-primary">Convert to Date</button>
+                        <textarea id="date-output" readonly placeholder="Converted date..."></textarea>
+                    </div>
+                    <div id="date-to-ts-tab" class="tab-content">
+                        <input type="datetime-local" id="date-input">
+                        <button id="convert-date-to-ts" class="btn btn-primary">Convert to Timestamp</button>
+                        <textarea id="timestamp-output" readonly placeholder="Converted timestamp..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="lorem-generator" class="tool-container">
+                <h2><i class="fas fa-paragraph"></i> Lorem Ipsum Generator</h2>
+                <div class="tool-content">
+                    <div class="lorem-controls">
+                        <div class="control-group">
+                            <label for="lorem-type">Type:</label>
+                            <select id="lorem-type">
+                                <option value="paragraphs">Paragraphs</option>
+                                <option value="sentences">Sentences</option>
+                                <option value="words">Words</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="lorem-count">Count:</label>
+                            <input type="number" id="lorem-count" value="3" min="1" max="50">
+                        </div>
+                        <button id="generate-lorem" class="btn btn-primary">Generate Lorem</button>
+                    </div>
+                    <div class="output-section">
+                        <textarea id="lorem-output" readonly placeholder="Generated lorem ipsum text..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sql-formatter" class="tool-container">
+                <h2><i class="fas fa-database"></i> SQL Formatter</h2>
+                <div class="tool-content">
+                    <div class="input-section">
+                        <textarea id="sql-input" placeholder="Paste your SQL query here..."></textarea>
+                    </div>
+                    <div class="controls">
+                        <button id="format-sql" class="btn btn-primary">Format SQL</button>
+                        <button id="minify-sql" class="btn btn-secondary">Minify SQL</button>
+                        <button id="clear-sql" class="btn btn-info">Clear</button>
+                    </div>
+                    <div class="sql-options">
+                        <label><input type="checkbox" id="uppercase-keywords" checked> Uppercase Keywords</label>
+                        <label><input type="checkbox" id="indent-tabs" checked> Use Tabs for Indentation</label>
+                    </div>
+                    <div class="output-section">
+                        <pre id="sql-output"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div id="number-base" class="tool-container">
+                <h2><i class="fas fa-calculator"></i> Number Base Converter</h2>
+                <div class="tool-content">
+                    <div class="base-inputs">
+                        <div class="base-input-group">
+                            <label for="decimal-input">Decimal (Base 10):</label>
+                            <input type="text" id="decimal-input" placeholder="Enter decimal number...">
+                        </div>
+                        <div class="base-input-group">
+                            <label for="binary-input">Binary (Base 2):</label>
+                            <input type="text" id="binary-input" placeholder="Enter binary number...">
+                        </div>
+                        <div class="base-input-group">
+                            <label for="octal-input">Octal (Base 8):</label>
+                            <input type="text" id="octal-input" placeholder="Enter octal number...">
+                        </div>
+                        <div class="base-input-group">
+                            <label for="hex-input">Hexadecimal (Base 16):</label>
+                            <input type="text" id="hex-input" placeholder="Enter hex number...">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button id="clear-bases" class="btn btn-secondary">Clear All</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="csv-json" class="tool-container">
+                <h2><i class="fas fa-table"></i> CSV ↔ JSON Converter</h2>
+                <div class="tool-content">
+                    <div class="converter-tabs">
+                        <button class="tab-btn active" data-tab="csv-to-json">CSV to JSON</button>
+                        <button class="tab-btn" data-tab="json-to-csv">JSON to CSV</button>
+                    </div>
+                    <div id="csv-to-json-tab" class="tab-content active">
+                        <div class="csv-options">
+                            <label><input type="checkbox" id="has-headers" checked> First row contains headers</label>
+                            <label>Delimiter: <select id="csv-delimiter">
+                                <option value=",">Comma (,)</option>
+                                <option value=";">Semicolon (;)</option>
+                                <option value="\t">Tab</option>
+                                <option value="|">Pipe (|)</option>
+                            </select></label>
+                        </div>
+                        <textarea id="csv-input" placeholder="Paste your CSV data here..."></textarea>
+                        <button id="csv-to-json-btn" class="btn btn-primary">Convert to JSON</button>
+                        <pre id="json-from-csv-output"></pre>
+                    </div>
+                    <div id="json-to-csv-tab" class="tab-content">
+                        <textarea id="json-for-csv-input" placeholder="Paste your JSON array here..."></textarea>
+                        <button id="json-to-csv-btn" class="btn btn-primary">Convert to CSV</button>
+                        <textarea id="csv-from-json-output" readonly placeholder="CSV output..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="image-converter" class="tool-container">
+                <h2><i class="fas fa-image"></i> Image Format Converter</h2>
+                <div class="tool-content">
+                    <div class="upload-section">
+                        <div class="file-drop-zone" id="image-drop-zone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drop image here or click to browse</p>
+                            <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                    <div class="image-preview" id="image-preview" style="display: none;">
+                        <img id="preview-image" alt="Preview">
+                        <div class="image-info">
+                            <span id="image-name"></span>
+                            <span id="image-size"></span>
+                            <span id="image-dimensions"></span>
+                        </div>
+                    </div>
+                    <div class="conversion-options" id="conversion-options" style="display: none;">
+                        <div class="format-options">
+                            <label>Output Format:</label>
+                            <select id="output-format">
+                                <option value="png">PNG</option>
+                                <option value="jpeg">JPEG</option>
+                                <option value="webp">WebP</option>
+                                <option value="bmp">BMP</option>
+                            </select>
+                        </div>
+                        <div class="quality-options" id="quality-options" style="display: none;">
+                            <label>Quality: <span id="quality-value">90</span>%</label>
+                            <input type="range" id="quality-slider" min="1" max="100" value="90">
+                        </div>
+                        <button id="convert-image" class="btn btn-primary">Convert & Download</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="markdown-editor" class="tool-container">
+                <h2><i class="fab fa-markdown"></i> Markdown Editor</h2>
+                <div class="tool-content">
+                    <div class="markdown-toolbar">
+                        <button class="toolbar-btn" data-action="bold" title="Bold"><i class="fas fa-bold"></i></button>
+                        <button class="toolbar-btn" data-action="italic" title="Italic"><i class="fas fa-italic"></i></button>
+                        <button class="toolbar-btn" data-action="heading" title="Heading"><i class="fas fa-heading"></i></button>
+                        <button class="toolbar-btn" data-action="link" title="Link"><i class="fas fa-link"></i></button>
+                        <button class="toolbar-btn" data-action="code" title="Code"><i class="fas fa-code"></i></button>
+                        <button class="toolbar-btn" data-action="list" title="List"><i class="fas fa-list-ul"></i></button>
+                        <div class="toolbar-divider"></div>
+                        <button id="toggle-preview" class="btn btn-secondary">Toggle Preview</button>
+                    </div>
+                    <div class="markdown-container">
+                        <div class="markdown-input">
+                            <textarea id="markdown-input" placeholder="Enter your markdown here..."></textarea>
+                        </div>
+                        <div class="markdown-preview" id="markdown-preview">
+                            <div id="preview-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cron-calculator" class="tool-container">
+                <h2><i class="fas fa-clock"></i> Cron Calculator</h2>
+                <div class="tool-content">
+                    <div class="cron-builder">
+                        <div class="cron-fields">
+                            <div class="cron-field">
+                                <label>Minutes (0-59):</label>
+                                <input type="text" id="cron-minute" value="*" placeholder="*">
+                            </div>
+                            <div class="cron-field">
+                                <label>Hours (0-23):</label>
+                                <input type="text" id="cron-hour" value="*" placeholder="*">
+                            </div>
+                            <div class="cron-field">
+                                <label>Day of Month (1-31):</label>
+                                <input type="text" id="cron-day" value="*" placeholder="*">
+                            </div>
+                            <div class="cron-field">
+                                <label>Month (1-12):</label>
+                                <input type="text" id="cron-month" value="*" placeholder="*">
+                            </div>
+                            <div class="cron-field">
+                                <label>Day of Week (0-7):</label>
+                                <input type="text" id="cron-dow" value="*" placeholder="*">
+                            </div>
+                        </div>
+                        <div class="cron-expression">
+                            <label>Cron Expression:</label>
+                            <input type="text" id="cron-expression" placeholder="* * * * *">
+                        </div>
+                        <div class="controls">
+                            <button id="generate-cron" class="btn btn-primary">Generate Expression</button>
+                            <button id="parse-cron" class="btn btn-secondary">Parse Expression</button>
+                        </div>
+                    </div>
+                    <div class="cron-description" id="cron-description">
+                        <h3>Description:</h3>
+                        <p id="cron-description-text">Select values to see description</p>
+                    </div>
+                    <div class="next-runs" id="next-runs">
+                        <h3>Next 5 Runs:</h3>
+                        <ul id="next-runs-list"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="regex-generator" class="tool-container">
+                <h2><i class="fas fa-search"></i> Regex Generator</h2>
+                <div class="tool-content">
+                    <div class="regex-input">
+                        <label for="regex-pattern">Regular Expression:</label>
+                        <div class="regex-input-group">
+                            <span class="regex-delimiter">/</span>
+                            <input type="text" id="regex-pattern" placeholder="Enter your regex pattern...">
+                            <span class="regex-delimiter">/</span>
+                            <input type="text" id="regex-flags" placeholder="flags" maxlength="10" style="width: 60px;">
+                        </div>
+                    </div>
+                    <div class="test-input">
+                        <label for="test-string">Test String:</label>
+                        <textarea id="test-string" placeholder="Enter text to test against your regex..."></textarea>
+                    </div>
+                    <div class="controls">
+                        <button id="test-regex" class="btn btn-primary">Test Regex</button>
+                        <button id="clear-regex" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <div class="regex-results" id="regex-results">
+                        <div class="matches" id="regex-matches">
+                            <h3>Matches:</h3>
+                            <div id="matches-list"></div>
+                        </div>
+                        <div class="explanation" id="regex-explanation">
+                            <h3>Pattern Explanation:</h3>
+                            <div id="explanation-text"></div>
+                        </div>
+                    </div>
+                    <div class="regex-cheatsheet">
+                        <h3>Quick Reference:</h3>
+                        <div class="cheatsheet-grid">
+                            <div class="cheat-item"><code>.</code> - Any character</div>
+                            <div class="cheat-item"><code>*</code> - 0 or more</div>
+                            <div class="cheat-item"><code>+</code> - 1 or more</div>
+                            <div class="cheat-item"><code>?</code> - 0 or 1</div>
+                            <div class="cheat-item"><code>\d</code> - Digit</div>
+                            <div class="cheat-item"><code>\w</code> - Word char</div>
+                            <div class="cheat-item"><code>\s</code> - Whitespace</div>
+                            <div class="cheat-item"><code>^</code> - Start of line</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="code-playground" class="tool-container">
+                <h2><i class="fas fa-play"></i> Code Playground</h2>
+                <div class="tool-content">
+                    <div class="playground-header">
+                        <div class="language-selector">
+                            <label>Language:</label>
+                            <select id="code-language">
+                                <option value="javascript">JavaScript</option>
+                                <option value="html">HTML</option>
+                                <option value="css">CSS</option>
+                                <option value="json">JSON</option>
+                                <option value="markdown">Markdown</option>
+                            </select>
+                        </div>
+                        <div class="playground-controls">
+                            <button id="run-code" class="btn btn-primary">Run Code</button>
+                            <button id="clear-code" class="btn btn-secondary">Clear</button>
+                            <button id="format-code" class="btn btn-info">Format</button>
+                        </div>
+                    </div>
+                    <div class="playground-container">
+                        <div class="code-editor">
+                            <textarea id="code-input" placeholder="Write your code here..."></textarea>
+                        </div>
+                        <div class="code-output">
+                            <div class="output-tabs">
+                                <button class="output-tab active" data-tab="result">Result</button>
+                                <button class="output-tab" data-tab="console">Console</button>
+                            </div>
+                            <div id="result-output" class="output-content active">
+                                <iframe id="result-frame" sandbox="allow-scripts"></iframe>
+                            </div>
+                            <div id="console-output" class="output-content">
+                                <div id="console-log"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="qr-generator" class="tool-container">
+                <h2><i class="fas fa-qrcode"></i> QR Code Generator</h2>
+                <div class="tool-content">
+                    <div class="qr-input">
+                        <textarea id="qr-text" placeholder="Enter text, URL, or data to generate QR code..."></textarea>
+                    </div>
+                    <div class="qr-options">
+                        <div class="option-group">
+                            <label for="qr-size">Size:</label>
+                            <select id="qr-size">
+                                <option value="200">200x200</option>
+                                <option value="300" selected>300x300</option>
+                                <option value="400">400x400</option>
+                                <option value="500">500x500</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="error-level">Error Correction:</label>
+                            <select id="error-level">
+                                <option value="L">Low</option>
+                                <option value="M" selected>Medium</option>
+                                <option value="Q">Quartile</option>
+                                <option value="H">High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button id="generate-qr" class="btn btn-primary">Generate QR Code</button>
+                        <button id="download-qr" class="btn btn-secondary" disabled>Download PNG</button>
+                    </div>
+                    <div class="qr-preview" id="qr-preview">
+                        <canvas id="qr-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="color-palette" class="tool-container">
+                <h2><i class="fas fa-palette"></i> Color Palette Generator</h2>
+                <div class="tool-content">
+                    <div class="color-input">
+                        <div class="color-picker-group">
+                            <label>Base Color:</label>
+                            <div class="color-input-container">
+                                <input type="color" id="base-color" value="#667eea">
+                                <input type="text" id="base-color-hex" value="#667eea" placeholder="#000000">
+                            </div>
+                        </div>
+                        <div class="palette-type">
+                            <label>Palette Type:</label>
+                            <select id="palette-type">
+                                <option value="monochromatic">Monochromatic</option>
+                                <option value="analogous">Analogous</option>
+                                <option value="complementary">Complementary</option>
+                                <option value="triadic">Triadic</option>
+                                <option value="tetradic">Tetradic</option>
+                            </select>
+                        </div>
+                        <button id="generate-palette" class="btn btn-primary">Generate Palette</button>
+                    </div>
+                    <div class="color-palette-display" id="color-palette-display">
+                        <div class="palette-colors" id="palette-colors"></div>
+                        <div class="color-formats" id="color-formats">
+                            <div class="format-section">
+                                <h3>Color Formats:</h3>
+                                <div id="color-format-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/tools/json-viewer.js"></script>
+    <script src="js/tools/text-compare.js"></script>
+    <script src="js/tools/case-converter.js"></script>
+    <script src="js/tools/uuid-generator.js"></script>
+    <script src="js/tools/base64-converter.js"></script>
+    <script src="js/tools/jwt-decoder.js"></script>
+    <script src="js/tools/json-to-ts.js"></script>
+    <script src="js/tools/hash-generator.js"></script>
+    <script src="js/tools/url-encoder.js"></script>
+    <script src="js/tools/timestamp.js"></script>
+    <script src="js/tools/lorem-generator.js"></script>
+    <script src="js/tools/sql-formatter.js"></script>
+    <script src="js/tools/number-base.js"></script>
+    <script src="js/tools/csv-json.js"></script>
+    <script src="js/tools/image-converter.js"></script>
+    <script src="js/tools/markdown-editor.js"></script>
+    <script src="js/tools/cron-calculator.js"></script>
+    <script src="js/tools/regex-generator.js"></script>
+    <script src="js/tools/code-playground.js"></script>
+    <script src="js/tools/qr-generator.js"></script>
+    <script src="js/tools/color-palette.js"></script>
+</body>
+</html>
