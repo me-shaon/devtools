@@ -44,6 +44,7 @@
                 <li><a href="#" data-tool="base64-converter" class="nav-link"><i class="fas fa-exchange-alt"></i> Base64 Converter</a></li>
                 <li><a href="#" data-tool="number-base" class="nav-link"><i class="fas fa-calculator"></i> Number Base</a></li>
                 <li><a href="#" data-tool="csv-json" class="nav-link"><i class="fas fa-table"></i> CSV ↔ JSON</a></li>
+                <li><a href="#" data-tool="yaml-json" class="nav-link"><i class="fas fa-file-code"></i> YAML ↔ JSON</a></li>
                 <li><a href="#" data-tool="image-converter" class="nav-link"><i class="fas fa-image"></i> Image Converter</a></li>
                 <li><a href="#" data-tool="url-encoder" class="nav-link"><i class="fas fa-link"></i> URL Encoder</a></li>
                 
@@ -686,6 +687,54 @@
                 </div>
             </div>
 
+            <div id="yaml-json" class="tool-container">
+                <h2><i class="fas fa-file-code"></i> YAML ↔ JSON Converter</h2>
+                <div class="tool-content">
+                    <div class="converter-tabs">
+                        <button class="tab-btn active" data-tab="yaml-to-json">YAML to JSON</button>
+                        <button class="tab-btn" data-tab="json-to-yaml">JSON to YAML</button>
+                    </div>
+                    <div id="yaml-to-json-tab" class="tab-content active">
+                        <div class="input-section">
+                            <textarea id="yaml-input" class="code-input" placeholder="Paste your YAML here..."></textarea>
+                        </div>
+                        <div class="controls">
+                            <button id="yaml-to-json-btn" class="btn btn-primary">Convert to JSON</button>
+                            <button id="clear-yaml" class="btn btn-secondary">Clear</button>
+                            <button id="validate-yaml" class="btn btn-info">Validate YAML</button>
+                        </div>
+                        <div class="output-section">
+                            <div class="output-header">
+                                <span>JSON Output:</span>
+                                <button id="copy-json" class="btn btn-icon" title="Copy to Clipboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre id="json-from-yaml-output" class="code-output"></pre>
+                        </div>
+                    </div>
+                    <div id="json-to-yaml-tab" class="tab-content">
+                        <div class="input-section">
+                            <textarea id="json-for-yaml-input" class="code-input" placeholder="Paste your JSON here..."></textarea>
+                        </div>
+                        <div class="controls">
+                            <button id="json-to-yaml-btn" class="btn btn-primary">Convert to YAML</button>
+                            <button id="clear-yaml-json" class="btn btn-secondary">Clear</button>
+                            <button id="validate-json" class="btn btn-info">Validate JSON</button>
+                        </div>
+                        <div class="output-section">
+                            <div class="output-header">
+                                <span>YAML Output:</span>
+                                <button id="copy-yaml" class="btn btn-icon" title="Copy to Clipboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <pre id="yaml-from-json-output" class="code-output"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="color-palette" class="tool-container">
                 <h2><i class="fas fa-palette"></i> Color Palette Generator</h2>
                 <div class="tool-content">
@@ -745,5 +794,7 @@
     <script src="js/tools/code-playground.js"></script>
     <script src="js/tools/qr-generator.js"></script>
     <script src="js/tools/color-palette.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="js/tools/yaml-converter.js"></script>
 </body>
 </html>

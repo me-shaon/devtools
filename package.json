@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
+    "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "marked": "^12.0.0",
     "node-cron": "^3.0.3",
