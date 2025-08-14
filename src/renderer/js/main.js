@@ -10,6 +10,44 @@ class DevToolsApp {
         this.setupNavigation();
         this.setupMenuListeners();
         this.setupToolCards();
+        this.setupSearch();
+    }
+
+    setupSearch() {
+        const searchInput = document.getElementById('tools-search');
+        if (!searchInput) return;
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const allTools = document.querySelectorAll('.nav-link');
+            const categories = document.querySelectorAll('.nav-category');
+            
+            allTools.forEach(tool => {
+                if (tool.dataset.tool === 'home') return; // Always show home
+                
+                const toolName = tool.textContent.toLowerCase();
+                const shouldShow = toolName.includes(searchTerm);
+                tool.parentElement.style.display = shouldShow ? 'block' : 'none';
+            });
+
+            // Show/hide categories based on whether they have visible tools
+            categories.forEach(category => {
+                const nextSibling = category.nextElementSibling;
+                let hasVisibleTools = false;
+                let current = nextSibling;
+
+                // Look through all elements until next category or end
+                while (current && !current.classList.contains('nav-category')) {
+                    if (current.style.display !== 'none') {
+                        hasVisibleTools = true;
+                        break;
+                    }
+                    current = current.nextElementSibling;
+                }
+
+                category.style.display = hasVisibleTools ? 'block' : 'none';
+            });
+        });
     }
 
     setupNavigation() {
