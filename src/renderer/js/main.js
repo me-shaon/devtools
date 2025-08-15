@@ -3,6 +3,7 @@ const { ipcRenderer } = require('electron');
 class DevToolsApp {
     constructor() {
         this.currentTool = 'home';
+        this.pinnedTools = this.loadPinnedTools();
         this.init();
     }
 
@@ -10,6 +11,8 @@ class DevToolsApp {
         this.setupNavigation();
         this.setupMenuListeners();
         this.setupToolCards();
+        this.setupPinButtons();
+        this.updateNavigationOrder();
     }
 
     setupNavigation() {
@@ -68,6 +71,113 @@ class DevToolsApp {
         if (toolName === 'json-viewer' && window.JSONViewer) {
             window.JSONViewer.init();
         }
+    }
+
+    setupPinButtons() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            const toolId = link.dataset.tool;
+            if (toolId === 'home') return;
+            
+            // Remove existing pin button if any
+            const existingPin = link.querySelector('.pin-toggle');
+            if (existingPin) existingPin.remove();
+            
+            // Create pin toggle button
+            const pinButton = document.createElement('button');
+            pinButton.className = `pin-toggle ${this.pinnedTools.includes(toolId) ? 'pinned' : ''}`;
+            pinButton.innerHTML = '<i class="fas fa-thumbtack"></i>';
+            pinButton.title = this.pinnedTools.includes(toolId) ? 'Unpin tool' : 'Pin tool';
+            
+            pinButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.togglePin(toolId);
+            });
+            
+            link.appendChild(pinButton);
+        });
+    }
+
+    loadPinnedTools() {
+        try {
+            const stored = localStorage.getItem('devtools-pinned');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('Error loading pinned tools:', error);
+            return [];
+        }
+    }
+
+    savePinnedTools() {
+        try {
+            localStorage.setItem('devtools-pinned', JSON.stringify(this.pinnedTools));
+        } catch (error) {
+            console.error('Error saving pinned tools:', error);
+        }
+    }
+
+    togglePin(toolId) {
+        const index = this.pinnedTools.indexOf(toolId);
+        if (index > -1) {
+            this.pinnedTools.splice(index, 1);
+        } else {
+            this.pinnedTools.push(toolId);
+        }
+        
+        this.savePinnedTools();
+        this.updateNavigationOrder();
+        this.updatePinButtons();
+    }
+
+    updateNavigationOrder() {
+        const navMenu = document.querySelector('.nav-menu');
+        const homeLink = navMenu.querySelector('[data-tool="home"]').parentElement;
+        
+        // Get all nav items except home
+        const allNavItems = Array.from(navMenu.children).filter(item => 
+            item.querySelector('[data-tool]').dataset.tool !== 'home'
+        );
+        
+        // Separate pinned and unpinned items
+        const pinnedItems = [];
+        const unpinnedItems = [];
+        
+        allNavItems.forEach(item => {
+            const toolId = item.querySelector('[data-tool]').dataset.tool;
+            if (this.pinnedTools.includes(toolId)) {
+                pinnedItems.push(item);
+                item.classList.add('pinned');
+            } else {
+                unpinnedItems.push(item);
+                item.classList.remove('pinned');
+            }
+        });
+        
+        // Clear the menu (except home)
+        allNavItems.forEach(item => item.remove());
+        
+        // Re-add in order: pinned first, then unpinned
+        pinnedItems.forEach(item => navMenu.appendChild(item));
+        unpinnedItems.forEach(item => navMenu.appendChild(item));
+        
+        // Update pin buttons
+        this.setupPinButtons();
+    }
+
+    updatePinButtons() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            const toolId = link.dataset.tool;
+            if (toolId === 'home') return;
+            
+            const pinButton = link.querySelector('.pin-toggle');
+            if (pinButton) {
+                const isPinned = this.pinnedTools.includes(toolId);
+                pinButton.className = `pin-toggle ${isPinned ? 'pinned' : ''}`;
+                pinButton.title = isPinned ? 'Unpin tool' : 'Pin tool';
+            }
+        });
     }
 
     async saveFile(content, filters = []) {
@@ -193,8 +303,7 @@ class DevToolsApp {
     }
 }
 
-window.app = new DevToolsApp();
-
 document.addEventListener('DOMContentLoaded', () => {
+    window.app = new DevToolsApp();
     console.log('Dev Tools Desktop loaded successfully');
 });

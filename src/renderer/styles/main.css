@@ -106,6 +106,14 @@ body {
     margin-left: 2rem;
 }
 
+.sidebar-hint {
+    font-size: 0.625rem;
+    opacity: 0.5;
+    margin-top: 0.5rem;
+    margin-left: 2rem;
+    font-style: italic;
+}
+
 .nav-menu {
     list-style: none;
     padding: 0.5rem 0;
@@ -113,18 +121,21 @@ body {
 
 .nav-menu li {
     margin: 0;
+    position: relative; /* provide positioning context for pin */
 }
 
 .nav-link {
-    display: flex;
+    display: flex; /* keep icon + label alignment */
     align-items: center;
+    width: 100%;
     padding: 0.75rem 1.5rem;
     color: rgba(255,255,255,0.8);
     text-decoration: none;
     transition: var(--transition);
-    position: relative;
     font-size: 0.875rem;
     font-weight: 500;
+    padding-right: 2.5rem; /* space for pin (now positioned relative to li) */
+    box-sizing: border-box;
 }
 
 .nav-link:hover {
@@ -366,6 +377,90 @@ body {
     color: var(--text-muted);
     line-height: 1.5;
     font-size: 0.875rem;
+}
+
+
+/* Pin functionality - explicit positioning */
+
+.nav-menu li .pin-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    right: 12px !important;
+    transform: translateY(-50%) !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255,255,255,0.55) !important;
+    font-size: 10px !important;
+    cursor: pointer !important;
+    padding: 2px !important;
+    transition: color 0.2s ease, transform 0.15s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10 !important;
+    border-radius: 3px !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 !important;
+    outline: none !important;
+}
+
+.pin-toggle i { 
+    font-size: 10px !important; 
+    line-height: 1 !important; 
+    pointer-events: none !important; 
+}
+
+.nav-menu li .pin-toggle:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    transform: translateY(-50%) scale(1.05) !important;
+}
+
+.nav-menu li .pin-toggle.pinned {
+    color: #ffd700 !important;
+}
+
+.nav-menu li .pin-toggle.pinned:hover {
+    color: #ffed4e !important;
+}
+
+.nav-menu li.pinned {
+    border-left: 3px solid #ffd700;
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.08), transparent);
+}
+
+.nav-menu li.pinned .nav-link {
+    font-weight: 600;
+}
+
+/* All tools section */
+.all-tools-section {
+    margin-top: 2rem;
+}
+
+.all-tools-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.all-tools-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.all-tools-header h2 i {
+    color: var(--primary-color);
+}
+
+.all-tools-header p {
+    color: var(--text-muted);
+    font-size: 1rem;
 }
 
 .tool-content {
