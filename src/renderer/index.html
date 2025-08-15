@@ -24,6 +24,7 @@
                 <li><a href="#" data-tool="text-compare" class="nav-link"><i class="fas fa-not-equal"></i> Text Compare</a></li>
                 <li><a href="#" data-tool="case-converter" class="nav-link"><i class="fas fa-text-height"></i> Case Converter</a></li>
                 <li><a href="#" data-tool="uuid-generator" class="nav-link"><i class="fas fa-fingerprint"></i> UUID Generator</a></li>
+                <li><a href="#" data-tool="password-generator" class="nav-link"><i class="fas fa-lock"></i> Password Generator</a></li>
                 <li><a href="#" data-tool="base64-converter" class="nav-link"><i class="fas fa-exchange-alt"></i> Base64 Converter</a></li>
                 <li><a href="#" data-tool="jwt-decoder" class="nav-link"><i class="fas fa-key"></i> JWT Decoder</a></li>
                 <li><a href="#" data-tool="json-to-ts" class="nav-link"><i class="fas fa-file-code"></i> JSON to TypeScript</a></li>
@@ -49,7 +50,7 @@
                 <div class="home-content">
                     <div class="home-hero">
                         <h1>Your Ultimate Developer Toolkit</h1>
-                        <p>21 professional tools to boost your productivity. Privacy-first, offline-ready, and lightning fast.</p>
+                        <p>22 professional tools to boost your productivity. Privacy-first, offline-ready, and lightning fast.</p>
                         <div class="home-stats">
                             <div class="stat-item">
                                 <i class="fas fa-shield-alt"></i>
@@ -94,6 +95,14 @@
                             </div>
                             <h3>UUID Generator</h3>
                             <p>Generate UUID v1/v4 with batch generation support</p>
+                            <span class="tool-badge">New</span>
+                        </div>
+                        <div class="tool-card" data-tool="password-generator">
+                            <div class="tool-icon">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h3>Password Generator</h3>
+                            <p>Generate secure passwords with customizable options</p>
                             <span class="tool-badge">New</span>
                         </div>
                         <div class="tool-card" data-tool="base64-converter">
@@ -193,6 +202,60 @@
                     </div>
                     <div class="output-section">
                         <textarea id="uuid-output" readonly placeholder="Generated UUIDs will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="password-generator" class="tool-container">
+                <h2><i class="fas fa-lock"></i> Password Generator</h2>
+                <div class="tool-content">
+                    <div class="password-controls">
+                        <div class="control-group">
+                            <label for="password-length">Length:</label>
+                            <input type="range" id="password-length" min="4" max="128" value="16">
+                            <span id="length-value">16</span>
+                        </div>
+                        <div class="character-options">
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="include-uppercase" checked>
+                                    Uppercase Letters (A-Z)
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="include-lowercase" checked>
+                                    Lowercase Letters (a-z)
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="include-numbers" checked>
+                                    Numbers (0-9)
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="include-symbols" checked>
+                                    Symbols (!@#$%^&*)
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="exclude-ambiguous">
+                                    Exclude Ambiguous Characters (0, O, l, I)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label for="password-count">Generate Count:</label>
+                            <input type="number" id="password-count" value="1" min="1" max="50">
+                        </div>
+                        <div class="button-group">
+                            <button id="generate-password" class="btn btn-primary">Generate Password</button>
+                            <button id="copy-passwords" class="btn btn-secondary">Copy All</button>
+                        </div>
+                    </div>
+                    <div class="output-section">
+                        <div class="password-strength">
+                            <div class="strength-meter">
+                                <div class="strength-bar" id="strength-bar"></div>
+                            </div>
+                            <span id="strength-text">Very Strong</span>
+                        </div>
+                        <textarea id="password-output" readonly placeholder="Generated passwords will appear here..."></textarea>
                     </div>
                 </div>
             </div>
@@ -713,6 +776,7 @@
     <script src="js/tools/text-compare.js"></script>
     <script src="js/tools/case-converter.js"></script>
     <script src="js/tools/uuid-generator.js"></script>
+    <script src="js/tools/password-generator.js"></script>
     <script src="js/tools/base64-converter.js"></script>
     <script src="js/tools/jwt-decoder.js"></script>
     <script src="js/tools/json-to-ts.js"></script>
