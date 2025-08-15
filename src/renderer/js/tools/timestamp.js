@@ -53,15 +53,27 @@ class TimestampConverter {
     switchTab(tabName) {
         const container = document.getElementById('timestamp');
         
+        // Remove active class from all tab buttons
         container.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
+        
+        // Remove active class from all tab content
         container.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
 
-        container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        container.getElementById(`${tabName}-tab`).classList.add('active');
+        // Add active class to clicked tab button
+        const activeTabButton = container.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTabButton) {
+            activeTabButton.classList.add('active');
+        }
+        
+        // Add active class to corresponding tab content
+        const activeTabContent = document.getElementById(`${tabName}-tab`);
+        if (activeTabContent) {
+            activeTabContent.classList.add('active');
+        }
 
         this.clearOutputs();
     }

@@ -39,7 +39,7 @@ class URLEncoder {
         });
 
         encoder.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        encoder.getElementById(`${tabName}-tab`).classList.add('active');
+        document.getElementById(`${tabName}-tab`).classList.add('active');
 
         this.clearOutputs();
     }

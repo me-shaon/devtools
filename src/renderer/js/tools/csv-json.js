@@ -38,8 +38,15 @@ class CSVJSONConverter {
             content.classList.remove('active');
         });
 
-        container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        container.getElementById(`${tabName}-tab`).classList.add('active');
+        const tabButton = container.querySelector(`[data-tab="${tabName}"]`);
+        const tabContent = document.getElementById(`${tabName}-tab`);
+        
+        if (tabButton) {
+            tabButton.classList.add('active');
+        }
+        if (tabContent) {
+            tabContent.classList.add('active');
+        }
 
         this.clearOutputs();
     }
