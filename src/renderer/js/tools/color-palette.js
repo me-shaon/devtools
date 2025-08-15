@@ -523,6 +523,6 @@ const colorPaletteStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = colorPaletteStyles;
-document.head.appendChild(style);
+const colorPaletteStyle = document.createElement('style');
+colorPaletteStyle.textContent = colorPaletteStyles;
+document.head.appendChild(colorPaletteStyle);
