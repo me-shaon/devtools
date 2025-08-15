@@ -7,6 +7,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ## Features
 
 ### Text & Code
+
 - **JSON Viewer** - Format, validate, and minify JSON with syntax highlighting
 - **Text Compare** - Diff viewer with line-by-line comparison
 - **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
@@ -15,6 +16,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 
 ### Converters
+
 - **Base64** - Encode/decode text and files
 - **URL Encoder** - Encode/decode URLs and URI components
 - **CSV ↔ JSON** - Bidirectional conversion with custom delimiters
@@ -22,13 +24,16 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Number Base** - Convert between decimal, binary, octal, hex
 
 ### Generators
+
 - **UUID** - Generate v1/v4 UUIDs with batch support
+- **Password Generator** - Generate secure passwords and passphrases with strength analysis
 - **Hash** - MD5, SHA-1, SHA-256, SHA-512
 - **QR Code** - Generate QR codes with custom size and error correction
 - **Color Palette** - Create monochromatic, analogous, complementary schemes
 - **Lorem Ipsum** - Generate placeholder text
 
 ### Developer Utilities
+
 - **JWT Decoder** - Decode and inspect JWT tokens
 - **Regex Builder** - Interactive regex construction with live testing
 - **Cron Parser** - Build cron expressions with plain English descriptions
@@ -86,7 +91,20 @@ npm start          # Development server
 npm run build      # Build executable
 npm run pack       # Package without distributing
 npm run dist       # Create installer
+npm test           # Run test suite
+npm run security-check  # Run security checks
 ```
+
+## Security
+
+This project uses GitGuardian for secret detection and follows security best practices:
+
+- 🔒 **Secret Scanning**: Automated detection of hardcoded secrets
+- 🛡️ **Pre-commit Hooks**: Prevent secrets from being committed
+- 📋 **Security Guidelines**: See [SECURITY.md](SECURITY.md) for details
+- 🔧 **Local Testing**: Run `npm run security-check` before committing
+
+For security issues, please review our [Security Guidelines](SECURITY.md).
 
 ## Tech Stack
 
