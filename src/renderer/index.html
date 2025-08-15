@@ -127,7 +127,8 @@
                             <button id="minify-json" class="btn btn-secondary">Minify JSON</button>
                             <button id="validate-json" class="btn btn-info">Validate</button>
                         </div>
-                        <pre id="json-output"></pre>
+                        <!-- Changed from <pre> to <div> to hold collapsible tree -->
+                        <div id="json-output" class="json-output"></div>
                     </div>
                 </div>
             </div>
@@ -708,7 +709,7 @@
     </div>
 
     <script src="js/main.js"></script>
-    <script src="js/tools/json-viewer.js"></script>
+    <script src="js/tools/json-viewer-tree.js"></script>
     <script src="js/tools/text-compare.js"></script>
     <script src="js/tools/case-converter.js"></script>
     <script src="js/tools/uuid-generator.js"></script>
