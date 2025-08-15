@@ -1007,27 +1007,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     box-shadow: var(--shadow);
 }
 
-/* Tooltips */
-[title] {
-    position: relative;
-}
-
-[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.25rem 0.5rem;
-    background: var(--dark-color);
-    color: white;
-    font-size: 0.75rem;
-    border-radius: var(--border-radius);
-    white-space: nowrap;
-    z-index: 1000;
-    pointer-events: none;
-    margin-bottom: 0.25rem;
-}
+/* Tooltips removed - using native browser tooltips */
 
 /* Loading state */
 .loading {
