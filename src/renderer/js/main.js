@@ -59,6 +59,9 @@ class DevToolsApp {
         if (targetContainer) {
             targetContainer.classList.add('active');
             this.currentTool = toolName;
+            
+            // Auto-activate first tab for tools that have tabs
+            this.initializeToolTabs(targetContainer);
         }
 
         if (targetNavLink) {
@@ -70,6 +73,27 @@ class DevToolsApp {
         }
         if (toolName === 'json-viewer' && window.JSONViewer) {
             window.JSONViewer.init();
+        }
+    }
+
+    initializeToolTabs(container) {
+        // Find the first tab button in this tool container
+        const firstTabBtn = container.querySelector('.tab-btn');
+        if (firstTabBtn && firstTabBtn.dataset.tab) {
+            // Remove active class from all tabs in this container
+            container.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            container.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Activate the first tab
+            firstTabBtn.classList.add('active');
+            const firstTabContent = document.getElementById(firstTabBtn.dataset.tab + '-tab');
+            if (firstTabContent) {
+                firstTabContent.classList.add('active');
+            }
         }
     }
 
