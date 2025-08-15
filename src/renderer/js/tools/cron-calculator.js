@@ -367,6 +367,13 @@ const cronStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = cronStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('cron-calculator', cronStyles);
+} else {
+    // Fallback for backward compatibility
+    const cronCalculatorStyleElement = document.createElement('style');
+    cronCalculatorStyleElement.id = 'cron-calculator-styles';
+    cronCalculatorStyleElement.textContent = cronStyles;
+    document.head.appendChild(cronCalculatorStyleElement);
+}

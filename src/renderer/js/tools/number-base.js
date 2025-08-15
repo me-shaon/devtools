@@ -205,6 +205,13 @@ const baseStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = baseStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('number-base', baseStyles);
+} else {
+    // Fallback for backward compatibility
+    const baseStyleElement = document.createElement('style');
+    baseStyleElement.id = 'number-base-styles';
+    baseStyleElement.textContent = baseStyles;
+    document.head.appendChild(baseStyleElement);
+}

@@ -398,6 +398,13 @@ const markdownStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = markdownStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('markdown-editor', markdownStyles);
+} else {
+    // Fallback for backward compatibility
+    const markdownEditorStyleElement = document.createElement('style');
+    markdownEditorStyleElement.id = 'markdown-editor-styles';
+    markdownEditorStyleElement.textContent = markdownStyles;
+    document.head.appendChild(markdownEditorStyleElement);
+}

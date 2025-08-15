@@ -210,6 +210,13 @@ const timestampStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = timestampStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('timestamp', timestampStyles);
+} else {
+    // Fallback for backward compatibility
+    const timestampStyleElement = document.createElement('style');
+    timestampStyleElement.id = 'timestamp-styles';
+    timestampStyleElement.textContent = timestampStyles;
+    document.head.appendChild(timestampStyleElement);
+}

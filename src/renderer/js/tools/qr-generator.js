@@ -377,6 +377,13 @@ const qrStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = qrStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('qr-generator', qrStyles);
+} else {
+    // Fallback for backward compatibility
+    const qrGeneratorStyleElement = document.createElement('style');
+    qrGeneratorStyleElement.id = 'qr-generator-styles';
+    qrGeneratorStyleElement.textContent = qrStyles;
+    document.head.appendChild(qrGeneratorStyleElement);
+}

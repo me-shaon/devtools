@@ -512,6 +512,13 @@ const regexStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = regexStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('regex-generator', regexStyles);
+} else {
+    // Fallback for backward compatibility
+    const regexGeneratorStyleElement = document.createElement('style');
+    regexGeneratorStyleElement.id = 'regex-generator-styles';
+    regexGeneratorStyleElement.textContent = regexStyles;
+    document.head.appendChild(regexGeneratorStyleElement);
+}

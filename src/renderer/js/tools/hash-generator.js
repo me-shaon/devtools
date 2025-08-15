@@ -346,6 +346,13 @@ const hashStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = hashStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('hash-generator', hashStyles);
+} else {
+    // Fallback for backward compatibility
+    const hashGeneratorStyleElement = document.createElement('style');
+    hashGeneratorStyleElement.id = 'hash-generator-styles';
+    hashGeneratorStyleElement.textContent = hashStyles;
+    document.head.appendChild(hashGeneratorStyleElement);
+}

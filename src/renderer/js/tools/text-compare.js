@@ -269,6 +269,13 @@ const additionalStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = additionalStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('text-compare', additionalStyles);
+} else {
+    // Fallback for backward compatibility
+    const textCompareStyleElement = document.createElement('style');
+    textCompareStyleElement.id = 'text-compare-styles';
+    textCompareStyleElement.textContent = additionalStyles;
+    document.head.appendChild(textCompareStyleElement);
+}

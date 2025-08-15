@@ -205,6 +205,13 @@ const sqlStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = sqlStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('sql-formatter', sqlStyles);
+} else {
+    // Fallback for backward compatibility
+    const sqlFormatterStyleElement = document.createElement('style');
+    sqlFormatterStyleElement.id = 'sql-formatter-styles';
+    sqlFormatterStyleElement.textContent = sqlStyles;
+    document.head.appendChild(sqlFormatterStyleElement);
+}

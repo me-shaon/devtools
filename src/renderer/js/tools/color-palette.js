@@ -523,6 +523,13 @@ const colorPaletteStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = colorPaletteStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('color-palette', colorPaletteStyles);
+} else {
+    // Fallback for backward compatibility
+    const colorPaletteStyleElement = document.createElement('style');
+    colorPaletteStyleElement.id = 'color-palette-styles';
+    colorPaletteStyleElement.textContent = colorPaletteStyles;
+    document.head.appendChild(colorPaletteStyleElement);
+}

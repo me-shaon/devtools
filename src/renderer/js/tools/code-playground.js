@@ -626,6 +626,13 @@ const playgroundStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = playgroundStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('code-playground', playgroundStyles);
+} else {
+    // Fallback for backward compatibility
+    const codePlaygroundStyleElement = document.createElement('style');
+    codePlaygroundStyleElement.id = 'code-playground-styles';
+    codePlaygroundStyleElement.textContent = playgroundStyles;
+    document.head.appendChild(codePlaygroundStyleElement);
+}

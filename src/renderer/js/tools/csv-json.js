@@ -295,6 +295,13 @@ const csvJsonStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = csvJsonStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('csv-json', csvJsonStyles);
+} else {
+    // Fallback for backward compatibility
+    const csvJsonStyleElement = document.createElement('style');
+    csvJsonStyleElement.id = 'csv-json-styles';
+    csvJsonStyleElement.textContent = csvJsonStyles;
+    document.head.appendChild(csvJsonStyleElement);
+}

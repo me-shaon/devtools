@@ -290,6 +290,13 @@ const imageStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = imageStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('image-converter', imageStyles);
+} else {
+    // Fallback for backward compatibility
+    const imageStyleElement = document.createElement('style');
+    imageStyleElement.id = 'image-converter-styles';
+    imageStyleElement.textContent = imageStyles;
+    document.head.appendChild(imageStyleElement);
+}

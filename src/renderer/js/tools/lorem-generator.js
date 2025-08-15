@@ -184,6 +184,13 @@ const loremStyles = `
 }
 `;
 
-const style = document.createElement('style');
-style.textContent = loremStyles;
-document.head.appendChild(style);
+// Use centralized style management to prevent conflicts
+if (window.StyleManager) {
+    window.StyleManager.addToolStyles('lorem-generator', loremStyles);
+} else {
+    // Fallback for backward compatibility
+    const loremGeneratorStyleElement = document.createElement('style');
+    loremGeneratorStyleElement.id = 'lorem-generator-styles';
+    loremGeneratorStyleElement.textContent = loremStyles;
+    document.head.appendChild(loremGeneratorStyleElement);
+}
