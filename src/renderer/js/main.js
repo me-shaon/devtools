@@ -68,6 +68,9 @@ class DevToolsApp {
         if (toolName === 'json-viewer' && window.JSONViewer) {
             window.JSONViewer.init();
         }
+        if (toolName === 'date-difference' && window.DateDifference) {
+          window.DateDifference.init();
+        }
     }
 
     async saveFile(content, filters = []) {
