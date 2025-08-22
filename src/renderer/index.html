@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/grid.css">
     <link rel="stylesheet" href="styles/tool-fixes.css">
 </head>
 <body>
@@ -36,6 +37,7 @@
                 <li><a href="#" data-tool="regex-generator" class="nav-link"><i class="fas fa-search"></i> Regex Generator</a></li>
                 <li><a href="#" data-tool="code-playground" class="nav-link"><i class="fas fa-play"></i> Playground</a></li>
                 <li><a href="#" data-tool="timestamp" class="nav-link"><i class="fas fa-calendar-alt"></i> Timestamp</a></li>
+                <li><a href="#" data-tool="date-difference" class="nav-link"><i class="fas fa-calendar-minus"></i> Date Time Difference</a></li>
                 <li><a href="#" data-tool="hash-generator" class="nav-link"><i class="fas fa-hashtag"></i> Hash Generator</a></li>
                 <li><a href="#" data-tool="url-encoder" class="nav-link"><i class="fas fa-link"></i> URL Encoder</a></li>
                 <li><a href="#" data-tool="lorem-generator" class="nav-link"><i class="fas fa-paragraph"></i> Lorem Generator</a></li>
@@ -337,6 +339,47 @@
                         <button id="convert-date-to-ts" class="btn btn-primary">Convert to Timestamp</button>
                         <textarea id="timestamp-output" readonly placeholder="Converted timestamp..."></textarea>
                     </div>
+                </div>
+            </div>
+
+            <div id="date-difference" class="tool-container">
+                <h2><i class="fas fa-calendar-minus"></i> Date Time Difference</h2>
+                <div class="tool-content">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-container">
+                                <label for="fromDate">From Date</label>
+                                <input type="date" id="fromDate">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-container">
+                                <label for="toDate">To Date</label>
+                                <input type="date" id="toDate">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success mt-4" id="calculate">Calculate</button>
+                    <div class="mt-4 alert alert-info" id="result"></div>
+                </div>
+
+                <div class="tool-content mt-2">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-container">
+                                <label for="time1">Time 1</label>
+                                <input type="time" id="time1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-container">
+                                <label for="time2">Time 2</label>
+                                <input type="time" id="time2">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-success mt-4" id="timeCalculate">Calculate</button>
+                    <div class="mt-4 alert alert-primary" id="timeResult"></div>
                 </div>
             </div>
 
@@ -718,6 +761,7 @@
     <script src="js/tools/hash-generator.js"></script>
     <script src="js/tools/url-encoder.js"></script>
     <script src="js/tools/timestamp.js"></script>
+    <script src="js/tools/date-difference.js"></script>
     <script src="js/tools/lorem-generator.js"></script>
     <script src="js/tools/sql-formatter.js"></script>
     <script src="js/tools/number-base.js"></script>
