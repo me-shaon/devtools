@@ -77,16 +77,6 @@ src/
 
 Each tool is a self-contained module with no external dependencies. All processing happens client-side.
 
-## Key Features
-
-### API Response Formatter
-
-- **Interactive Tree View**: Expandable/collapsible JSON and GraphQL response visualization
-- **Real-time Search**: Instant text search with highlighting and result navigation
-- **Multi-format Support**: JSON and GraphQL response formatting
-- **Syntax Highlighting**: Color-coded keys, values, and data types
-- **Copy & Export**: One-click copying of formatted responses
-- **Validation**: Built-in JSON validation with error reporting
 
 ## Development
 
@@ -128,14 +118,7 @@ For security issues, please review our [Security Guidelines](SECURITY.md).
 
 ## Contributing
 
-We welcome contributions! This project was improved by user feedback - the multi-character search bug in API Response Formatter was identified and fixed thanks to community testing.
-
-### Reporting Issues
-
-- Search functionality problems
-- UI/UX improvements
-- Performance issues
-- Feature requests
+We welcome contributions! This project is continuously being improved by user feedback and contributions.
 
 ### Pull Requests
 
