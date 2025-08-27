@@ -9,6 +9,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ### Text & Code
 
 - **JSON Viewer** - Format, validate, and minify JSON with syntax highlighting
+- **API Response Formatter** - Format REST/GraphQL responses with interactive tree view and real-time search
 - **Text Compare** - Diff viewer with line-by-line comparison
 - **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
 - **SQL Formatter** - Format SQL queries with customizable indentation
@@ -22,6 +23,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **CSV ↔ JSON** - Bidirectional conversion with custom delimiters
 - **JSON → TypeScript** - Generate TypeScript interfaces from JSON
 - **Number Base** - Convert between decimal, binary, octal, hex
+- **Unit Converter** - Convert length, weight, temperature & currency units
 
 ### Generators
 
@@ -70,10 +72,11 @@ src/
     ├── styles/          # CSS modules
     └── js/
         ├── main.js      # App router and state
-        └── tools/       # Tool implementations (21 modules)
+        └── tools/       # Tool implementations (23 modules)
 ```
 
 Each tool is a self-contained module with no external dependencies. All processing happens client-side.
+
 
 ## Development
 
@@ -115,7 +118,21 @@ For security issues, please review our [Security Guidelines](SECURITY.md).
 
 ## Contributing
 
-Pull requests welcome. For major changes, open an issue first.
+We welcome contributions! This project is continuously being improved by user feedback and contributions.
+
+### Pull Requests
+
+Pull requests welcome. For major changes, open an issue first to discuss the proposed changes.
+
+### Development Setup
+
+```bash
+git clone https://github.com/me-shaon/devtools.git
+cd devtools-desktop
+npm install
+npm start  # Run in development mode
+npm test   # Run test suite
+```
 
 ## License
 
