@@ -626,6 +626,6 @@ const playgroundStyles = `
 }
 `;
 
-const style = document.createElement('style');
+const codePlaygroundStyle = document.createElement('style');
 style.textContent = playgroundStyles;
-document.head.appendChild(style);
+document.head.appendChild(codePlaygroundStyle);
