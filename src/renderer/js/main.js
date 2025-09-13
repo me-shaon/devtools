@@ -79,6 +79,14 @@ class DevToolsApp {
       console.log('Lorem Generator activated - reinitializing');
       window.LoremGenerator.init();
     }
+
+    /**
+     * Initialize DateDifference tool if it's activated
+     * and the class is available in the global scope.
+     */
+    if (toolName === 'date-difference' && window.DateDifference) {
+      window.DateDifference.init();
+    }
   }
 
   async saveFile(content, filters = []) {
