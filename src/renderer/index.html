@@ -16,6 +16,7 @@
     />
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/tool-fixes.css" />
+    <link rel="stylesheet" href="styles/grid.css">
   </head>
   <body>
     <div class="app-container">
@@ -119,6 +120,11 @@
             <a href="#" data-tool="timestamp" class="nav-link"
               ><i class="fas fa-calendar-alt"></i> Timestamp</a
             >
+          </li>
+          <li>
+            <a href="#" data-tool="date-difference" class="nav-link">
+              <i class="fas fa-calendar-minus"></i> Date Time Difference
+            </a>
           </li>
           <li>
             <a href="#" data-tool="hash-generator" class="nav-link"
@@ -893,6 +899,47 @@
           </div>
         </div>
 
+        <div id="date-difference" class="tool-container">
+          <h2><i class="fas fa-calendar-minus"></i> Date Time Difference</h2>
+          <div class="tool-content">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="input-container">
+                  <label for="fromDate">From Date</label>
+                  <input type="date" id="fromDate">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="input-container">
+                  <label for="toDate">To Date</label>
+                  <input type="date" id="toDate">
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary mt-3" id="calculate">Calculate</button>
+            <div class="mt-4 alert alert-info" id="result" style="display: none;"></div>
+          </div>
+
+          <div class="tool-content mt-2">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="input-container">
+                  <label for="time1">Time 1</label>
+                  <input type="time" id="time1">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="input-container">
+                  <label for="time2">Time 2</label>
+                  <input type="time" id="time2">
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary mt-3" id="timeCalculate">Calculate</button>
+            <div class="mt-4 alert alert-primary" id="timeResult" style="display: none;"></div>
+          </div>
+        </div>
+
         <div id="sql-formatter" class="tool-container">
           <h2><i class="fas fa-database"></i> SQL Formatter</h2>
           <div class="tool-content">
@@ -1496,5 +1543,6 @@
     <script src="js/tools/qr-generator.js"></script>
     <script src="js/tools/color-palette.js"></script>
     <script src="js/tools/unit-converter.js"></script>
+    <script src="js/tools/date-difference.js"></script>
   </body>
 </html>
