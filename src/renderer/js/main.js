@@ -8,6 +8,7 @@ const ipcRenderer = isElectron ? require('electron').ipcRenderer : null;
 class DevToolsApp {
   constructor() {
     this.currentTool = 'home';
+    this.searchTimeout = null;
     this.init();
   }
 
@@ -15,10 +16,12 @@ class DevToolsApp {
     this.setupNavigation();
     this.setupMenuListeners();
     this.setupToolCards();
+    this.setupSearch();
+    this.setupCategories();
   }
 
   setupNavigation() {
-    const navLinks = document.querySelectorAll('.nav-link');
+    const navLinks = document.querySelectorAll('.nav-link[data-tool]');
 
     navLinks.forEach((link) => {
       link.addEventListener('click', (e) => {
@@ -46,6 +49,178 @@ class DevToolsApp {
         this.switchTool(tool);
       });
     });
+  }
+
+  setupSearch() {
+    const searchInput = document.getElementById('menu-search');
+    const clearButton = document.getElementById('clear-search');
+    const searchResults = document.getElementById('search-results');
+
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(this.searchTimeout);
+      const query = e.target.value.trim();
+
+      if (query.length > 0) {
+        clearButton.classList.add('visible');
+        this.searchTimeout = setTimeout(() => {
+          this.performSearch(query);
+        }, 200);
+      } else {
+        clearButton.classList.remove('visible');
+        this.clearSearch();
+      }
+    });
+
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      clearButton.classList.remove('visible');
+      this.clearSearch();
+      searchInput.focus();
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-search-container')) {
+        searchResults.style.display = 'none';
+      }
+    });
+
+    // Focus search input with Ctrl/Cmd + K
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+    });
+  }
+
+  setupCategories() {
+    const categoryHeaders = document.querySelectorAll('.category-header');
+
+    categoryHeaders.forEach((header) => {
+      header.addEventListener('click', () => {
+        const category = header.dataset.category;
+        const menu = document.getElementById(`${category}-menu`);
+
+        header.classList.toggle('expanded');
+        menu.classList.toggle('expanded');
+      });
+    });
+
+    // Expand first category by default
+    const firstCategory = document.querySelector('.category-header');
+    if (firstCategory) {
+      firstCategory.click();
+    }
+  }
+
+  performSearch(query) {
+    const navLinks = document.querySelectorAll('.nav-link[data-tool]');
+    const searchResults = document.getElementById('search-results');
+
+    // Create search index with tool information
+    const tools = Array.from(navLinks).map(link => ({
+      element: link,
+      name: link.textContent.trim(),
+      tool: link.dataset.tool,
+      category: this.getToolCategory(link)
+    }));
+
+    // Filter tools based on search query
+    const filteredTools = tools.filter(tool =>
+      tool.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (filteredTools.length > 0) {
+      // Show search results dropdown
+      searchResults.innerHTML = '';
+      filteredTools.forEach((tool, index) => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+
+        // Get icon class from the original link
+        const iconElement = tool.element.querySelector('i');
+        const iconClass = iconElement ? iconElement.className : 'fas fa-tools';
+
+        resultItem.innerHTML = `
+          <i class="${iconClass}"></i>
+          <span>${tool.name}</span>
+        `;
+
+        resultItem.addEventListener('click', () => {
+          this.switchTool(tool.tool);
+          this.clearSearch();
+          document.getElementById('menu-search').value = '';
+        });
+
+        // Highlight first result
+        if (index === 0) {
+          resultItem.classList.add('highlighted');
+        }
+
+        searchResults.appendChild(resultItem);
+      });
+      searchResults.style.display = 'block';
+
+      // Add keyboard navigation
+      this.setupSearchKeyboardNavigation(searchResults);
+    } else {
+      searchResults.innerHTML = '<div class="search-result-item no-results">No tools found</div>';
+      searchResults.style.display = 'block';
+    }
+  }
+
+  setupSearchKeyboardNavigation(searchResults) {
+    const items = searchResults.querySelectorAll('.search-result-item');
+    const clickableItems = Array.from(items).filter(item =>
+      item.textContent.trim() !== 'No tools found'
+    );
+    let currentIndex = 0;
+
+    const handleKeyDown = (e) => {
+      if (clickableItems.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        clickableItems[currentIndex]?.classList.remove('highlighted');
+        currentIndex = (currentIndex + 1) % clickableItems.length;
+        clickableItems[currentIndex]?.classList.add('highlighted');
+        clickableItems[currentIndex]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        clickableItems[currentIndex]?.classList.remove('highlighted');
+        currentIndex = currentIndex === 0 ? clickableItems.length - 1 : currentIndex - 1;
+        clickableItems[currentIndex]?.classList.add('highlighted');
+        clickableItems[currentIndex]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (clickableItems[currentIndex]) {
+          clickableItems[currentIndex].click();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Remove event listener when search is cleared
+    setTimeout(() => {
+      document.removeEventListener('keydown', handleKeyDown);
+    }, 5000);
+  }
+
+  getToolCategory(link) {
+    const categoryMenu = link.closest('.category-menu');
+    if (categoryMenu) {
+      return categoryMenu.id.replace('-menu', '');
+    }
+    return 'general';
+  }
+
+  clearSearch() {
+    const searchResults = document.getElementById('search-results');
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
   }
 
   switchTool(toolName) {
