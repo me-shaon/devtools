@@ -51,6 +51,93 @@ class DateDifference {
     this.calculateTimeButton.addEventListener('click', () => {
       this.calculateTimeDifference();
     });
+
+    // Make date inputs show calendar when clicked
+    this.fromDateInput.addEventListener('click', () => {
+      this.showCalendar(this.fromDateInput);
+    });
+
+    this.toDateInput.addEventListener('click', () => {
+      this.showCalendar(this.toDateInput);
+    });
+
+    // Make time inputs show time picker when clicked
+    this.time1Input.addEventListener('click', () => {
+      this.showTimePicker(this.time1Input);
+    });
+
+    this.time2Input.addEventListener('click', () => {
+      this.showTimePicker(this.time2Input);
+    });
+
+    // Add double-click fallback for browsers that restrict picker triggering
+    this.fromDateInput.addEventListener('dblclick', () => {
+      this.fromDateInput.focus();
+    });
+
+    this.toDateInput.addEventListener('dblclick', () => {
+      this.toDateInput.focus();
+    });
+
+    this.time1Input.addEventListener('dblclick', () => {
+      this.time1Input.focus();
+    });
+
+    this.time2Input.addEventListener('dblclick', () => {
+      this.time2Input.focus();
+    });
+  }
+
+  /**
+   * Shows the calendar for date inputs by triggering the native date picker
+   * @param {HTMLInputElement} input - The date input element
+   */
+  showCalendar(input) {
+    if (input.type === 'date') {
+      // Try modern showPicker API first
+      if (typeof input.showPicker === 'function') {
+        input.showPicker();
+      } else {
+        // Fallback: focus and click to trigger native picker
+        input.focus();
+        // Simulate a click on the calendar icon area
+        const rect = input.getBoundingClientRect();
+        const event = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          clientX: rect.right - 20,
+          clientY: rect.top + rect.height / 2
+        });
+        input.dispatchEvent(event);
+      }
+    }
+  }
+
+  /**
+   * Shows the time picker for time inputs by triggering the native time picker
+   * @param {HTMLInputElement} input - The time input element
+   */
+  showTimePicker(input) {
+    if (input.type === 'time') {
+      // Try modern showPicker API first
+      if (typeof input.showPicker === 'function') {
+        input.showPicker();
+      } else {
+        // Fallback: focus and click to trigger native picker
+        input.focus();
+        // Simulate a click on the time picker icon area
+        const rect = input.getBoundingClientRect();
+        const event = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          clientX: rect.right - 20,
+          clientY: rect.top + rect.height / 2
+        });
+        input.dispatchEvent(event);
+      }
+    }
   }
 
   /**
@@ -67,6 +154,7 @@ class DateDifference {
 
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
       this.resultDiv.textContent = 'Please enter valid dates.';
+      this.resultDiv.style.display = 'block';
       return;
     }
 
@@ -90,6 +178,7 @@ class DateDifference {
             <p>Weeks:</b> ${weeks}</p>
             <p>Days:</b> ${days}</p>
         `;
+    this.resultDiv.style.display = 'block';
   }
 
 
@@ -105,6 +194,7 @@ class DateDifference {
 
     if (time1.length !== 2 || time2.length !== 2) {
       this.timeResultDiv.textContent = 'Please enter valid times in HH:MM:SS format.';
+      this.timeResultDiv.style.display = 'block';
       return;
     }
 
@@ -126,6 +216,7 @@ class DateDifference {
             <p>Minutes:</b> ${minutes}</p>
             <p>Seconds:</b> ${seconds}</p>
         `;
+    this.timeResultDiv.style.display = 'block';
   }
 }
 
