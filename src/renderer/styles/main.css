@@ -1680,7 +1680,7 @@ input[type='range']::-webkit-slider-thumb:hover {
 /* API Response Formatter Styles */
 .input-controls {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -1688,6 +1688,7 @@ input[type='range']::-webkit-slider-thumb:hover {
 .input-controls label {
   font-weight: 500;
   color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
 .input-controls select {
@@ -1698,6 +1699,8 @@ input[type='range']::-webkit-slider-thumb:hover {
   color: var(--text-primary);
   font-size: 0.875rem;
   transition: var(--transition);
+  max-width: 120px;
+  width: auto;
 }
 
 .input-controls select:focus {
@@ -1968,6 +1971,8 @@ input[type='range']::-webkit-slider-thumb:hover {
 
   .controls .btn {
     flex: 1;
-    min-width: 120px;
+    min-width: 80px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.7rem;
   }
 }
