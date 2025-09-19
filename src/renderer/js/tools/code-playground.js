@@ -10,6 +10,7 @@ class CodePlayground {
         const formatBtn = document.getElementById('format-code');
         const languageSelect = document.getElementById('code-language');
         const outputTabs = document.querySelectorAll('.output-tab');
+        const codeInput = document.getElementById('code-input');
 
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runCode());
@@ -27,6 +28,11 @@ class CodePlayground {
             languageSelect.addEventListener('change', () => this.updateLanguage());
         }
 
+        if (codeInput) {
+            codeInput.addEventListener('input', () => this.highlightSyntax());
+            codeInput.addEventListener('scroll', () => this.syncScroll());
+        }
+
         outputTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 this.switchOutputTab(tab.dataset.tab);
@@ -34,6 +40,7 @@ class CodePlayground {
         });
 
         this.setupConsoleCapture();
+        this.setupSyntaxHighlighting();
         this.updateLanguage();
     }
 
@@ -436,6 +443,8 @@ class CodePlayground {
         if (!codeInput.value.trim() && examples[language]) {
             codeInput.value = examples[language];
         }
+
+        setTimeout(() => this.highlightSyntax(), 100);
     }
 
     markdownToHtml(markdown) {
@@ -476,6 +485,84 @@ class CodePlayground {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    setupSyntaxHighlighting() {
+        const codeEditor = document.querySelector('.code-editor');
+        if (!codeEditor) return;
+
+        this.highlightContainer = document.createElement('div');
+        this.highlightContainer.className = 'syntax-highlight';
+        codeEditor.appendChild(this.highlightContainer);
+    }
+
+    highlightSyntax() {
+        if (!this.highlightContainer) return;
+
+        const code = document.getElementById('code-input').value;
+        const language = document.getElementById('code-language').value;
+
+        let highlighted = this.escapeHtml(code);
+
+        switch (language) {
+            case 'javascript':
+                highlighted = this.highlightJavaScript(highlighted);
+                break;
+            case 'css':
+                highlighted = this.highlightCSS(highlighted);
+                break;
+            case 'json':
+                highlighted = this.highlightJSON(highlighted);
+                break;
+            case 'html':
+                highlighted = this.highlightHTML(highlighted);
+                break;
+        }
+
+        this.highlightContainer.innerHTML = highlighted;
+    }
+
+    highlightJavaScript(code) {
+        const keywords = ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'class', 'extends', 'import', 'export', 'default', 'async', 'await', 'true', 'false', 'null', 'undefined'];
+
+        return code
+            .replace(new RegExp(`\\b(${keywords.join('|')})\\b`, 'g'), '<span class="keyword">$1</span>')
+            .replace(/("([^"\\]|\\.)*"|'([^'\\]|\\.)*'|`([^`\\]|\\.)*`)/g, '<span class="string">$1</span>')
+            .replace(/\b\d+\.?\d*\b/g, '<span class="number">$&</span>')
+            .replace(/(\/\/.*$|\/\*[\s\S]*?\*\/)/gm, '<span class="comment">$1</span>')
+            .replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?=\()/g, '<span class="function">$1</span>')
+            .replace(/[+\-*/%=<>!&|^~?:]/g, '<span class="operator">$&</span>');
+    }
+
+    highlightCSS(code) {
+        return code
+            .replace(/([a-zA-Z-]+)\s*:/g, '<span class="property">$1</span>:')
+            .replace(/("([^"\\]|\\.)*"|'([^'\\]|\\.)*')/g, '<span class="string">$1</span>')
+            .replace(/\b\d+\.?\d*(px|em|rem|%|vh|vw|pt|pc|in|cm|mm|ex|ch|fr|vmin|vmax)?\b/g, '<span class="number">$&</span>')
+            .replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>');
+    }
+
+    highlightJSON(code) {
+        return code
+            .replace(/("([^"\\]|\\.)*")\s*:/g, '<span class="property">$1</span>:')
+            .replace(/:\s*("([^"\\]|\\.)*")/g, ': <span class="string">$1</span>')
+            .replace(/:\s*\b\d+\.?\d*\b/g, ': <span class="number">$&</span>')
+            .replace(/:\s*\b(true|false|null)\b/g, ': <span class="keyword">$1</span>');
+    }
+
+    highlightHTML(code) {
+        return code
+            .replace(/(&lt;\/?[a-zA-Z][^&gt;]*&gt;)/g, '<span class="keyword">$1</span>')
+            .replace(/("([^"\\]|\\.)*"|'([^'\\]|\\.)*')/g, '<span class="string">$1</span>')
+            .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="comment">$1</span>');
+    }
+
+    syncScroll() {
+        if (!this.highlightContainer) return;
+
+        const codeInput = document.getElementById('code-input');
+        this.highlightContainer.scrollTop = codeInput.scrollTop;
+        this.highlightContainer.scrollLeft = codeInput.scrollLeft;
+    }
 }
 
 window.CodePlayground = new CodePlayground();
@@ -484,28 +571,46 @@ const playgroundStyles = `
 .playground-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 15px;
+    min-height: 40px;
 }
 
 .language-selector {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 1;
+    max-width: 300px;
 }
 
 .language-selector label {
     font-weight: 500;
-    color: #1d1d1f;
+    color: #32325d;
+    white-space: nowrap;
+    margin-bottom: 0;
 }
 
 .language-selector select {
-    padding: 8px 12px;
-    border: 2px solid #f0f0f0;
+    padding: 10px 12px;
+    border: 2px solid #e3e8f0;
     border-radius: 6px;
     font-size: 14px;
+    background: white;
+    color: #32325d;
+    outline: none;
+    transition: border-color 0.2s ease;
+    flex: 1;
+    min-width: 120px;
+    height: 40px;
+    box-sizing: border-box;
+}
+
+.language-selector select:focus {
+    border-color: #5e72e4;
+    box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
 }
 
 .playground-controls {
@@ -523,9 +628,16 @@ const playgroundStyles = `
 
 .code-editor,
 .code-output {
-    border: 2px solid #f0f0f0;
+    border: 2px solid #e3e8f0;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.2s ease;
+}
+
+.code-editor:focus-within {
+    border-color: #5e72e4;
+    box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
 }
 
 #code-input {
@@ -534,34 +646,53 @@ const playgroundStyles = `
     border: none;
     outline: none;
     padding: 20px;
-    font-family: 'Monaco', 'Consolas', monospace;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.6;
     resize: none;
-    background: #fafafa;
+    background: #f8f9fc;
+    color: #32325d;
+    tab-size: 2;
+    box-sizing: border-box;
+}
+
+#code-input::placeholder {
+    color: #8898aa;
+    font-style: italic;
 }
 
 .output-tabs {
     display: flex;
     background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e3e8f0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    overflow: hidden;
 }
 
 .output-tab {
-    background: none;
+    background: transparent;
     border: none;
     padding: 12px 20px;
     cursor: pointer;
     font-size: 14px;
-    color: #666;
+    font-weight: 500;
+    color: #8898aa;
     border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.output-tab:hover {
+    color: #5e72e4;
+    background: rgba(94, 114, 228, 0.05);
 }
 
 .output-tab.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
+    color: #5e72e4;
+    border-bottom-color: #5e72e4;
     background: white;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .output-content {
@@ -578,16 +709,36 @@ const playgroundStyles = `
     height: 100%;
     border: none;
     background: white;
+    box-sizing: border-box;
 }
 
 #console-log {
     height: 100%;
     overflow-y: auto;
     padding: 15px;
-    background: #1e1e1e;
-    color: #fff;
-    font-family: 'Monaco', 'Consolas', monospace;
+    background: #1a1a1a;
+    color: #e8e8e8;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
     font-size: 13px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+#console-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+#console-log::-webkit-scrollbar-track {
+    background: #2a2a2a;
+}
+
+#console-log::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+#console-log::-webkit-scrollbar-thumb:hover {
+    background: #777;
 }
 
 .console-entry {
@@ -614,18 +765,83 @@ const playgroundStyles = `
     color: #f44336;
 }
 
+/* Syntax highlighting styles */
+.code-editor {
+    position: relative;
+}
+
+#code-input {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+}
+
+.syntax-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 20px;
+    font-family: 'JetBrains Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: hidden;
+    pointer-events: none;
+    background: #f8f9fc;
+    color: transparent;
+    z-index: 0;
+}
+
+.syntax-highlight .keyword {
+    color: #8b5cf6;
+    font-weight: 600;
+}
+
+.syntax-highlight .string {
+    color: #10b981;
+}
+
+.syntax-highlight .number {
+    color: #f59e0b;
+}
+
+.syntax-highlight .comment {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.syntax-highlight .function {
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+.syntax-highlight .operator {
+    color: #ef4444;
+}
+
+.syntax-highlight .property {
+    color: #8b5cf6;
+}
+
 @media (max-width: 1024px) {
     .playground-container {
         grid-template-columns: 1fr;
     }
-    
+
     #code-input,
     .output-content {
         height: 300px;
+    }
+
+    .syntax-highlight {
+        padding: 20px;
     }
 }
 `;
 
 const codePlaygroundStyle = document.createElement('style');
-style.textContent = playgroundStyles;
+codePlaygroundStyle.textContent = playgroundStyles;
 document.head.appendChild(codePlaygroundStyle);
