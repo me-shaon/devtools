@@ -1910,7 +1910,7 @@ input[type='range']::-webkit-slider-thumb:hover {
 
 .validation-success {
   color: var(--success-color);
-  padding: 15px;
+  padding: 12px;
   background-color: rgba(45, 206, 137, 0.1);
   border-radius: var(--border-radius);
   border-left: 4px solid var(--success-color);
@@ -1918,7 +1918,7 @@ input[type='range']::-webkit-slider-thumb:hover {
 
 .validation-error {
   color: var(--secondary-color);
-  padding: 15px;
+  padding: 12px;
   background-color: rgba(245, 54, 92, 0.1);
   border-radius: var(--border-radius);
   border-left: 4px solid var(--secondary-color);
@@ -1926,8 +1926,18 @@ input[type='range']::-webkit-slider-thumb:hover {
 
 .validation-success h3,
 .validation-error h3 {
-  margin-bottom: 10px;
-  font-size: 1.1rem;
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+}
+
+.json-info {
+  margin-top: 8px;
+}
+
+.json-info p {
+  margin: 2px 0;
+  line-height: 1.3;
+  font-size: 0.9rem;
 }
 
 /* Responsive adjustments for API Response Formatter */

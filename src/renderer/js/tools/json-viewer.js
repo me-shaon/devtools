@@ -81,27 +81,12 @@ class JSONViewer {
         try {
             const parsed = JSON.parse(input);
             const info = this.getJSONInfo(parsed);
-            output.innerHTML = `
-                <div class="validation-success">
-                    <h3>✅ Valid JSON</h3>
-                    <div class="json-info">
-                        <p><strong>Type:</strong> ${info.type}</p>
-                        <p><strong>Size:</strong> ${info.size} characters</p>
-                        <p><strong>Keys:</strong> ${info.keys}</p>
-                        <p><strong>Depth:</strong> ${info.depth}</p>
-                    </div>
-                </div>
-            `;
+            output.innerHTML = `<div class="validation-success"><h3>✅ Valid JSON</h3><div class="json-info"><p><strong>Type:</strong> ${info.type}</p><p><strong>Size:</strong> ${info.size} characters</p><p><strong>Keys:</strong> ${info.keys}</p><p><strong>Depth:</strong> ${info.depth}</p></div></div>`;
             this.clearErrors();
             window.app?.showMessage('JSON is valid!', 'success');
         } catch (error) {
             this.showError(`Invalid JSON: ${error.message}`);
-            output.innerHTML = `
-                <div class="validation-error">
-                    <h3>❌ Invalid JSON</h3>
-                    <p>${error.message}</p>
-                </div>
-            `;
+            output.innerHTML = `<div class="validation-error"><h3>❌ Invalid JSON</h3><p>${error.message}</p></div>`;
         }
     }
 
