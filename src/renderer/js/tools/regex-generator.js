@@ -55,8 +55,12 @@ class RegexGenerator {
 
     displayMatches(regex, testString) {
         const matchesContainer = document.getElementById('matches-list');
+        const matchesSection = document.getElementById('regex-matches');
+        const highlightedSection = document.getElementById('highlighted-section');
+        const highlightedText = document.getElementById('highlighted-text');
+
         const matches = [];
-        
+
         if (regex.global) {
             let match;
             while ((match = regex.exec(testString)) !== null) {
@@ -65,7 +69,7 @@ class RegexGenerator {
                     index: match.index,
                     groups: match.slice(1)
                 });
-                
+
                 if (match.index === regex.lastIndex) {
                     break;
                 }
@@ -81,22 +85,41 @@ class RegexGenerator {
             }
         }
 
+        // Show the sections
+        matchesSection.style.display = 'block';
+        highlightedSection.style.display = 'block';
+
         if (matches.length === 0) {
             matchesContainer.innerHTML = '<p class="no-matches">No matches found</p>';
+            highlightedText.textContent = testString;
             return;
         }
 
-        let html = `<p class="match-count">${matches.length} match${matches.length > 1 ? 'es' : ''} found:</p>`;
-        
+        // Create highlighted text version
+        let highlightedHTML = '';
+        let lastIndex = 0;
+
+        matches.forEach(match => {
+            highlightedHTML += this.escapeHtml(testString.slice(lastIndex, match.index));
+            highlightedHTML += `<mark>${this.escapeHtml(match.match)}</mark>`;
+            lastIndex = match.index + match.match.length;
+        });
+
+        highlightedHTML += this.escapeHtml(testString.slice(lastIndex));
+        highlightedText.innerHTML = highlightedHTML;
+
+        // Create matches list
+        let html = `<p class="match-count">${matches.length} match${matches.length > 1 ? 'es' : ''} found</p>`;
+
         matches.forEach((match, index) => {
             html += `
                 <div class="match-item">
                     <div class="match-header">Match ${index + 1} at position ${match.index}</div>
                     <div class="match-text">${this.escapeHtml(match.match)}</div>
             `;
-            
+
             if (match.groups.length > 0) {
-                html += '<div class="match-groups">Groups:';
+                html += '<div class="match-groups">';
                 match.groups.forEach((group, groupIndex) => {
                     if (group !== undefined) {
                         html += `<span class="group">Group ${groupIndex + 1}: "${this.escapeHtml(group)}"</span>`;
@@ -104,66 +127,28 @@ class RegexGenerator {
                 });
                 html += '</div>';
             }
-            
+
             html += '</div>';
         });
 
         matchesContainer.innerHTML = html;
-        
-        this.highlightMatches(testString, matches);
     }
 
-    highlightMatches(text, matches) {
-        const testStringElement = document.getElementById('test-string');
-        let highlightedText = '';
-        let lastIndex = 0;
-
-        matches.forEach(match => {
-            highlightedText += this.escapeHtml(text.slice(lastIndex, match.index));
-            highlightedText += `<mark class="regex-match">${this.escapeHtml(match.match)}</mark>`;
-            lastIndex = match.index + match.match.length;
-        });
-        
-        highlightedText += this.escapeHtml(text.slice(lastIndex));
-
-        const overlay = document.createElement('div');
-        overlay.className = 'regex-overlay';
-        overlay.innerHTML = highlightedText;
-        overlay.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            padding: 15px;
-            pointer-events: none;
-            white-space: pre-wrap;
-            font-family: inherit;
-            font-size: inherit;
-            line-height: inherit;
-            color: transparent;
-            z-index: 1;
-        `;
-
-        const container = testStringElement.parentNode;
-        if (container.querySelector('.regex-overlay')) {
-            container.removeChild(container.querySelector('.regex-overlay'));
-        }
-        
-        container.style.position = 'relative';
-        container.appendChild(overlay);
-    }
 
     displayExplanation(pattern, flags) {
         const explanationContainer = document.getElementById('explanation-text');
-        
+        const explanationSection = document.getElementById('regex-explanation');
+
+        // Show the explanation section
+        explanationSection.style.display = 'block';
+
         let explanation = `<div class="pattern-info">`;
-        explanation += `<strong>Pattern:</strong> <code>/${pattern}/${flags}</code><br>`;
-        explanation += `<strong>Flags:</strong> ${this.explainFlags(flags)}<br><br>`;
-        explanation += `<strong>Pattern breakdown:</strong></div>`;
-        
+        explanation += `<strong>Pattern:</strong> <code>/${pattern}/${flags || ''}</code><br>`;
+        explanation += `<strong>Flags:</strong> ${this.explainFlags(flags)}`;
+        explanation += `</div>`;
+
         explanation += this.explainPattern(pattern);
-        
+
         explanationContainer.innerHTML = explanation;
     }
 
@@ -294,11 +279,12 @@ class RegexGenerator {
     clearResults() {
         document.getElementById('matches-list').innerHTML = '';
         document.getElementById('explanation-text').innerHTML = '';
-        
-        const overlay = document.querySelector('.regex-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
+        document.getElementById('highlighted-text').innerHTML = '';
+
+        // Hide the result sections
+        document.getElementById('regex-matches').style.display = 'none';
+        document.getElementById('regex-explanation').style.display = 'none';
+        document.getElementById('highlighted-section').style.display = 'none';
     }
 
     clearAll() {

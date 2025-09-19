@@ -1345,27 +1345,50 @@
               </button>
               <button id="clear-regex" class="btn btn-secondary">Clear</button>
             </div>
-            <div class="regex-results" id="regex-results">
-              <div class="matches" id="regex-matches">
-                <h3>Matches:</h3>
-                <div id="matches-list"></div>
+            <!-- Results Layout -->
+            <div class="regex-results-container" id="regex-results">
+              <!-- Main Results Area -->
+              <div class="regex-main-results">
+                <!-- Test String with Highlighted Matches -->
+                <div class="highlighted-text-section" id="highlighted-section" style="display: none;">
+                  <h3>Test String with Matches:</h3>
+                  <div class="highlighted-text-container">
+                    <div id="highlighted-text" class="highlighted-text"></div>
+                  </div>
+                </div>
+
+                <!-- Matches Section -->
+                <div class="matches-section" id="regex-matches" style="display: none;">
+                  <h3>Match Results:</h3>
+                  <div id="matches-list"></div>
+                </div>
+
+                <!-- Pattern Explanation Section -->
+                <div class="explanation-section" id="regex-explanation" style="display: none;">
+                  <h3>Pattern Breakdown:</h3>
+                  <div id="explanation-text"></div>
+                </div>
               </div>
-              <div class="explanation" id="regex-explanation">
-                <h3>Pattern Explanation:</h3>
-                <div id="explanation-text"></div>
-              </div>
-            </div>
-            <div class="regex-cheatsheet">
-              <h3>Quick Reference:</h3>
-              <div class="cheatsheet-grid">
-                <div class="cheat-item"><code>.</code> - Any character</div>
-                <div class="cheat-item"><code>*</code> - 0 or more</div>
-                <div class="cheat-item"><code>+</code> - 1 or more</div>
-                <div class="cheat-item"><code>?</code> - 0 or 1</div>
-                <div class="cheat-item"><code>\d</code> - Digit</div>
-                <div class="cheat-item"><code>\w</code> - Word char</div>
-                <div class="cheat-item"><code>\s</code> - Whitespace</div>
-                <div class="cheat-item"><code>^</code> - Start of line</div>
+
+              <!-- Quick Reference Sidebar -->
+              <div class="regex-sidebar">
+                <div class="regex-cheatsheet">
+                  <h3>Quick Reference:</h3>
+                  <div class="cheatsheet-grid">
+                    <div class="cheat-item"><code>.</code> Any character</div>
+                    <div class="cheat-item"><code>*</code> 0 or more</div>
+                    <div class="cheat-item"><code>+</code> 1 or more</div>
+                    <div class="cheat-item"><code>?</code> 0 or 1</div>
+                    <div class="cheat-item"><code>\d</code> Digit (0-9)</div>
+                    <div class="cheat-item"><code>\w</code> Word character</div>
+                    <div class="cheat-item"><code>\s</code> Whitespace</div>
+                    <div class="cheat-item"><code>^</code> Start of line</div>
+                    <div class="cheat-item"><code>$</code> End of line</div>
+                    <div class="cheat-item"><code>[abc]</code> Character class</div>
+                    <div class="cheat-item"><code>(abc)</code> Capturing group</div>
+                    <div class="cheat-item"><code>{n,m}</code> Quantifier</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
