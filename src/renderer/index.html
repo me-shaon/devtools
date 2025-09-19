@@ -868,32 +868,60 @@
               <button class="tab-btn" data-tab="url-decode">Decode</button>
             </div>
             <div id="url-encode-tab" class="tab-content active">
-              <textarea
-                id="url-to-encode"
-                placeholder="Enter URL or text to encode..."
-              ></textarea>
-              <button id="url-encode-btn" class="btn btn-primary">
-                Encode URL
-              </button>
-              <textarea
-                id="url-encoded-output"
-                readonly
-                placeholder="Encoded URL..."
-              ></textarea>
+              <div class="input-group">
+                <label for="url-to-encode">Original URL/Text:</label>
+                <textarea
+                  id="url-to-encode"
+                  placeholder="Enter URL or text to encode..."
+                ></textarea>
+              </div>
+              <div class="controls">
+                <button id="url-encode-btn" class="btn btn-primary">
+                  Encode URL
+                </button>
+                <button id="copy-encoded" class="btn btn-outline">
+                  Copy Result
+                </button>
+                <button id="clear-encode" class="btn btn-secondary">
+                  Clear
+                </button>
+              </div>
+              <div class="input-group">
+                <label for="url-encoded-output">Encoded Result:</label>
+                <textarea
+                  id="url-encoded-output"
+                  readonly
+                  placeholder="Encoded URL will appear here..."
+                ></textarea>
+              </div>
             </div>
             <div id="url-decode-tab" class="tab-content">
-              <textarea
-                id="url-to-decode"
-                placeholder="Enter encoded URL to decode..."
-              ></textarea>
-              <button id="url-decode-btn" class="btn btn-primary">
-                Decode URL
-              </button>
-              <textarea
-                id="url-decoded-output"
-                readonly
-                placeholder="Decoded URL..."
-              ></textarea>
+              <div class="input-group">
+                <label for="url-to-decode">Encoded URL:</label>
+                <textarea
+                  id="url-to-decode"
+                  placeholder="Enter encoded URL to decode..."
+                ></textarea>
+              </div>
+              <div class="controls">
+                <button id="url-decode-btn" class="btn btn-primary">
+                  Decode URL
+                </button>
+                <button id="copy-decoded" class="btn btn-outline">
+                  Copy Result
+                </button>
+                <button id="clear-decode" class="btn btn-secondary">
+                  Clear
+                </button>
+              </div>
+              <div class="input-group">
+                <label for="url-decoded-output">Decoded Result:</label>
+                <textarea
+                  id="url-decoded-output"
+                  readonly
+                  placeholder="Decoded URL will appear here..."
+                ></textarea>
+              </div>
             </div>
           </div>
         </div>
