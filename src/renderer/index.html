@@ -442,13 +442,25 @@
                 ></textarea>
               </div>
             </div>
-            <div class="controls">
-              <button id="compare-texts" class="btn btn-primary">
-                Compare
-              </button>
-              <button id="clear-comparison" class="btn btn-secondary">
-                Clear
-              </button>
+            <div class="compare-options">
+              <div class="compare-controls">
+                <button id="compare-texts" class="btn btn-primary">
+                  Compare
+                </button>
+                <button id="clear-comparison" class="btn btn-secondary">
+                  Clear
+                </button>
+              </div>
+              <div class="compare-settings">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="case-sensitive" checked>
+                  Case Sensitive
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="ignore-whitespace">
+                  Ignore Whitespace
+                </label>
+              </div>
             </div>
             <div id="comparison-result"></div>
           </div>
