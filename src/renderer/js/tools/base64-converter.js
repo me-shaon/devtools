@@ -4,7 +4,8 @@ class Base64Converter {
     }
 
     init() {
-        const tabButtons = document.querySelectorAll('.tab-btn');
+        const container = document.getElementById('base64-converter');
+        const tabButtons = container.querySelectorAll('.tab-btn');
         const encodeBtn = document.getElementById('encode-btn');
         const decodeBtn = document.getElementById('decode-btn');
 
@@ -29,14 +30,16 @@ class Base64Converter {
     }
 
     switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        const container = document.getElementById('base64-converter');
+
+        container.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelectorAll('.tab-content').forEach(content => {
+        container.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
 
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         document.getElementById(`${tabName}-tab`).classList.add('active');
 
         this.clearOutputs();
