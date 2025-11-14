@@ -91,6 +91,23 @@
   border-radius: var(--border-radius-lg);
 }
 
+#uuid-generator .uuid-controls input,
+#uuid-generator .uuid-controls select {
+  height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+}
+
+#uuid-generator #generate-uuid {
+  align-self: flex-end;
+  margin-bottom: 0;
+  height: 42px;
+  padding: 10px 20px;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+
 #uuid-generator #uuid-output {
   width: 100%;
   min-height: 200px;
