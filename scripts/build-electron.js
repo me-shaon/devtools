@@ -9,30 +9,39 @@ const rootDir = resolve(__dirname, "..");
 const isWatch = process.argv.includes("--watch");
 
 async function build() {
-  const context = await esbuild.context({
-    entryPoints: [
-      resolve(rootDir, "src-electron/main.ts"),
-      resolve(rootDir, "src-electron/preload.ts"),
-    ],
+  // Build main process as ESM
+  const mainContext = await esbuild.context({
+    entryPoints: [resolve(rootDir, "src-electron/main.ts")],
     bundle: true,
     platform: "node",
     target: "node20",
     format: "esm",
-    outdir: resolve(rootDir, "dist-electron"),
-    outExtension: { ".js": ".mjs" },
-    external: [
-      "electron",
-      "electron-updater",
-    ],
+    outfile: resolve(rootDir, "dist-electron/main.js"),
+    external: ["electron", "electron-updater"],
+    logLevel: "info",
+  });
+
+  // Build preload script as CommonJS (Electron requires this)
+  const preloadContext = await esbuild.context({
+    entryPoints: [resolve(rootDir, "src-electron/preload.ts")],
+    bundle: true,
+    platform: "node",
+    target: "node20",
+    format: "cjs",
+    outfile: resolve(rootDir, "dist-electron/preload.js"),
+    external: ["electron"],
     logLevel: "info",
   });
 
   if (isWatch) {
-    await context.watch();
+    await mainContext.watch();
+    await preloadContext.watch();
     console.log("Watching for changes...");
   } else {
-    await context.rebuild();
-    await context.dispose();
+    await mainContext.rebuild();
+    await mainContext.dispose();
+    await preloadContext.rebuild();
+    await preloadContext.dispose();
     console.log("Build complete!");
   }
 }

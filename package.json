@@ -5,7 +5,7 @@
   "description": "DevTools - Your Essential Developer Companion",
   "author": "Ahmed Shamim",
   "license": "MIT",
-  "main": "dist-electron/main.mjs",
+  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"node scripts/build-electron.js --watch\" \"wait-on http://localhost:8080 && electron .\"",
@@ -111,7 +111,7 @@
       "package.json"
     ],
     "extraMetadata": {
-      "main": "dist-electron/main.mjs"
+      "main": "dist-electron/main.js"
     },
     "mac": {
       "target": [
