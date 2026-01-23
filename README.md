@@ -12,7 +12,6 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **API Response Formatter** - Format REST/GraphQL responses with interactive tree view and real-time search
 - **Text Compare** - Diff viewer with line-by-line comparison
 - **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
-- **SQL Formatter** - Format SQL queries with customizable indentation
 - **Markdown Editor** - Live preview with export support
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 
@@ -27,19 +26,20 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Generators
 
-- **UUID** - Generate v1/v4 UUIDs with batch support
+- **UUID Generator** - Generate v1/v4/v6/v7 UUIDs and ULIDs with batch support
 - **Password Generator** - Generate secure passwords and passphrases with strength analysis
-- **Hash** - MD5, SHA-1, SHA-256, SHA-512
-- **QR Code** - Generate QR codes with custom size and error correction
+- **Hash Generator** - MD5, SHA-1, SHA-256, SHA-512
+- **QR Generator** - Generate QR codes with custom size and error correction
 - **Color Palette** - Create monochromatic, analogous, complementary schemes
-- **Lorem Ipsum** - Generate placeholder text
+- **Lorem Generator** - Generate placeholder text
 
 ### Developer Utilities
 
 - **JWT Decoder** - Decode and inspect JWT tokens
-- **Regex Builder** - Interactive regex construction with live testing
-- **Cron Parser** - Build cron expressions with plain English descriptions
+- **Regex Generator** - Interactive regex construction with live testing
+- **Cron Calculator** - Build cron expressions with plain English descriptions
 - **Timestamp Converter** - Unix timestamp conversion with multiple formats
+- **Date Difference** - Calculate difference between two dates
 - **Image Converter** - Convert between PNG, JPEG, WebP, BMP
 
 ## Quick Start
@@ -50,8 +50,8 @@ git clone https://github.com/me-shaon/devtools.git
 cd devtools
 npm install
 
-# Run locally
-npm start
+# Run locally (development mode)
+npm run dev
 
 # Build for distribution
 npm run dist
@@ -59,62 +59,73 @@ npm run dist
 
 ## Requirements
 
-- Node.js 14+
+- Node.js 18+
 - npm or yarn
 
 ## Architecture
 
 ```
 src/
-├── main.js              # Electron main process
-└── renderer/
-    ├── index.html       # Single-page application
-    ├── styles/          # CSS modules
-    └── js/
-        ├── main.js      # App router and state
-        └── tools/       # Tool implementations (23 modules)
+├── components/
+│   └── tools/       # Tool implementations (24 React components)
+├── app/
+│   └── DevToolsApp.tsx   # Main app with sidebar navigation
+└── main.tsx         # React entry point
+
+src-electron/
+├── main.ts          # Electron main process
+└── preload.ts       # Secure IPC bridge
 ```
 
-Each tool is a self-contained module with no external dependencies. All processing happens client-side.
+### Tech Stack
 
+- **Electron** 40+ for desktop runtime
+- **React** 18+ with TypeScript
+- **Vite** for fast builds and hot reload
+- **Tailwind CSS** for styling
+- **shadcn/ui** for UI components
+- No analytics or telemetry
 
 ## Development
 
-### Adding a Tool
+### Running in Development
 
-1. Create module in `src/renderer/js/tools/`
-2. Add HTML section in `index.html`
-3. Register in navigation sidebar
-4. Add menu item in `src/main.js`
+```bash
+npm run dev    # Starts Vite dev server + Electron
+```
 
 ### Build Scripts
 
 ```bash
-npm start          # Development server
-npm run build      # Build executable
-npm run pack       # Package without distributing
-npm run dist       # Create installer
-npm test           # Run test suite
-npm run security-check  # Run security checks
+npm run dev              # Development mode with hot reload
+npm run build            # Build React app + Electron
+npm run dist             # Create installers for all platforms
+npm run dist:publish     # Build and publish to GitHub releases
 ```
 
-## Security
+## Releases
 
-This project uses GitGuardian for secret detection and follows security best practices:
+Releases are built automatically via GitHub Actions when you push a version tag:
 
-- 🔒 **Secret Scanning**: Automated detection of hardcoded secrets
-- 🛡️ **Pre-commit Hooks**: Prevent secrets from being committed
-- 📋 **Security Guidelines**: See [SECURITY.md](SECURITY.md) for details
-- 🔧 **Local Testing**: Run `npm run security-check` before committing
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
+```
 
-For security issues, please review our [Security Guidelines](SECURITY.md).
+The workflow will:
+1. Build for Windows, macOS, and Linux
+2. Create a GitHub release
+3. Attach all installer files (DMG, NSIS, AppImage)
 
-## Tech Stack
+See [RELEASE.md](RELEASE.md) for detailed release instructions.
 
-- Electron 22+ for desktop runtime
-- Vanilla JavaScript (ES6+)
-- No framework dependencies
-- No analytics or telemetry
+## Adding a Tool
+
+1. Create component in `src/components/tools/YourTool.tsx`
+2. Add tool definition to `ALL_TOOLS` array in `src/app/DevToolsApp.tsx`
+3. Add render case in the `renderTool()` switch statement
+4. That's it! The tool will appear in the sidebar automatically
 
 ## Contributing
 
@@ -128,10 +139,9 @@ Pull requests welcome. For major changes, open an issue first to discuss the pro
 
 ```bash
 git clone https://github.com/me-shaon/devtools.git
-cd devtools-desktop
+cd devtools
 npm install
-npm start  # Run in development mode
-npm test   # Run test suite
+npm run dev  # Run in development mode
 ```
 
 ## License
