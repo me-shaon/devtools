@@ -1,20 +1,29 @@
-name: Build
+name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
   pull_request:
     branches:
       - main
+    paths:
+      - ".github/workflows/**"
+      - "package.json"
+      - "electron-builder.json"
 
 jobs:
   build:
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            artifact_name: devtools-windows
+          - os: macos-latest
+            artifact_name: devtools-macos
+          - os: ubuntu-latest
+            artifact_name: devtools-linux
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -39,7 +48,7 @@ jobs:
         with:
           name: devtools-${{ matrix.os }}
           path: release/*
-          retention-days: 7
+          retention-days: 30
 
   release:
     needs: build
@@ -58,12 +67,16 @@ jobs:
         with:
           path: release-artifacts
 
+      - name: Display structure of downloaded files
+        run: ls -R release-artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: release-artifacts/**/*
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -101,7 +101,7 @@ app.on("activate", () => {
 autoUpdater.autoDownload = false;
 autoUpdater.setFeedURL({
   provider: "github",
-  owner: "ahmedshamim",
+  owner: "me-shaon",
   repo: "devtools",
 });
 
