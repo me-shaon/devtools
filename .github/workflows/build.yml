@@ -95,7 +95,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: release-artifacts/**/*
+          files: |
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.AppImage
           draft: false
           prerelease: false
           generate_release_notes: false
