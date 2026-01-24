@@ -131,7 +131,8 @@ dist
 
 # Electron-specific ignores
 # Build output directories
-build/
+build/*
+!build/entitlements.*.plist
 dist/
 out/
 release/
