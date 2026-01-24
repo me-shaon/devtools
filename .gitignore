@@ -214,7 +214,7 @@ Icon?
 
 # Electron specific
 # Main process files (if using webpack or similar bundlers)
-app/
+# Note: We use src/app/ for our app components, so don't ignore the app directory
 main.js.map
 renderer.js.map
 
