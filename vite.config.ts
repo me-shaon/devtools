@@ -22,6 +22,9 @@ export default defineConfig(() => ({
     outDir: "dist",
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    exclude: [],
+  },
   test: {
     globals: true,
     environment: "jsdom",
