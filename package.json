@@ -98,7 +98,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true
     },
@@ -112,7 +112,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
@@ -123,7 +123,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "build/linux/*",
       "category": "Development"
     },
     "publish": {
