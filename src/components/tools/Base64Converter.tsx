@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, ArrowLeft, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { encodeText, decodeText } from "@/utils/base64";
 
 export function Base64Converter() {
   const [activeTab, setActiveTab] = useState<"encode" | "decode">("encode");
@@ -12,33 +13,23 @@ export function Base64Converter() {
   const [decodedOutput, setDecodedOutput] = useState("");
 
   const encodeToBase64 = () => {
-    if (!textToEncode.trim()) {
-      toast.error("Please enter text to encode.");
-      return;
-    }
-
     try {
-      const encoded = btoa(unescape(encodeURIComponent(textToEncode)));
+      const encoded = encodeText(textToEncode);
       setEncodedOutput(encoded);
       toast.success("Text encoded to Base64!");
     } catch (err) {
-      toast.error("Error encoding text");
+      toast.error((err as Error).message || "Error encoding text");
       setEncodedOutput("");
     }
   };
 
   const decodeFromBase64 = () => {
-    if (!base64ToDecode.trim()) {
-      toast.error("Please enter Base64 to decode.");
-      return;
-    }
-
     try {
-      const decoded = decodeURIComponent(escape(atob(base64ToDecode.trim())));
+      const decoded = decodeText(base64ToDecode);
       setDecodedOutput(decoded);
       toast.success("Base64 decoded successfully!");
     } catch (err) {
-      toast.error("Invalid Base64 format or corrupted data");
+      toast.error((err as Error).message || "Invalid Base64 format or corrupted data");
       setDecodedOutput("");
     }
   };
