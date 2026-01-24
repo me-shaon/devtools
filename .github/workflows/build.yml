@@ -69,8 +69,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: devtools-${{ matrix.os }}
-          path: release/*
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
           retention-days: 30
+          if-no-files-found: error
 
   release:
     needs: build
