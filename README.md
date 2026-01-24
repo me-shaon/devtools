@@ -103,23 +103,6 @@ npm run dist             # Create installers for all platforms
 npm run dist:publish     # Build and publish to GitHub releases
 ```
 
-## Releases
-
-Releases are built automatically via GitHub Actions when you push a version tag:
-
-```bash
-# Create and push a version tag
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The workflow will:
-1. Build for Windows, macOS, and Linux
-2. Create a GitHub release
-3. Attach all installer files (DMG, NSIS, AppImage)
-
-See [RELEASE.md](RELEASE.md) for detailed release instructions.
-
 ## Adding a Tool
 
 1. Create component in `src/components/tools/YourTool.tsx`
