@@ -133,9 +133,8 @@ dist
 # Build output directories
 build/*
 !build/entitlements.*.plist
-dist/
-out/
-release/
+!build/icon.*
+!build/linux/**
 
 # Electron Forge
 .makers/
