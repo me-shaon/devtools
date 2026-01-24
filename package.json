@@ -100,19 +100,20 @@
       ],
       "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools",
-      "hardenedRuntime": true
+      "hardenedRuntime": true,
+      "artifactName": "${productName}-macos-${arch}.${ext}"
     },
     "win": {
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-windows-setup.${ext}"
     },
     "linux": {
       "target": [
@@ -124,7 +125,8 @@
         }
       ],
       "icon": "build/linux/*",
-      "category": "Development"
+      "category": "Development",
+      "artifactName": "${productName}-linux.${ext}"
     },
     "publish": {
       "provider": "github",
