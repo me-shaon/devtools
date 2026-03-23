@@ -27,6 +27,7 @@ jobs:
   build:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
+    environment: Production
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
