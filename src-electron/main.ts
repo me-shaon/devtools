@@ -8,6 +8,7 @@ const { autoUpdater } = electronUpdater;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const appName = app.getName();
 
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -39,7 +40,7 @@ function createWindow() {
 
   win.loadURL(url);
 
-  // Open DevTools in development
+  // Open Chromium devtools in development
   if (isDev) {
     win.webContents.openDevTools();
   }
@@ -110,7 +111,7 @@ autoUpdater.on("update-available", () => {
     .showMessageBox({
       type: "info",
       title: "Update available",
-      message: "A new version of DevTools is available. Update now?",
+      message: `A new version of ${appName} is available. Update now?`,
       buttons: ["Update", "Later"],
     })
     .then((result) => {

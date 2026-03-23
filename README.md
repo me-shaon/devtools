@@ -1,8 +1,8 @@
-# DevTools Desktop
+# DevToolsApp Desktop
 
 Offline-first developer utilities for macOS, Windows, and Linux. No cloud dependencies, no data collection.
 
-![DevTools Desktop](assets/app-screenshot.png)
+![DevToolsApp Desktop](assets/app-screenshot.png)
 
 ## Features
 
@@ -41,6 +41,19 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Timestamp Converter** - Unix timestamp conversion with multiple formats
 - **Date Difference** - Calculate difference between two dates
 - **Image Converter** - Convert between PNG, JPEG, WebP, BMP
+
+## Download
+
+Get the latest release for your platform:
+
+- **[macOS (Intel)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-x64.dmg)**
+- **[macOS (Apple Silicon)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-arm64.dmg)**
+- **[Windows](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-windows-setup.exe)**
+- **[Linux](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux.AppImage)**
+
+### macOS Release Note
+
+GitHub release builds are intended to be signed and notarized. If you run a local unsigned build for testing, macOS may still show a security warning until you sign it with your Apple Developer certificate.
 
 ## Quick Start
 

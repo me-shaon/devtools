@@ -2,7 +2,7 @@
   "name": "devtools",
   "private": true,
   "version": "1.0.0",
-  "description": "DevTools - Your Essential Developer Companion",
+  "description": "DevToolsApp - Your Essential Developer Companion",
   "author": "Ahmed Shamim",
   "license": "MIT",
   "main": "dist-electron/main.js",
@@ -75,8 +75,8 @@
     "vitest": "^3.2.4"
   },
   "build": {
-    "appId": "com.meshaon.devtools",
-    "productName": "DevTools",
+    "appId": "com.meshaon.devtoolsapp",
+    "productName": "DevToolsApp",
     "directories": {
       "output": "release"
     },
@@ -96,10 +96,18 @@
             "x64",
             "arm64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",

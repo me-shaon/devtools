@@ -38,6 +38,9 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
+# Release files
+release/
+
 # Dependency directories
 node_modules/
 jspm_packages/
@@ -86,6 +89,7 @@ web_modules/
 # Next.js build output
 .next
 out
+dist-electron/
 
 # Nuxt.js build / generate output
 .nuxt
