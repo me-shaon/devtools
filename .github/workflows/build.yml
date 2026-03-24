@@ -108,6 +108,7 @@ jobs:
             release-artifacts/**/*.AppImage
             release-artifacts/**/*.yml
             release-artifacts/**/*.blockmap
+            !release-artifacts/**/builder-debug.yml
           draft: false
           prerelease: false
           generate_release_notes: false
