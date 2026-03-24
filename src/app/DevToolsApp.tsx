@@ -61,6 +61,14 @@ import { CodePlayground } from "@/components/tools/CodePlayground";
 import { RegexGenerator } from "@/components/tools/RegexGenerator";
 import { ImageConverter } from "@/components/tools/ImageConverter";
 import { MarkdownEditor } from "@/components/tools/MarkdownEditor";
+import {
+  SYSTEM_THEME_QUERY,
+  THEME_STORAGE_KEY,
+  getStoredThemePreference,
+  getSystemDarkMode,
+  resolveDarkMode,
+  syncDarkClass,
+} from "@/utils/theme";
 
 // All available tools
 const ALL_TOOLS = [
@@ -115,11 +123,17 @@ const STORAGE_KEY = "devtools-favorites";
 
 const DevToolsApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const [themePreference, setThemePreference] = useState(() =>
+    getStoredThemePreference(typeof window !== "undefined" ? window.localStorage : undefined)
+  );
+  const [systemDarkMode, setSystemDarkMode] = useState(() =>
+    getSystemDarkMode(typeof window !== "undefined" ? window.matchMedia.bind(window) : undefined)
+  );
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<(typeof ALL_TOOLS)[number] | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const darkMode = resolveDarkMode(themePreference, systemDarkMode);
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -144,6 +158,39 @@ const DevToolsApp = () => {
       console.error("Failed to save favorites:", error);
     }
   }, [favorites]);
+
+  useEffect(() => {
+    syncDarkClass(document.documentElement, darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+    } catch (error) {
+      console.error("Failed to save theme preference:", error);
+    }
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(SYSTEM_THEME_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setSystemDarkMode(event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
 
   const toggleFavorite = (toolId: string) => {
     setFavorites((prev) => {
@@ -458,7 +505,9 @@ const DevToolsApp = () => {
 
           {/* Dark Mode Toggle */}
           <button
-            onClick={() => setDarkMode(!darkMode)}
+            onClick={() =>
+              setThemePreference(resolveDarkMode(themePreference, systemDarkMode) ? "light" : "dark")
+            }
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm ${theme.hover} transition-colors`}
           >
             {darkMode ? (
