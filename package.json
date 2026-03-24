@@ -167,7 +167,7 @@
       "icon": "build/linux/*",
       "category": "Development",
       "artifactName": "${productName}-linux-${arch}.${ext}",
-      "maintainer": "shaon.cse81@gmail.com"
+      "maintainer": "Ahmed Shamim <shaon.cse81@gmail.com>"
     },
     "publish": {
       "provider": "github",
