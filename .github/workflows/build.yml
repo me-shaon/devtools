@@ -56,7 +56,7 @@ jobs:
       - name: Build and package
         run: npm run dist
         env:
-          DEBUG: electron-builder,electron-osx-sign*
+          DEBUG: electron-builder,electron-osx-sign*,@electron/notarize*
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
