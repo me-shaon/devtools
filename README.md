@@ -49,9 +49,11 @@ Get the latest release for your platform:
 - **[macOS (Intel)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-x64.dmg)**
 - **[macOS (Apple Silicon)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-arm64.dmg)**
 - **[Windows](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-windows-setup.exe)**
-- **[Linux — .deb (Debian, Ubuntu, Mint)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.deb)**
-- **[Linux — .rpm (Fedora, RHEL, openSUSE)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.rpm)**
-- **[Linux — .AppImage (universal)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.AppImage)**
+- **[Linux — .deb (Debian, Ubuntu, Mint) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.deb)**
+- **[Linux — .deb (Debian, Ubuntu, Mint) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.deb)**
+- **[Linux — .rpm (Fedora, RHEL, openSUSE) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.rpm)**
+- **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x64.AppImage)**
+- **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
 
 ### macOS Release Note
 
