@@ -17,6 +17,8 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
+    "dist:linux:deb": "npm run build && electron-builder --linux deb",
+    "dist:linux:rpm": "npm run build && electron-builder --linux rpm",
     "icon": "node scripts/create-icon.js",
     "clean": "rm -rf node_modules/.vite dist dist-electron release",
     "lint": "eslint .",
@@ -144,13 +146,28 @@
         {
           "target": "AppImage",
           "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
             "x64"
           ]
         }
       ],
       "icon": "build/linux/*",
       "category": "Development",
-      "artifactName": "${productName}-linux.${ext}"
+      "artifactName": "${productName}-linux-${arch}.${ext}",
+      "maintainer": "shaon.cse81@gmail.com"
     },
     "publish": {
       "provider": "github",
