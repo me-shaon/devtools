@@ -33,6 +33,7 @@ import {
   Calculator,
   Ruler,
   Globe,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ import { CodePlayground } from "@/components/tools/CodePlayground";
 import { RegexGenerator } from "@/components/tools/RegexGenerator";
 import { ImageConverter } from "@/components/tools/ImageConverter";
 import { MarkdownEditor } from "@/components/tools/MarkdownEditor";
+import { BcryptGenerator } from "@/components/tools/BcryptGenerator";
 import {
   SYSTEM_THEME_QUERY,
   THEME_STORAGE_KEY,
@@ -84,6 +86,7 @@ const ALL_TOOLS = [
   { icon: Lock, name: "Password Generator", id: "password-generator", category: "Generators" },
   { icon: Quote, name: "Lorem Ipsum", id: "lorem-generator", category: "Generators" },
   { icon: Barcode, name: "QR Generator", id: "qr-generator", category: "Generators" },
+  { icon: KeyRound, name: "Bcrypt Generator", id: "bcrypt-generator", category: "Generators" },
 
   // Converters
   { icon: RefreshCw, name: "Base64", id: "base64", category: "Converters" },
@@ -284,6 +287,8 @@ const DevToolsApp = () => {
         return <ImageConverter />;
       case "markdown":
         return <MarkdownEditor />;
+      case "bcrypt-generator":
+        return <BcryptGenerator />;
       default:
         return (
           <div className="text-center py-12">
