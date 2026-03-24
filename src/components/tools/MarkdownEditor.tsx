@@ -168,7 +168,7 @@ export function MarkdownEditor() {
                   </Button>
                 </div>
                 <div
-                  className="min-h-[500px] max-h-[500px] overflow-y-auto p-4 bg-white dark:bg-gray-900 rounded-md border prose dark:prose-invert max-w-none"
+                  className="min-h-[500px] max-h-[500px] overflow-y-auto rounded-md border border-border bg-background p-4 text-foreground prose prose-neutral max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:text-muted-foreground"
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               </div>
