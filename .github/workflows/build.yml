@@ -53,6 +53,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Linux packaging dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm
+
       - name: Build and package
         run: npm run dist
         env:
@@ -73,6 +79,8 @@ jobs:
             release/*.zip
             release/*.exe
             release/*.AppImage
+            release/*.deb
+            release/*.rpm
             release/*.yml
             release/*.blockmap
           retention-days: 30
@@ -106,6 +114,8 @@ jobs:
             release-artifacts/**/*.zip
             release-artifacts/**/*.exe
             release-artifacts/**/*.AppImage
+            release-artifacts/**/*.deb
+            release-artifacts/**/*.rpm
             release-artifacts/**/latest*.yml
             release-artifacts/**/*.blockmap
           draft: false
