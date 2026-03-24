@@ -33,8 +33,8 @@ export async function verifyBcrypt(plainText: string, hash: string): Promise<boo
   if (!plainText) {
     throw new Error("Please enter the plain text to verify.");
   }
-  if (!hash || !hash.startsWith("$2")) {
-    throw new Error("Please enter a valid bcrypt hash (starts with $2a$, $2b$, or $2y$).");
+  if (!hash || !isValidBcryptHash(hash)) {
+    throw new Error("Invalid bcrypt hash provided.");
   }
   return bcrypt.compare(plainText, hash);
 }

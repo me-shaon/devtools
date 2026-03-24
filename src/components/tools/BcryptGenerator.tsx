@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
@@ -13,6 +14,34 @@ import {
   BCRYPT_MAX_ROUNDS,
   BCRYPT_DEFAULT_ROUNDS,
 } from "@/utils/bcrypt";
+
+// Moved outside component — pure function, no need to recreate on every render
+const getRoundLabel = (r: number) => {
+  if (r <= 6) return { label: "Very Fast (less secure)", color: "text-red-500" };
+  if (r <= 9) return { label: "Fast", color: "text-yellow-500" };
+  if (r <= 12) return { label: "Balanced (recommended)", color: "text-green-500" };
+  return { label: "Slow (high security)", color: "text-blue-500" };
+};
+
+// Moved outside component — static data, no need to recreate on every render
+const FAQ_ITEMS = [
+  {
+    q: "What is bcrypt?",
+    a: "Bcrypt is a password hashing function designed to be computationally intensive. It's commonly used for securely storing passwords in databases.",
+  },
+  {
+    q: "How many rounds should I use?",
+    a: "12 rounds is the recommended minimum for production use. More rounds increase security but also processing time. Choose based on your security requirements.",
+  },
+  {
+    q: "Is this tool secure?",
+    a: "All processing happens in your browser using the bcryptjs library. No data is sent to any servers or stored anywhere.",
+  },
+  {
+    q: "Can I use this in production?",
+    a: "This tool is primarily for testing and learning. For production use, implement bcrypt directly in your application using a trusted library.",
+  },
+];
 
 export function BcryptGenerator() {
   const [activeTab, setActiveTab] = useState<"hash" | "verify">("hash");
@@ -65,13 +94,6 @@ export function BcryptGenerator() {
     toast.success("Copied to clipboard!");
   };
 
-  const getRoundLabel = (r: number) => {
-    if (r <= 6) return { label: "Very Fast (less secure)", color: "text-red-500" };
-    if (r <= 9) return { label: "Fast", color: "text-yellow-500" };
-    if (r <= 12) return { label: "Balanced (recommended)", color: "text-green-500" };
-    return { label: "Slow (high security)", color: "text-blue-500" };
-  };
-
   const roundInfo = getRoundLabel(rounds);
 
   return (
@@ -93,12 +115,11 @@ export function BcryptGenerator() {
           {/* Plain text input */}
           <div className="space-y-2">
             <Label>Plain Text / Password</Label>
-            <input
+            <Input
               type="password"
               value={plainText}
               onChange={(e) => setPlainText(e.target.value)}
               placeholder="Enter password or text to hash..."
-              className="w-full h-10 px-3 rounded-md border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               onKeyDown={(e) => e.key === "Enter" && !hashing && handleHash()}
             />
           </div>
@@ -114,7 +135,7 @@ export function BcryptGenerator() {
               min={BCRYPT_MIN_ROUNDS}
               max={BCRYPT_MAX_ROUNDS}
               value={rounds}
-              onChange={(e) => setRounds(parseInt(e.target.value))}
+              onChange={(e) => setRounds(parseInt(e.target.value, 10))}
               className="w-full accent-primary"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
@@ -168,12 +189,11 @@ export function BcryptGenerator() {
           {/* Plain text */}
           <div className="space-y-2">
             <Label>Plain Text / Password</Label>
-            <input
+            <Input
               type="password"
               value={verifyPlainText}
               onChange={(e) => { setVerifyPlainText(e.target.value); setVerifyResult(null); }}
               placeholder="Enter the original plain text..."
-              className="w-full h-10 px-3 rounded-md border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             />
           </div>
 
@@ -245,24 +265,7 @@ export function BcryptGenerator() {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">FAQ</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            {
-              q: "What is bcrypt?",
-              a: "Bcrypt is a password hashing function designed to be computationally intensive. It's commonly used for securely storing passwords in databases.",
-            },
-            {
-              q: "How many rounds should I use?",
-              a: "12 rounds is the recommended minimum for production use. More rounds increase security but also processing time. Choose based on your security requirements.",
-            },
-            {
-              q: "Is this tool secure?",
-              a: "All processing happens in your browser using the bcryptjs library. No data is sent to any servers or stored anywhere.",
-            },
-            {
-              q: "Can I use this in production?",
-              a: "This tool is primarily for testing and learning. For production use, implement bcrypt directly in your application using a trusted library.",
-            },
-          ].map(({ q, a }) => (
+          {FAQ_ITEMS.map(({ q, a }) => (
             <div key={q} className="p-4 rounded-lg border bg-card space-y-1.5">
               <p className="text-sm font-semibold">{q}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
