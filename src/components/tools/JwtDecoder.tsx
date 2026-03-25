@@ -5,30 +5,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import {
+  decodeJwt as decodeJwtToken,
+  getJwtExpirationDate,
+  getJwtIssuedAtDate,
+  type DecodedJwt,
+} from "@/utils/jwt";
 
-interface JwtHeader {
-  alg?: string;
-  typ?: string;
-  [key: string]: any;
-}
-
-interface JwtPayload {
-  iss?: string;
-  sub?: string;
-  aud?: string | string[];
-  exp?: number;
-  nbf?: number;
-  iat?: number;
-  jti?: string;
-  [key: string]: any;
-}
-
-interface DecodedJwt {
-  header: JwtHeader;
-  payload: JwtPayload;
-  signature: string;
-  isValid: boolean;
-}
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "What is a JWT?",
+    a: "A JSON Web Token is a compact string with a header, payload, and signature. It is commonly used to carry claims between applications and APIs.",
+  },
+  {
+    q: "Does decoding a JWT prove it is authentic?",
+    a: "No. Decoding only reveals the token contents. You still need to verify the signature with the correct secret or public key before trusting it.",
+  },
+  {
+    q: "Are JWTs encrypted by default?",
+    a: "No. Most JWTs are only base64url-encoded, so their contents are easy to inspect. Signed tokens protect integrity, not confidentiality.",
+  },
+  {
+    q: "What does this tool actually validate?",
+    a: "This tool decodes the token locally and checks whether the `exp` claim is already in the past. It does not verify issuer, audience, signature, or key trust.",
+  },
+];
 
 export function JwtDecoder() {
   const [input, setInput] = useState("");
@@ -36,62 +38,16 @@ export function JwtDecoder() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const decodeJwt = () => {
-    if (!input.trim()) {
-      toast.error("Please enter a JWT token");
+    const result = decodeJwtToken(input);
+
+    if (result.error) {
+      setDecoded(null);
+      toast.error(result.error);
       return;
     }
 
-    try {
-      const parts = input.split(".");
-      if (parts.length !== 3) {
-        throw new Error("Invalid JWT format. Expected 3 parts separated by dots.");
-      }
-
-      const [headerB64, payloadB64, signature] = parts;
-
-      // Add padding if needed
-      const addPadding = (str: string) => str + "=".repeat((4 - (str.length % 4)) % 4);
-
-      // Decode base64url
-      const base64urlDecode = (str: string) => {
-        const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = addPadding(base64);
-        return atob(padded);
-      };
-
-      const headerJson = base64urlDecode(headerB64);
-      const payloadJson = base64urlDecode(payloadB64);
-
-      const header: JwtHeader = JSON.parse(headerJson);
-      const payload: JwtPayload = JSON.parse(payloadJson);
-
-      // Check expiration
-      let isValid = true;
-      if (payload.exp) {
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp < now) {
-          isValid = false;
-        }
-      }
-
-      setDecoded({
-        header,
-        payload,
-        signature,
-        isValid,
-      });
-
-      toast.success("JWT decoded successfully!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to decode JWT");
-      setDecoded(null);
-    }
-  };
-
-  const formatTimestamp = (timestamp?: number) => {
-    if (!timestamp) return "N/A";
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    setDecoded(result);
+    toast.success("JWT decoded successfully!");
   };
 
   const copyToClipboard = (value: string, label: string) => {
@@ -101,7 +57,12 @@ export function JwtDecoder() {
     toast.success(`${label} copied!`);
   };
 
-  const renderObject = (obj: Record<string, any>, title: string, color: string) => (
+  const formatTimestamp = (date: Date | null, rawValue?: number) => {
+    if (!date || rawValue === undefined) return "N/A";
+    return `${date.toLocaleString()} (${rawValue})`;
+  };
+
+  const renderObject = (obj: Record<string, unknown>, title: string) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
@@ -113,6 +74,15 @@ export function JwtDecoder() {
       </CardContent>
     </Card>
   );
+
+  const expirationDate = decoded ? getJwtExpirationDate(decoded) : null;
+  const issuedAtDate = decoded ? getJwtIssuedAtDate(decoded) : null;
+  const notBeforeDate = decoded?.payload.nbf ? new Date(decoded.payload.nbf * 1000) : null;
+  const expirationStatus = decoded?.isExpired
+    ? { label: "Expired", className: "bg-red-500" }
+    : decoded?.payload.exp
+    ? { label: "Not expired", className: "bg-green-500" }
+    : { label: "No exp claim", className: "bg-amber-500 text-black" };
 
   return (
     <div className="space-y-6">
@@ -136,16 +106,28 @@ export function JwtDecoder() {
 
       {decoded && (
         <>
-          <div className="flex items-center gap-4">
-            <h3 className="text-lg font-medium">Token Status</h3>
-            <Badge className={decoded.isValid ? "bg-green-500" : "bg-red-500"}>
-              {decoded.isValid ? "Valid" : "Expired"}
-            </Badge>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-medium">Expiration Status</h3>
+              <Badge className={expirationStatus.className}>{expirationStatus.label}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Token decoded locally. Signature not verified.
+            </p>
           </div>
 
-          {renderObject(decoded.header, "Header", "text-blue-500")}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Verification Notice</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              This tool decodes the token and checks the `exp` claim, but it does not prove the token was signed by a trusted issuer. Verify the signature and claims on the server before relying on it.
+            </CardContent>
+          </Card>
 
-          {renderObject(decoded.payload, "Payload", "text-green-500")}
+          {renderObject(decoded.header, "Header")}
+
+          {renderObject(decoded.payload, "Payload")}
 
           <Card>
             <CardHeader>
@@ -158,7 +140,7 @@ export function JwtDecoder() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(decoded!.signature, "Signature")}
+                onClick={() => copyToClipboard(decoded.signature, "Signature")}
                 className="mt-2"
               >
                 {copied === "Signature" ? (
@@ -176,33 +158,37 @@ export function JwtDecoder() {
             </CardContent>
           </Card>
 
-          {decoded.payload.iat && (
+          {(decoded.payload.iat || decoded.payload.exp || decoded.payload.nbf) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Timestamp Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Issued At (iat):</span>
-                  <span className="font-mono">{formatTimestamp(decoded.payload.iat)}</span>
+                  <span className="font-mono text-right">
+                    {formatTimestamp(issuedAtDate, decoded.payload.iat)}
+                  </span>
                 </div>
-                {decoded.payload.exp && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Expires At (exp):</span>
-                    <span className="font-mono">{formatTimestamp(decoded.payload.exp)}</span>
-                  </div>
-                )}
-                {decoded.payload.nbf && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Not Before (nbf):</span>
-                    <span className="font-mono">{formatTimestamp(decoded.payload.nbf)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Expires At (exp):</span>
+                  <span className="font-mono text-right">
+                    {formatTimestamp(expirationDate, decoded.payload.exp)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Not Before (nbf):</span>
+                  <span className="font-mono text-right">
+                    {formatTimestamp(notBeforeDate, decoded.payload.nbf)}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           )}
         </>
       )}
+
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }
