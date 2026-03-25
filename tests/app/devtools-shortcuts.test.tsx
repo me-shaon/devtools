@@ -87,6 +87,10 @@ describe("DevToolsApp shortcuts", () => {
 
     const input = await screen.findByPlaceholderText("Search tools...");
     fireEvent.change(input, { target: { value: "json" } });
+
+    expect(await screen.findByRole("button", { name: "JSON Viewer" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "JSON to TypeScript" })).toBeInTheDocument();
+
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
 
