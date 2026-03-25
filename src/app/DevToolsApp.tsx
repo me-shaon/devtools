@@ -438,7 +438,7 @@ const DevToolsApp = () => {
   );
 
   return (
-    <div className={`min-h-screen ${theme.bg} flex`}>
+    <div className={`h-screen overflow-hidden ${theme.bg} flex`}>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -451,7 +451,7 @@ const DevToolsApp = () => {
       <aside
         className={`${
           sidebarOpen ? "w-60 translate-x-0" : "w-0 -translate-x-full md:translate-x-0"
-        } ${theme.sidebar} ${theme.border} border-r flex flex-col transition-all duration-200 overflow-hidden
+        } h-full md:h-screen ${theme.sidebar} ${theme.border} border-r flex flex-col transition-all duration-200 overflow-hidden
         fixed md:relative inset-y-0 left-0 z-50 md:z-auto`}
       >
         {/* Logo */}
@@ -482,7 +482,7 @@ const DevToolsApp = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-1 overflow-y-auto">
+        <nav className="flex-1 min-h-0 py-1 overflow-y-auto">
           {/* Home */}
           <div className="px-2 mb-1">
             <button
@@ -551,7 +551,7 @@ const DevToolsApp = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 min-h-0 flex flex-col min-w-0">
         {/* Header */}
         <header
           className={`h-12 ${theme.border} border-b flex items-center justify-between px-3 md:px-4 ${theme.card}`}
