@@ -6,41 +6,51 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ## Features
 
-### Text & Code
+### Development Tools
 
 - **JSON Viewer** - Format, validate, and minify JSON with syntax highlighting
-- **API Response Formatter** - Format REST/GraphQL responses with interactive tree view and real-time search
-- **Text Compare** - Diff viewer with line-by-line comparison
-- **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
-- **Markdown Editor** - Live preview with export support
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
+- **Regex Generator** - Interactive regex construction with live testing
+- **JSON to TypeScript** - Generate TypeScript interfaces from JSON
+
+### Generators
+
+- **Hash Generator** - MD5, SHA-1, SHA-256, SHA-512
+- **UUID Generator** - Generate v1/v4/v6/v7 UUIDs and ULIDs with batch support
+- **Password Generator** - Generate secure passwords and passphrases with strength analysis
+- **Lorem Ipsum** - Generate placeholder text
+- **QR Generator** - Generate QR codes with custom size and error correction
+- **Bcrypt Generator** - Generate bcrypt hashes locally
 
 ### Converters
 
 - **Base64** - Encode/decode text and files
-- **URL Encoder** - Encode/decode URLs and URI components
-- **CSV ↔ JSON** - Bidirectional conversion with custom delimiters
-- **JSON → TypeScript** - Generate TypeScript interfaces from JSON
+- **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
 - **Number Base** - Convert between decimal, binary, octal, hex
-- **Unit Converter** - Convert length, weight, temperature & currency units
+- **Markdown** - Live preview and export markdown content
+- **URL Encoder** - Encode/decode URLs and URI components
+- **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
 
-### Generators
+### Time & Date
 
-- **UUID Generator** - Generate v1/v4/v6/v7 UUIDs and ULIDs with batch support
-- **Password Generator** - Generate secure passwords and passphrases with strength analysis
-- **Hash Generator** - MD5, SHA-1, SHA-256, SHA-512
-- **QR Generator** - Generate QR codes with custom size and error correction
-- **Color Palette** - Create monochromatic, analogous, complementary schemes
-- **Lorem Generator** - Generate placeholder text
-
-### Developer Utilities
-
-- **JWT Decoder** - Decode and inspect JWT tokens
-- **Regex Generator** - Interactive regex construction with live testing
+- **Timestamp** - Unix timestamp conversion with multiple formats
+- **Date Difference** - Calculate the difference between two dates
 - **Cron Calculator** - Build cron expressions with plain English descriptions
-- **Timestamp Converter** - Unix timestamp conversion with multiple formats
-- **Date Difference** - Calculate difference between two dates
+
+### Media
+
+- **Color Palette** - Create monochromatic, analogous, complementary schemes
 - **Image Converter** - Convert between PNG, JPEG, WebP, BMP
+
+### Text Tools
+
+- **Text Compare** - Diff viewer with line-by-line comparison
+- **JWT Decoder** - Decode and inspect JWT tokens
+- **API Formatter** - Format REST and GraphQL responses with tree view and search
+
+### Utilities
+
+- **Unit Converter** - Convert length, weight, temperature, and currency units
 
 ## Download
 
@@ -55,10 +65,6 @@ Get the latest release for your platform:
 - **[Linux — .rpm (Fedora, RHEL, openSUSE) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-aarch64.rpm)**
 - **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.AppImage)**
 - **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
-
-### macOS Release Note
-
-GitHub release builds are intended to be signed and notarized. If you run a local unsigned build for testing, macOS may still show a security warning until you sign it with your Apple Developer certificate.
 
 ## Quick Start
 
@@ -85,7 +91,7 @@ npm run dist
 ```
 src/
 ├── components/
-│   └── tools/       # Tool implementations (24 React components)
+│   └── tools/       # Tool implementations (25 React components)
 ├── app/
 │   └── DevToolsApp.tsx   # Main app with sidebar navigation
 └── main.tsx         # React entry point
@@ -117,7 +123,12 @@ npm run dev    # Starts Vite dev server + Electron
 ```bash
 npm run dev              # Development mode with hot reload
 npm run build            # Build React app + Electron
+npm run test             # Run the test suite
+npm run lint             # Run ESLint
 npm run dist             # Create installers for all platforms
+npm run dist:mac         # Build macOS packages
+npm run dist:win         # Build Windows packages
+npm run dist:linux       # Build Linux packages
 npm run dist:publish     # Build and publish to GitHub releases
 ```
 
@@ -125,8 +136,9 @@ npm run dist:publish     # Build and publish to GitHub releases
 
 1. Create component in `src/components/tools/YourTool.tsx`
 2. Add tool definition to `ALL_TOOLS` array in `src/app/DevToolsApp.tsx`
-3. Add render case in the `renderTool()` switch statement
-4. That's it! The tool will appear in the sidebar automatically
+3. Register the lazy-loaded component in `TOOL_COMPONENTS` in `src/app/DevToolsApp.tsx`
+4. Add tests if the new tool has non-trivial behavior
+5. That's it! The tool will appear in the sidebar automatically
 
 ## Contributing
 
