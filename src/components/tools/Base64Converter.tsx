@@ -3,7 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, ArrowLeft, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { encodeText, decodeText } from "@/utils/base64";
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "Is Base64 encryption?",
+    a: "No. Base64 is only an encoding format that turns binary data into plain text characters, and anyone can decode it back without a secret key.",
+  },
+  {
+    q: "When should I use Base64?",
+    a: "Use it when a system expects text but you need to safely transport bytes, such as embedding binary data in JSON, HTML, or data URLs. It is a transport format, not a security feature.",
+  },
+  {
+    q: "Why is the Base64 output longer than the original text?",
+    a: "Base64 expands data because it represents every 3 bytes of input as 4 text characters. That usually adds about 33% overhead.",
+  },
+  {
+    q: "Can I Base64-encode Unicode text?",
+    a: "Yes. This tool encodes text as UTF-8 first, so characters outside plain ASCII are preserved when you decode them later.",
+  },
+];
 
 export function Base64Converter() {
   const [activeTab, setActiveTab] = useState<"encode" | "decode">("encode");
@@ -40,7 +60,7 @@ export function Base64Converter() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "encode" | "decode")} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="encode">Encode</TabsTrigger>
@@ -121,6 +141,8 @@ export function Base64Converter() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }

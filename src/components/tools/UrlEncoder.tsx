@@ -6,6 +6,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "What does URL encoding do?",
+    a: "URL encoding replaces reserved or unsafe characters with percent-encoded bytes such as `%20`. That makes text safe to place in query strings, form values, and path segments.",
+  },
+  {
+    q: "Is URL encoding the same as Base64?",
+    a: "No. URL encoding preserves text meaning while escaping special characters for URLs, whereas Base64 rewrites data into a different text alphabet for transport.",
+  },
+  {
+    q: "Why do spaces become `%20`?",
+    a: "A space is not safe to include literally in many URL contexts, so it is percent-encoded as `%20`. Some form encoders use `+` instead, but this tool follows `encodeURIComponent` behavior.",
+  },
+  {
+    q: "When would I use `encodeURI` instead?",
+    a: "Use `encodeURI` when you already have a full URL and want to keep structural characters like `:`, `/`, `?`, and `#` intact. This tool behaves like `encodeURIComponent`, which is safer for individual pieces of a URL.",
+  },
+];
 
 export function UrlEncoder() {
   const [input, setInput] = useState("");
@@ -168,6 +188,8 @@ export function UrlEncoder() {
           Clear All
         </Button>
       )}
+
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }

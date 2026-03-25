@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import {
   hashBcrypt,
   verifyBcrypt,
@@ -24,7 +25,7 @@ const getRoundLabel = (r: number) => {
 };
 
 // Moved outside component — static data, no need to recreate on every render
-const FAQ_ITEMS = [
+const FAQ_ITEMS: ToolFaqItem[] = [
   {
     q: "What is bcrypt?",
     a: "Bcrypt is a password hashing function designed to be computationally intensive. It's commonly used for securely storing passwords in databases.",
@@ -261,18 +262,7 @@ export function BcryptGenerator() {
         </TabsContent>
       </Tabs>
 
-      {/* FAQ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">FAQ</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {FAQ_ITEMS.map(({ q, a }) => (
-            <div key={q} className="p-4 rounded-lg border bg-card space-y-1.5">
-              <p className="text-sm font-semibold">{q}</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }

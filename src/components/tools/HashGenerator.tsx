@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, Hash as HashIcon } from "lucide-react";
 import { toast } from "sonner";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 
 type HashType = "md5" | "sha1" | "sha256" | "sha512";
 
@@ -11,6 +12,25 @@ const HASH_TYPES: { type: HashType; label: string }[] = [
   { type: "sha1", label: "SHA-1" },
   { type: "sha256", label: "SHA-256" },
   { type: "sha512", label: "SHA-512" },
+];
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "What is the difference between MD5, SHA-1, SHA-256, and SHA-512?",
+    a: "They are different hash algorithms with different output sizes and security properties. For new integrity checks, prefer SHA-256 or SHA-512 and avoid MD5 or SHA-1 for security-sensitive uses.",
+  },
+  {
+    q: "Can I use these hashes for password storage?",
+    a: "No. Fast hashes like MD5 and SHA are easy for attackers to brute-force, so passwords should be stored with a slow password hash such as bcrypt, scrypt, or Argon2.",
+  },
+  {
+    q: "Is hashing the same as encryption?",
+    a: "No. Hashing is one-way, so you cannot recover the original input from the hash, while encryption is reversible with the right key.",
+  },
+  {
+    q: "Why do two similar inputs produce completely different hashes?",
+    a: "Good hash functions have an avalanche effect, meaning a tiny input change causes a very different output. That makes hashes useful for change detection and integrity checks.",
+  },
 ];
 
 const bufferToHex = (buffer: ArrayBuffer): string =>
@@ -311,6 +331,8 @@ export function HashGenerator() {
           </div>
         ))}
       </div>
+
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }
