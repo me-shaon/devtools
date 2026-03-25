@@ -1,7 +1,7 @@
 {
   "name": "devtools",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DevToolsApp - Your Essential Developer Companion",
   "author": "Ahmed Shamim",
   "license": "MIT",
@@ -23,6 +23,8 @@
     "clean": "rm -rf node_modules/.vite dist dist-electron release",
     "lint": "eslint .",
     "preview": "vite preview",
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "release:check": "node scripts/check-release.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

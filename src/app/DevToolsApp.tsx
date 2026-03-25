@@ -47,6 +47,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { getReleaseNotes } from "@/data/releaseNotes";
+import { convertMarkdown } from "@/utils/markdown";
 import {
   SYSTEM_THEME_QUERY,
   THEME_STORAGE_KEY,
@@ -178,6 +180,7 @@ const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";
 const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
+const WHATS_NEW_SEEN_STORAGE_KEY = "devtools-whats-new-seen-version";
 
 const DevToolsApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -194,7 +197,20 @@ const DevToolsApp = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [appVersion, setAppVersion] = useState<string>("");
   const [updateState, setUpdateState] = useState<RendererUpdateState>({ status: "idle" });
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [seenWhatsNewVersion, setSeenWhatsNewVersion] = useState("");
   const darkMode = resolveDarkMode(themePreference, systemDarkMode);
+  const releaseNotes = useMemo(
+    () => (appVersion ? getReleaseNotes(appVersion) : null),
+    [appVersion]
+  );
+  const whatsNewHtml = useMemo(
+    () => (releaseNotes ? convertMarkdown(releaseNotes.markdown) : ""),
+    [releaseNotes]
+  );
+  const hasUnreadWhatsNew = Boolean(
+    releaseNotes && seenWhatsNewVersion !== releaseNotes.version
+  );
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -222,6 +238,17 @@ const DevToolsApp = () => {
       }
     } catch (error) {
       console.error("Failed to load recent tools:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(WHATS_NEW_SEEN_STORAGE_KEY);
+      if (stored) {
+        setSeenWhatsNewVersion(stored);
+      }
+    } catch (error) {
+      console.error("Failed to load seen what's new version:", error);
     }
   }, []);
 
@@ -314,6 +341,16 @@ const DevToolsApp = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!releaseNotes) {
+      return;
+    }
+
+    if (seenWhatsNewVersion !== releaseNotes.version) {
+      setShowWhatsNew(true);
+    }
+  }, [seenWhatsNewVersion, releaseNotes]);
+
   const handleUpdateAction = async () => {
     if (!window.electronAPI) {
       return;
@@ -335,6 +372,25 @@ const DevToolsApp = () => {
       console.error("Failed to run update action:", error);
       toast.error("Unable to complete the update action.");
     }
+  };
+
+  const openWhatsNew = () => {
+    if (releaseNotes) {
+      setShowWhatsNew(true);
+    }
+  };
+
+  const closeWhatsNew = () => {
+    if (releaseNotes) {
+      try {
+        localStorage.setItem(WHATS_NEW_SEEN_STORAGE_KEY, releaseNotes.version);
+      } catch (error) {
+        console.error("Failed to save seen what's new version:", error);
+      }
+      setSeenWhatsNewVersion(releaseNotes.version);
+    }
+
+    setShowWhatsNew(false);
   };
 
   const updateButtonLabel = useMemo(() => {
@@ -701,6 +757,18 @@ const DevToolsApp = () => {
               />
               {updateButtonLabel}
             </Button>
+            {releaseNotes && (
+              <button
+                type="button"
+                onClick={openWhatsNew}
+                className={`inline-flex items-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+              >
+                <span>What's New</span>
+                {hasUnreadWhatsNew && (
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#EB5757]" aria-hidden="true" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </aside>
@@ -854,6 +922,47 @@ const DevToolsApp = () => {
           )}
         </div>
       </main>
+
+      {showWhatsNew && releaseNotes && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="whats-new-title"
+            className={`w-full max-w-xl rounded-xl border ${theme.border} ${theme.card} p-5 shadow-2xl`}
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#EB5757]">
+                  What's New
+                </p>
+                <h2 id="whats-new-title" className={`text-xl font-semibold ${theme.text}`}>
+                  {releaseNotes.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeWhatsNew}
+                className={`rounded-md p-1 ${theme.hover} ${theme.textDim} transition-colors hover:${theme.text}`}
+                aria-label="Close what's new"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div
+              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground ${theme.textMuted}`}
+              dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
+            />
+
+            <div className="mt-5 flex justify-end">
+              <Button type="button" onClick={closeWhatsNew}>
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

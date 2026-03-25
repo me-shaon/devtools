@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Validate release metadata
+        run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
+
       - name: Install dependencies
         run: npm ci
 
@@ -121,6 +124,7 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: false
+          body_path: release-notes/${{ github.ref_name }}.md
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
