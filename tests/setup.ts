@@ -23,3 +23,13 @@ Object.defineProperty(global.navigator, 'clipboard', {
   },
   writable: true,
 });
+
+Object.defineProperty(global.URL, 'createObjectURL', {
+  value: vi.fn(() => 'blob:mock-url'),
+  writable: true,
+});
+
+Object.defineProperty(global.URL, 'revokeObjectURL', {
+  value: vi.fn(),
+  writable: true,
+});

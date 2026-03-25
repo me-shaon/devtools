@@ -40,7 +40,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ### Media
 
 - **Color Palette** - Create monochromatic, analogous, complementary schemes
-- **Image Converter** - Convert between PNG, JPEG, WebP, BMP
+- **Image Converter & Compressor** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
 
 ### Text Tools
 
