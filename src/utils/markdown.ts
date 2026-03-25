@@ -1,3 +1,10 @@
+function wrapListBlocks(html: string) {
+  return html.replace(/(?:^|\n)((?:<li>.*<\/li>\n?)+)/g, (_match, items) => {
+    const compactItems = items.replace(/\n/g, "");
+    return `\n<ul>${compactItems}</ul>`;
+  });
+}
+
 export function convertMarkdown(markdown: string): string {
   let html = markdown;
 
@@ -28,14 +35,19 @@ export function convertMarkdown(markdown: string): string {
 
   // Unordered lists
   html = html.replace(/^\s*-\s+(.*$)/gim, "<li>$1</li>");
-  html = html.replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>");
+  html = wrapListBlocks(html);
 
   // Ordered lists
   html = html.replace(/^\s*\d+\.\s+(.*$)/gim, "<li>$1</li>");
+  html = wrapListBlocks(html);
 
   // Horizontal rule
   html = html.replace(/^---$/gim, "<hr>");
 
   // Line breaks
-  return html.replace(/\n/g, "<br>");
+  return html
+    .replace(/\n/g, "<br>")
+    .replace(/<br>(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)<br>/g, "$1")
+    .replace(/<br>(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)/g, "$1")
+    .replace(/(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)<br>/g, "$1");
 }

@@ -26,4 +26,19 @@ describe("MarkdownEditor", () => {
       expect(screen.getByText("Preview Title")).toBeInTheDocument();
     });
   });
+
+  it("renders unordered lists as bullet items", async () => {
+    render(<MarkdownEditor />);
+
+    fireEvent.change(screen.getByPlaceholderText("Write your markdown here..."), {
+      target: { value: "## Highlights\n- First item\n- Second item" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("list")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("First item").tagName).toBe("LI");
+    expect(screen.getByText("Second item").tagName).toBe("LI");
+  });
 });

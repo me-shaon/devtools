@@ -953,7 +953,7 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:mb-2 prose-headings:text-inherit prose-h2:text-sm prose-h2:font-semibold prose-h2:uppercase prose-h2:tracking-wide prose-p:my-2 prose-p:text-[13px] prose-p:leading-6 prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ul:list-disc prose-ul:pl-5 prose-li:my-1 prose-li:text-[13px] prose-li:leading-6 ${theme.textMuted}`}
+              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-[#EB5757] ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
