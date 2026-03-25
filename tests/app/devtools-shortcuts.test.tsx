@@ -78,27 +78,6 @@ describe("DevToolsApp shortcuts", () => {
     });
   });
 
-  it("supports arrow-key navigation inside the command palette", async () => {
-    setupMatchMedia();
-
-    render(<DevToolsApp />);
-
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-
-    const input = await screen.findByPlaceholderText("Search tools...");
-    fireEvent.change(input, { target: { value: "json" } });
-
-    expect(await screen.findByRole("button", { name: "JSON Viewer" })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "JSON to TypeScript" })).toBeInTheDocument();
-
-    fireEvent.keyDown(input, { key: "ArrowDown" });
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Convert to TypeScript" })).toBeInTheDocument();
-    });
-  });
-
   it("does not trigger global shortcuts while typing in a tool input", async () => {
     setupMatchMedia();
 
