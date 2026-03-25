@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +26,25 @@ const presets: Preset[] = [
   { name: "Credit Card", pattern: "^\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}$", description: "Match common credit card formats" },
   { name: "Phone (US)", pattern: "^\\+1\\s?\\(\\d{3}\\)\\s?\\d{3}[- ]?\\d{4}$", description: "US phone number format" },
   { name: "Time (24h)", pattern: "^([01]?\\d|2[0-3]):[0-5]\\d$", description: "24-hour time format (HH:MM)" },
+];
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "What do the g, i, and m flags mean?",
+    a: "This tester uses JavaScript regular expression flags. g finds all matches, i ignores letter case, and m lets ^ and $ match the start and end of each line instead of only the whole string.",
+  },
+  {
+    q: "Why do I only get one match sometimes?",
+    a: "If the global g flag is off, the tool stops after the first match and shows only that result. Turn on g when you want every match in the input.",
+  },
+  {
+    q: "Are the preset patterns guaranteed validators?",
+    a: "No. The presets are practical starting points for common formats, but many real-world inputs have edge cases. Treat them as helpers you can adjust for your own rules.",
+  },
+  {
+    q: "Does this tool run my regex locally?",
+    a: "Yes. The pattern is evaluated locally in your browser with JavaScript's RegExp engine. It tests pattern matching only and does not execute arbitrary code.",
+  },
 ];
 
 export function RegexGenerator() {
@@ -223,6 +243,8 @@ export function RegexGenerator() {
           </dl>
         </CardContent>
       </Card>
+
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }
