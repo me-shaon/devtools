@@ -166,59 +166,66 @@ export function getUnifiedDiff(
   text2: string,
   contextLines = 3
 ): string[] {
-  const lines1 = text1.split('\n');
-  const lines2 = text2.split('\n');
+  const lineDiffs = getLineDiff(text1, text2);
+  const changedIndices = lineDiffs
+    .map((diff, index) => (diff.type === 'unchanged' ? -1 : index))
+    .filter((index) => index >= 0);
 
-  const diff: string[] = [];
-  let inHunk = false;
-  let hunkStart = 0;
-  let oldLines = 0;
-  let newLines = 0;
-  const context: string[] = [];
+  if (changedIndices.length === 0) {
+    return [];
+  }
 
-  const maxLines = Math.max(lines1.length, lines2.length);
+  const start = Math.max(0, changedIndices[0] - contextLines);
+  const end = Math.min(lineDiffs.length - 1, changedIndices[changedIndices.length - 1] + contextLines);
+  const visibleDiffs = lineDiffs.slice(start, end + 1);
 
-  for (let i = 0; i < maxLines; i++) {
-    const line1 = lines1[i];
-    const line2 = lines2[i];
+  let oldCount = 0;
+  let newCount = 0;
 
-    if (line1 === line2) {
-      context.push(` ${line1 || ''}`);
-
-      if (inHunk && context.length > contextLines * 2) {
-        // End hunk
-        diff.push(`@@ -${hunkStart},${oldLines} +${hunkStart},${newLines} @@`);
-        diff.push(...context.slice(0, contextLines + 1));
-        inHunk = false;
-        context.length = 0;
-      }
-    } else {
-      if (!inHunk) {
-        inHunk = true;
-        hunkStart = Math.max(0, i - contextLines);
-        oldLines = context.length;
-        newLines = context.length;
-        diff.push(...context.slice(-contextLines));
-        context.length = 0;
-      }
-
-      if (line1 !== undefined) {
-        diff.push(`-${line1}`);
-        oldLines++;
-      }
-      if (line2 !== undefined) {
-        diff.push(`+${line2}`);
-        newLines++;
-      }
+  for (const diff of visibleDiffs) {
+    switch (diff.type) {
+      case 'unchanged':
+        oldCount++;
+        newCount++;
+        break;
+      case 'removed':
+        oldCount++;
+        break;
+      case 'added':
+        newCount++;
+        break;
+      case 'modified':
+        oldCount++;
+        newCount++;
+        break;
     }
   }
 
-  if (inHunk) {
-    diff.push(`@@ -${hunkStart},${oldLines} +${hunkStart},${newLines} @@`);
-    diff.push(...context.slice(0, contextLines));
+  const lines = [
+    '--- original',
+    '+++ modified',
+    `@@ -${start + 1},${oldCount} +${start + 1},${newCount} @@`,
+  ];
+
+  for (const diff of visibleDiffs) {
+    switch (diff.type) {
+      case 'unchanged':
+        lines.push(` ${diff.content}`);
+        break;
+      case 'removed':
+        lines.push(`-${diff.content}`);
+        break;
+      case 'added':
+        lines.push(`+${diff.content}`);
+        break;
+      case 'modified':
+        lines.push(`-${diff.oldContent || ''}`);
+        lines.push(`+${diff.content}`);
+        break;
+    }
   }
 
-  return diff;
+  return lines;
 }
 
 /**
