@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -12,8 +12,32 @@ const appName = app.getName();
 
 let win: BrowserWindow | null = null;
 let updateCheckTimeout: NodeJS.Timeout | null = null;
+let updateState: {
+  status:
+    | "idle"
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error"
+    | "unsupported";
+  version?: string;
+  progress?: number;
+  message?: string;
+} = {
+  status: isDev ? "unsupported" : "idle",
+};
 
 const isDev = !app.isPackaged;
+
+function sendUpdateState() {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+
+  win.webContents.send("update-status", updateState);
+}
 
 function scheduleUpdateCheck() {
   if (isDev || updateCheckTimeout) {
@@ -46,6 +70,7 @@ function createWindow() {
   // Show window when ready to prevent visual flash
   win.once("ready-to-show", () => {
     win?.show();
+    sendUpdateState();
     scheduleUpdateCheck();
   });
 
@@ -112,6 +137,69 @@ app.on("before-quit", () => {
   }
 });
 
+ipcMain.handle("app-version", () => app.getVersion());
+
+ipcMain.handle("update-status", () => ({
+  ...updateState,
+  currentVersion: app.getVersion(),
+}));
+
+ipcMain.handle("check-for-updates", async () => {
+  if (isDev) {
+    updateState = {
+      status: "unsupported",
+      message: "Update checks are disabled in development builds.",
+    };
+    sendUpdateState();
+    return { ...updateState, currentVersion: app.getVersion() };
+  }
+
+  updateState = {
+    status: "checking",
+  };
+  sendUpdateState();
+
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    updateState = {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unable to check for updates.",
+    };
+    sendUpdateState();
+  }
+
+  return { ...updateState, currentVersion: app.getVersion() };
+});
+
+ipcMain.handle("download-update", async () => {
+  if (isDev) {
+    updateState = {
+      status: "unsupported",
+      message: "Updates are disabled in development builds.",
+    };
+    sendUpdateState();
+    return false;
+  }
+
+  updateState = {
+    ...updateState,
+    status: "downloading",
+    progress: updateState.progress ?? 0,
+  };
+  sendUpdateState();
+  await autoUpdater.downloadUpdate();
+  return true;
+});
+
+ipcMain.handle("install-update", () => {
+  if (!isDev) {
+    autoUpdater.quitAndInstall();
+  }
+
+  return true;
+});
+
 // Auto Update UX
 autoUpdater.autoDownload = false;
 autoUpdater.setFeedURL({
@@ -120,40 +208,51 @@ autoUpdater.setFeedURL({
   repo: "devtools",
 });
 
-autoUpdater.on("update-available", () => {
-  dialog
-    .showMessageBox({
-      type: "info",
-      title: "Update available",
-      message: `A new version of ${appName} is available. Update now?`,
-      buttons: ["Update", "Later"],
-    })
-    .then((result) => {
-      if (result.response === 0) {
-        autoUpdater.downloadUpdate();
-      }
-    });
+autoUpdater.on("checking-for-update", () => {
+  updateState = {
+    status: "checking",
+  };
+  sendUpdateState();
+});
+
+autoUpdater.on("update-available", (info) => {
+  updateState = {
+    status: "available",
+    version: info.version,
+  };
+  sendUpdateState();
 });
 
 autoUpdater.on("update-not-available", () => {
-  // No update available - silent
+  updateState = {
+    status: "not-available",
+  };
+  sendUpdateState();
 });
 
-autoUpdater.on("update-downloaded", () => {
-  dialog
-    .showMessageBox({
-      type: "info",
-      title: "Update ready",
-      message: "Restart to install update?",
-      buttons: ["Restart", "Later"],
-    })
-    .then((result) => {
-      if (result.response === 0) {
-        autoUpdater.quitAndInstall();
-      }
-    });
+autoUpdater.on("download-progress", (progress) => {
+  updateState = {
+    ...updateState,
+    status: "downloading",
+    progress: progress.percent,
+  };
+  sendUpdateState();
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  updateState = {
+    status: "downloaded",
+    version: info.version,
+    progress: 100,
+  };
+  sendUpdateState();
 });
 
 autoUpdater.on("error", (error) => {
   console.error("Auto-updater error:", error);
+  updateState = {
+    status: "error",
+    message: error.message,
+  };
+  sendUpdateState();
 });

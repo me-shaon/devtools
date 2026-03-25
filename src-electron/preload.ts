@@ -7,7 +7,14 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electronAPI", {
   invoke: (channel: string, ...args: unknown[]) => {
     // Whitelist allowed channels
-    const validChannels = ["app-version", "get-path"];
+    const validChannels = [
+      "app-version",
+      "get-path",
+      "update-status",
+      "check-for-updates",
+      "download-update",
+      "install-update",
+    ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }
@@ -15,7 +22,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     // Whitelist allowed channels
-    const validChannels = ["update-available", "update-downloaded"];
+    const validChannels = ["update-available", "update-downloaded", "update-status"];
     if (validChannels.includes(channel)) {
       const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) =>
         callback(...args);

@@ -105,6 +105,23 @@ const ALL_TOOLS = [
 
 type ToolDefinition = (typeof ALL_TOOLS)[number];
 type ToolId = ToolDefinition["id"];
+type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "not-available"
+  | "downloading"
+  | "downloaded"
+  | "error"
+  | "unsupported";
+
+interface RendererUpdateState {
+  status: UpdateStatus;
+  currentVersion?: string;
+  version?: string;
+  progress?: number;
+  message?: string;
+}
 
 // Extract unique categories
 const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((t) => t.category))).map((name) => ({
@@ -175,6 +192,8 @@ const DevToolsApp = () => {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentToolIds, setRecentToolIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [appVersion, setAppVersion] = useState<string>("");
+  const [updateState, setUpdateState] = useState<RendererUpdateState>({ status: "idle" });
   const darkMode = resolveDarkMode(themePreference, systemDarkMode);
 
   // Load favorites from localStorage on mount
@@ -255,6 +274,114 @@ const DevToolsApp = () => {
 
     return () => mediaQuery.removeListener(handleChange);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadAppMeta = async () => {
+      try {
+        const [version, currentUpdateState] = await Promise.all([
+          window.electronAPI.invoke("app-version"),
+          window.electronAPI.invoke("update-status"),
+        ]);
+
+        if (!cancelled) {
+          setAppVersion(typeof version === "string" ? version : "");
+          if (currentUpdateState && typeof currentUpdateState === "object") {
+            setUpdateState(currentUpdateState as RendererUpdateState);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load app metadata:", error);
+      }
+    };
+
+    loadAppMeta();
+
+    const unsubscribe = window.electronAPI.on("update-status", (nextState) => {
+      if (!cancelled && nextState && typeof nextState === "object") {
+        setUpdateState(nextState as RendererUpdateState);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  const handleUpdateAction = async () => {
+    if (!window.electronAPI) {
+      return;
+    }
+
+    try {
+      if (updateState.status === "available") {
+        await window.electronAPI.invoke("download-update");
+        return;
+      }
+
+      if (updateState.status === "downloaded") {
+        await window.electronAPI.invoke("install-update");
+        return;
+      }
+
+      await window.electronAPI.invoke("check-for-updates");
+    } catch (error) {
+      console.error("Failed to run update action:", error);
+      toast.error("Unable to complete the update action.");
+    }
+  };
+
+  const updateButtonLabel = useMemo(() => {
+    switch (updateState.status) {
+      case "checking":
+        return "Checking...";
+      case "available":
+        return updateState.version ? `Update to v${updateState.version}` : "Update";
+      case "downloading":
+        return updateState.progress
+          ? `Downloading ${Math.round(updateState.progress)}%`
+          : "Downloading...";
+      case "downloaded":
+        return "Restart to Update";
+      case "unsupported":
+        return "Dev Build";
+      default:
+        return "Check for Updates";
+    }
+  }, [updateState]);
+
+  const updateStatusLabel = useMemo(() => {
+    switch (updateState.status) {
+      case "available":
+        return updateState.version
+          ? `Version ${updateState.version} is available.`
+          : "An update is available.";
+      case "not-available":
+        return "You're up to date.";
+      case "downloading":
+        return updateState.progress
+          ? `Downloading update: ${Math.round(updateState.progress)}%`
+          : "Downloading update...";
+      case "downloaded":
+        return updateState.version
+          ? `Version ${updateState.version} is ready to install.`
+          : "Update is ready to install.";
+      case "checking":
+        return "Checking for updates...";
+      case "error":
+        return updateState.message || "Update check failed.";
+      case "unsupported":
+        return "Updates are disabled in development builds.";
+      default:
+        return "";
+    }
+  }, [updateState]);
 
   const toggleFavorite = (toolId: string) => {
     setFavorites((prev) => {
@@ -548,6 +675,34 @@ const DevToolsApp = () => {
             </div>
           )}
         </nav>
+
+        <div className={`px-3 py-2.5 ${theme.border} border-t`}>
+          <div className="space-y-1.5">
+            <p className={`text-xs ${theme.textMuted}`}>
+              Version {appVersion ? `v${appVersion}` : "Loading..."}
+            </p>
+            {updateStatusLabel && (
+              <p className={`text-[11px] leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`h-7 w-auto justify-start rounded-md border px-2.5 text-xs font-medium ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} hover:${theme.text}`}
+              onClick={handleUpdateAction}
+              disabled={updateState.status === "checking" || updateState.status === "downloading"}
+            >
+              <RefreshCw
+                className={`mr-1.5 h-3.5 w-3.5 ${
+                  updateState.status === "checking" || updateState.status === "downloading"
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
+              {updateButtonLabel}
+            </Button>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}
