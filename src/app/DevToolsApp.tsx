@@ -157,8 +157,10 @@ const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
 };
 
 const MAX_FAVORITES = 5;
+const MAX_RECENT_TOOLS = 6;
 
-const STORAGE_KEY = "devtools-favorites";
+const FAVORITES_STORAGE_KEY = "devtools-favorites";
+const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
 
 const DevToolsApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -171,13 +173,14 @@ const DevToolsApp = () => {
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolDefinition | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [recentToolIds, setRecentToolIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const darkMode = resolveDarkMode(themePreference, systemDarkMode);
 
   // Load favorites from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
@@ -189,14 +192,36 @@ const DevToolsApp = () => {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(RECENT_TOOLS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setRecentToolIds(parsed);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load recent tools:", error);
+    }
+  }, []);
+
   // Save favorites to localStorage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
     } catch (error) {
       console.error("Failed to save favorites:", error);
     }
   }, [favorites]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify(recentToolIds));
+    } catch (error) {
+      console.error("Failed to save recent tools:", error);
+    }
+  }, [recentToolIds]);
 
   useEffect(() => {
     syncDarkClass(document.documentElement, darkMode);
@@ -272,10 +297,28 @@ const DevToolsApp = () => {
       .filter((tool): tool is ToolDefinition => Boolean(tool));
   }, [favorites]);
 
+  const recentTools = useMemo(() => {
+    return recentToolIds
+      .map((id) => TOOL_BY_ID.get(id as ToolId))
+      .filter((tool): tool is ToolDefinition => Boolean(tool));
+  }, [recentToolIds]);
+
+  const quickAccessTools = useMemo(() => {
+    const hiddenToolIds = new Set([...recentToolIds, ...favorites]);
+
+    return ALL_TOOLS.filter((tool) => !hiddenToolIds.has(tool.id)).slice(0, MAX_RECENT_TOOLS);
+  }, [favorites, recentToolIds]);
+
   const selectTool = (tool: ToolDefinition | null) => {
     startTransition(() => {
       setSelectedTool(tool);
     });
+
+    if (tool) {
+      setRecentToolIds((prev) =>
+        [tool.id, ...prev.filter((id) => id !== tool.id)].slice(0, MAX_RECENT_TOOLS)
+      );
+    }
   };
 
   // Render tool component based on selected tool
@@ -375,6 +418,24 @@ const DevToolsApp = () => {
       </button>
     );
   };
+
+  const HomeToolCard = ({ tool }: { tool: ToolDefinition }) => (
+    <button
+      onClick={() => selectTool(tool)}
+      className={`flex items-center gap-3 p-3 md:p-4 ${theme.card} rounded-lg border ${theme.border} text-left hover:border-[#EB5757]/50 transition-all`}
+    >
+      <div
+        className={`w-8 h-8 md:w-9 md:h-9 rounded-md ${
+          darkMode ? "bg-[#2F2F2F]" : "bg-[#F7F6F3]"
+        } flex items-center justify-center shrink-0`}
+      >
+        <tool.icon className="w-4 h-4 text-[#EB5757]" />
+      </div>
+      <span className={`font-medium ${theme.text} text-sm md:text-base`}>
+        {tool.name}
+      </span>
+    </button>
+  );
 
   return (
     <div className={`min-h-screen ${theme.bg} flex`}>
@@ -563,30 +624,42 @@ const DevToolsApp = () => {
                 </div>
               </div>
 
-              {/* Quick Access */}
-              <div>
-                <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
-                  Quick Access
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {ALL_TOOLS.slice(0, 6).map((tool) => (
-                    <button
-                      key={tool.id}
-                      onClick={() => selectTool(tool)}
-                      className={`flex items-center gap-3 p-3 md:p-4 ${theme.card} rounded-lg border ${theme.border} text-left hover:border-[#EB5757]/50 transition-all`}
-                    >
-                      <div
-                        className={`w-8 h-8 md:w-9 md:h-9 rounded-md ${
-                          darkMode ? "bg-[#2F2F2F]" : "bg-[#F7F6F3]"
-                        } flex items-center justify-center shrink-0`}
-                      >
-                        <tool.icon className="w-4 h-4 text-[#EB5757]" />
-                      </div>
-                      <span className={`font-medium ${theme.text} text-sm md:text-base`}>
-                        {tool.name}
-                      </span>
-                    </button>
-                  ))}
+              <div className="space-y-8">
+                {recentTools.length > 0 && (
+                  <div>
+                    <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
+                      Recently Used
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {recentTools.map((tool) => (
+                        <HomeToolCard key={tool.id} tool={tool} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {favoriteTools.length > 0 && (
+                  <div>
+                    <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
+                      Favorites
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {favoriteTools.map((tool) => (
+                        <HomeToolCard key={tool.id} tool={tool} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
+                    Quick Access
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {quickAccessTools.map((tool) => (
+                      <HomeToolCard key={tool.id} tool={tool} />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
