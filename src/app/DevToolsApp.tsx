@@ -1,21 +1,13 @@
 import {
   Suspense,
-  lazy,
   startTransition,
   useEffect,
   useMemo,
   useState,
-  type ComponentType,
-  type LazyExoticComponent,
 } from "react";
 import {
-  Code,
-  FileJson,
   Terminal,
-  Hash,
-  Clock,
   RefreshCw,
-  Palette,
   Search,
   ChevronRight,
   ChevronDown,
@@ -28,27 +20,31 @@ import {
   X,
   Moon,
   Sun,
-  Key,
-  Lock,
-  Type,
-  AlignLeft,
-  FileText,
-  Quote,
-  Image as ImageIcon,
-  Barcode,
-  Scan,
-  Database,
-  Binary,
-  Calculator,
-  Ruler,
-  Globe,
-  KeyRound,
+  Command,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { CommandPalette } from "@/components/app/CommandPalette";
+import { ShortcutSettingsDialog } from "@/components/app/ShortcutSettingsDialog";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import {
+  ALL_TOOLS,
+  CATEGORIES,
+  TOOL_BY_ID,
+  TOOL_COMPONENTS,
+  type ToolDefinition,
+  type ToolId,
+} from "@/app/toolRegistry";
 import { getReleaseNotes } from "@/data/releaseNotes";
 import { convertMarkdown } from "@/utils/markdown";
+import {
+  formatShortcutBinding,
+  getDefaultShortcutBindings,
+  loadStoredShortcutBindings,
+  saveShortcutBindings,
+  type ShortcutBindings,
+} from "@/utils/shortcuts";
 import {
   SYSTEM_THEME_QUERY,
   THEME_STORAGE_KEY,
@@ -57,56 +53,6 @@ import {
   resolveDarkMode,
   syncDarkClass,
 } from "@/utils/theme";
-
-const lazyNamed = <T extends Record<string, ComponentType>>(
-  loader: () => Promise<T>,
-  exportName: keyof T,
-) => lazy(() => loader().then((module) => ({ default: module[exportName] })));
-
-// All available tools
-const ALL_TOOLS = [
-  // Development Tools
-  { icon: FileJson, name: "JSON Viewer", id: "json-viewer", category: "Development Tools" },
-  { icon: Code, name: "Code Playground", id: "code-playground", category: "Development Tools" },
-  { icon: Terminal, name: "Regex Generator", id: "regex-generator", category: "Development Tools" },
-  { icon: Type, name: "JSON to TypeScript", id: "json-typescript", category: "Development Tools" },
-
-  // Generators
-  { icon: Hash, name: "Hash Generator", id: "hash-generator", category: "Generators" },
-  { icon: Key, name: "UUID Generator", id: "uuid-generator", category: "Generators" },
-  { icon: Lock, name: "Password Generator", id: "password-generator", category: "Generators" },
-  { icon: Quote, name: "Lorem Ipsum", id: "lorem-generator", category: "Generators" },
-  { icon: Barcode, name: "QR Generator", id: "qr-generator", category: "Generators" },
-  { icon: KeyRound, name: "Bcrypt Generator", id: "bcrypt-generator", category: "Generators" },
-
-  // Converters
-  { icon: RefreshCw, name: "Base64", id: "base64", category: "Converters" },
-  { icon: Type, name: "Case Converter", id: "case-converter", category: "Converters" },
-  { icon: Binary, name: "Number Base", id: "number-base", category: "Converters" },
-  { icon: FileText, name: "Markdown", id: "markdown", category: "Converters" },
-  { icon: Globe, name: "URL Encoder", id: "url-encoder", category: "Converters" },
-  { icon: Database, name: "CSV to JSON", id: "csv-json", category: "Converters" },
-
-  // Time & Date
-  { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date" },
-  { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date" },
-  { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date" },
-
-  // Media
-  { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media" },
-  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media" },
-
-  // Text Tools
-  { icon: AlignLeft, name: "Text Compare", id: "text-compare", category: "Text Tools" },
-  { icon: Shield, name: "JWT Decoder", id: "jwt-decoder", category: "Text Tools" },
-  { icon: FileJson, name: "API Formatter", id: "api-formatter", category: "Text Tools" },
-
-  // Utilities
-  { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities" },
-] as const;
-
-type ToolDefinition = (typeof ALL_TOOLS)[number];
-type ToolId = ToolDefinition["id"];
 type UpdateStatus =
   | "idle"
   | "checking"
@@ -125,56 +71,6 @@ interface RendererUpdateState {
   message?: string;
 }
 
-// Extract unique categories
-const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((t) => t.category))).map((name) => ({
-  name,
-  tools: ALL_TOOLS.filter((t) => t.category === name),
-}));
-const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
-
-const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
-  "json-viewer": lazyNamed(() => import("@/components/tools/JsonViewer"), "JsonViewer"),
-  "code-playground": lazyNamed(() => import("@/components/tools/CodePlayground"), "CodePlayground"),
-  "regex-generator": lazyNamed(() => import("@/components/tools/RegexGenerator"), "RegexGenerator"),
-  "json-typescript": lazyNamed(() => import("@/components/tools/JsonToTypeScript"), "JsonToTypeScript"),
-  "hash-generator": lazyNamed(() => import("@/components/tools/HashGenerator"), "HashGenerator"),
-  "uuid-generator": lazyNamed(() => import("@/components/tools/UuidGenerator"), "UUIDGenerator"),
-  "password-generator": lazyNamed(
-    () => import("@/components/tools/PasswordGenerator"),
-    "PasswordGenerator",
-  ),
-  "lorem-generator": lazyNamed(() => import("@/components/tools/LoremGenerator"), "LoremGenerator"),
-  "qr-generator": lazyNamed(() => import("@/components/tools/QrGenerator"), "QrGenerator"),
-  "bcrypt-generator": lazyNamed(() => import("@/components/tools/BcryptGenerator"), "BcryptGenerator"),
-  base64: lazyNamed(() => import("@/components/tools/Base64Converter"), "Base64Converter"),
-  "case-converter": lazyNamed(() => import("@/components/tools/CaseConverter"), "CaseConverter"),
-  "number-base": lazyNamed(
-    () => import("@/components/tools/NumberBaseConverter"),
-    "NumberBaseConverter",
-  ),
-  markdown: lazyNamed(() => import("@/components/tools/MarkdownEditor"), "MarkdownEditor"),
-  "url-encoder": lazyNamed(() => import("@/components/tools/UrlEncoder"), "UrlEncoder"),
-  "csv-json": lazyNamed(() => import("@/components/tools/CsvToJsonConverter"), "CsvToJsonConverter"),
-  timestamp: lazyNamed(
-    () => import("@/components/tools/TimestampConverter"),
-    "TimestampConverter",
-  ),
-  "date-difference": lazyNamed(
-    () => import("@/components/tools/DateDifference"),
-    "DateDifference",
-  ),
-  "cron-calculator": lazyNamed(
-    () => import("@/components/tools/CronCalculator"),
-    "CronCalculator",
-  ),
-  "color-palette": lazyNamed(() => import("@/components/tools/ColorPalette"), "ColorPalette"),
-  "image-converter": lazyNamed(() => import("@/components/tools/ImageConverter"), "ImageConverter"),
-  "text-compare": lazyNamed(() => import("@/components/tools/TextCompare"), "TextCompare"),
-  "jwt-decoder": lazyNamed(() => import("@/components/tools/JwtDecoder"), "JwtDecoder"),
-  "api-formatter": lazyNamed(() => import("@/components/tools/ApiFormatter"), "ApiFormatter"),
-  "unit-converter": lazyNamed(() => import("@/components/tools/UnitConverter"), "UnitConverter"),
-};
-
 const MAX_FAVORITES = 5;
 const MAX_RECENT_TOOLS = 6;
 
@@ -183,6 +79,7 @@ const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
 const WHATS_NEW_SEEN_STORAGE_KEY = "devtools-whats-new-seen-version";
 
 const DevToolsApp = () => {
+  const platform = typeof window !== "undefined" ? window.electronAPI?.platform : undefined;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [themePreference, setThemePreference] = useState(() =>
     getStoredThemePreference(typeof window !== "undefined" ? window.localStorage : undefined)
@@ -199,6 +96,14 @@ const DevToolsApp = () => {
   const [updateState, setUpdateState] = useState<RendererUpdateState>({ status: "idle" });
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [seenWhatsNewVersion, setSeenWhatsNewVersion] = useState("");
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showShortcutSettings, setShowShortcutSettings] = useState(false);
+  const [shortcutBindings, setShortcutBindings] = useState<ShortcutBindings>(() =>
+    loadStoredShortcutBindings(
+      typeof window !== "undefined" ? window.electronAPI?.platform : undefined,
+      typeof window !== "undefined" ? window.localStorage : undefined,
+    ),
+  );
   const darkMode = resolveDarkMode(themePreference, systemDarkMode);
   const releaseNotes = useMemo(
     () => (appVersion ? getReleaseNotes(appVersion) : null),
@@ -268,6 +173,13 @@ const DevToolsApp = () => {
       console.error("Failed to save recent tools:", error);
     }
   }, [recentToolIds]);
+
+  useEffect(() => {
+    saveShortcutBindings(
+      typeof window !== "undefined" ? window.localStorage : undefined,
+      shortcutBindings,
+    );
+  }, [shortcutBindings]);
 
   useEffect(() => {
     syncDarkClass(document.documentElement, darkMode);
@@ -376,6 +288,8 @@ const DevToolsApp = () => {
 
   const openWhatsNew = () => {
     if (releaseNotes) {
+      setShowCommandPalette(false);
+      setShowShortcutSettings(false);
       setShowWhatsNew(true);
     }
   };
@@ -391,6 +305,36 @@ const DevToolsApp = () => {
     }
 
     setShowWhatsNew(false);
+  };
+
+  const openCommandPalette = () => {
+    setShowShortcutSettings(false);
+    setShowCommandPalette(true);
+  };
+
+  const closeCommandPalette = () => {
+    setShowCommandPalette(false);
+  };
+
+  const openShortcutSettings = () => {
+    setShowCommandPalette(false);
+    setShowShortcutSettings(true);
+  };
+
+  const closeShortcutSettings = () => {
+    setShowShortcutSettings(false);
+  };
+
+  const updateShortcutBinding = (actionId: keyof ShortcutBindings, binding: ShortcutBindings[keyof ShortcutBindings]) => {
+    setShortcutBindings((prev) => ({
+      ...prev,
+      [actionId]: binding,
+    }));
+  };
+
+  const resetShortcutBindings = () => {
+    setShortcutBindings(getDefaultShortcutBindings(platform));
+    toast.success("Keyboard shortcuts reset to defaults.");
   };
 
   const updateButtonLabel = useMemo(() => {
@@ -491,8 +435,59 @@ const DevToolsApp = () => {
 
     return ALL_TOOLS.filter((tool) => !hiddenToolIds.has(tool.id)).slice(0, MAX_RECENT_TOOLS);
   }, [favorites, recentToolIds]);
+  const commandPaletteShortcutLabel = useMemo(
+    () => formatShortcutBinding(shortcutBindings["open-command-palette"], platform),
+    [platform, shortcutBindings],
+  );
+
+  const shortcutHandlers = useMemo(
+    () => ({
+      "open-command-palette": openCommandPalette,
+      "go-home": () => selectTool(null),
+      "toggle-sidebar": () => setSidebarOpen((previous) => !previous),
+      "open-favorite-1": () => {
+        const tool = TOOL_BY_ID.get(favorites[0] as ToolId);
+        if (tool) {
+          selectTool(tool);
+        }
+      },
+      "open-favorite-2": () => {
+        const tool = TOOL_BY_ID.get(favorites[1] as ToolId);
+        if (tool) {
+          selectTool(tool);
+        }
+      },
+      "open-favorite-3": () => {
+        const tool = TOOL_BY_ID.get(favorites[2] as ToolId);
+        if (tool) {
+          selectTool(tool);
+        }
+      },
+      "open-favorite-4": () => {
+        const tool = TOOL_BY_ID.get(favorites[3] as ToolId);
+        if (tool) {
+          selectTool(tool);
+        }
+      },
+      "open-favorite-5": () => {
+        const tool = TOOL_BY_ID.get(favorites[4] as ToolId);
+        if (tool) {
+          selectTool(tool);
+        }
+      },
+    }),
+    [favorites],
+  );
+
+  useKeyboardShortcuts({
+    bindings: shortcutBindings,
+    handlers: shortcutHandlers,
+    enabled: !showCommandPalette && !showShortcutSettings && !showWhatsNew,
+  });
 
   const selectTool = (tool: ToolDefinition | null) => {
+    setShowCommandPalette(false);
+
     startTransition(() => {
       setSelectedTool(tool);
     });
@@ -653,14 +648,26 @@ const DevToolsApp = () => {
 
         {/* Search */}
         <div className="p-3">
-          <div className="relative">
-            <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} focus:border-[#EB5757] focus:ring-0 rounded-md`}
-            />
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} focus:border-[#EB5757] focus:ring-0 rounded-md`}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className={`flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] ${theme.textMuted} ${theme.hover} transition-colors hover:${theme.text}`}
+            >
+              <span>Open Command Palette</span>
+              <span className={`rounded border px-1.5 py-0.5 ${theme.border} ${theme.input}`}>
+                {commandPaletteShortcutLabel}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -770,6 +777,14 @@ const DevToolsApp = () => {
                   )}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={openShortcutSettings}
+                className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+              >
+                <Command className="h-3.5 w-3.5" />
+                <span>Shortcuts</span>
+              </button>
             </div>
           </div>
         </div>
@@ -803,20 +818,34 @@ const DevToolsApp = () => {
             </nav>
           </div>
 
-          {/* Dark Mode Toggle */}
-          <button
-            onClick={() =>
-              setThemePreference(resolveDarkMode(themePreference, systemDarkMode) ? "light" : "dark")
-            }
-            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm ${theme.hover} transition-colors`}
-          >
-            {darkMode ? (
-              <Moon className="w-4 h-4 text-[#EB5757]" />
-            ) : (
-              <Sun className="w-4 h-4 text-[#F2994A]" />
-            )}
-            <span className={`${theme.textDim} hidden sm:inline`}>{darkMode ? "Dark" : "Light"}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className={`hidden sm:inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} transition-colors hover:${theme.text}`}
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Palette</span>
+              <span className={`rounded border px-1.5 py-0.5 ${theme.border}`}>
+                {commandPaletteShortcutLabel}
+              </span>
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() =>
+                setThemePreference(resolveDarkMode(themePreference, systemDarkMode) ? "light" : "dark")
+              }
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm ${theme.hover} transition-colors`}
+            >
+              {darkMode ? (
+                <Moon className="w-4 h-4 text-[#EB5757]" />
+              ) : (
+                <Sun className="w-4 h-4 text-[#F2994A]" />
+              )}
+              <span className={`${theme.textDim} hidden sm:inline`}>{darkMode ? "Dark" : "Light"}</span>
+            </button>
+          </div>
         </header>
 
         {/* Content */}
@@ -924,6 +953,24 @@ const DevToolsApp = () => {
           )}
         </div>
       </main>
+
+      <CommandPalette
+        open={showCommandPalette}
+        tools={ALL_TOOLS}
+        favorites={favorites}
+        recents={recentToolIds}
+        onClose={closeCommandPalette}
+        onSelectTool={selectTool}
+      />
+
+      <ShortcutSettingsDialog
+        open={showShortcutSettings}
+        platform={platform}
+        bindings={shortcutBindings}
+        onClose={closeShortcutSettings}
+        onUpdateBinding={updateShortcutBinding}
+        onResetDefaults={resetShortcutBindings}
+      />
 
       {showWhatsNew && releaseNotes && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
