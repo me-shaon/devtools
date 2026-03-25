@@ -1,4 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import {
+  Suspense,
+  lazy,
+  startTransition,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type LazyExoticComponent,
+} from "react";
 import {
   Code,
   FileJson,
@@ -38,31 +47,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { JsonViewer } from "@/components/tools/JsonViewer";
-import { Base64Converter } from "@/components/tools/Base64Converter";
-import { UUIDGenerator } from "@/components/tools/UuidGenerator";
-import { HashGenerator } from "@/components/tools/HashGenerator";
-import { TextCompare } from "@/components/tools/TextCompare";
-import { CaseConverter } from "@/components/tools/CaseConverter";
-import { PasswordGenerator } from "@/components/tools/PasswordGenerator";
-import { JwtDecoder } from "@/components/tools/JwtDecoder";
-import { UrlEncoder } from "@/components/tools/UrlEncoder";
-import { TimestampConverter } from "@/components/tools/TimestampConverter";
-import { NumberBaseConverter } from "@/components/tools/NumberBaseConverter";
-import { CsvToJsonConverter } from "@/components/tools/CsvToJsonConverter";
-import { UnitConverter } from "@/components/tools/UnitConverter";
-import { ColorPalette } from "@/components/tools/ColorPalette";
-import { JsonToTypeScript } from "@/components/tools/JsonToTypeScript";
-import { LoremGenerator } from "@/components/tools/LoremGenerator";
-import { QrGenerator as QRGenerator } from "@/components/tools/QrGenerator";
-import { CronCalculator } from "@/components/tools/CronCalculator";
-import { DateDifference } from "@/components/tools/DateDifference";
-import { ApiFormatter } from "@/components/tools/ApiFormatter";
-import { CodePlayground } from "@/components/tools/CodePlayground";
-import { RegexGenerator } from "@/components/tools/RegexGenerator";
-import { ImageConverter } from "@/components/tools/ImageConverter";
-import { MarkdownEditor } from "@/components/tools/MarkdownEditor";
-import { BcryptGenerator } from "@/components/tools/BcryptGenerator";
 import {
   SYSTEM_THEME_QUERY,
   THEME_STORAGE_KEY,
@@ -71,6 +55,11 @@ import {
   resolveDarkMode,
   syncDarkClass,
 } from "@/utils/theme";
+
+const lazyNamed = <T extends Record<string, ComponentType>>(
+  loader: () => Promise<T>,
+  exportName: keyof T,
+) => lazy(() => loader().then((module) => ({ default: module[exportName] })));
 
 // All available tools
 const ALL_TOOLS = [
@@ -112,13 +101,60 @@ const ALL_TOOLS = [
 
   // Utilities
   { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities" },
-];
+] as const;
+
+type ToolDefinition = (typeof ALL_TOOLS)[number];
+type ToolId = ToolDefinition["id"];
 
 // Extract unique categories
 const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((t) => t.category))).map((name) => ({
   name,
   tools: ALL_TOOLS.filter((t) => t.category === name),
 }));
+const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
+
+const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  "json-viewer": lazyNamed(() => import("@/components/tools/JsonViewer"), "JsonViewer"),
+  "code-playground": lazyNamed(() => import("@/components/tools/CodePlayground"), "CodePlayground"),
+  "regex-generator": lazyNamed(() => import("@/components/tools/RegexGenerator"), "RegexGenerator"),
+  "json-typescript": lazyNamed(() => import("@/components/tools/JsonToTypeScript"), "JsonToTypeScript"),
+  "hash-generator": lazyNamed(() => import("@/components/tools/HashGenerator"), "HashGenerator"),
+  "uuid-generator": lazyNamed(() => import("@/components/tools/UuidGenerator"), "UUIDGenerator"),
+  "password-generator": lazyNamed(
+    () => import("@/components/tools/PasswordGenerator"),
+    "PasswordGenerator",
+  ),
+  "lorem-generator": lazyNamed(() => import("@/components/tools/LoremGenerator"), "LoremGenerator"),
+  "qr-generator": lazyNamed(() => import("@/components/tools/QrGenerator"), "QrGenerator"),
+  "bcrypt-generator": lazyNamed(() => import("@/components/tools/BcryptGenerator"), "BcryptGenerator"),
+  base64: lazyNamed(() => import("@/components/tools/Base64Converter"), "Base64Converter"),
+  "case-converter": lazyNamed(() => import("@/components/tools/CaseConverter"), "CaseConverter"),
+  "number-base": lazyNamed(
+    () => import("@/components/tools/NumberBaseConverter"),
+    "NumberBaseConverter",
+  ),
+  markdown: lazyNamed(() => import("@/components/tools/MarkdownEditor"), "MarkdownEditor"),
+  "url-encoder": lazyNamed(() => import("@/components/tools/UrlEncoder"), "UrlEncoder"),
+  "csv-json": lazyNamed(() => import("@/components/tools/CsvToJsonConverter"), "CsvToJsonConverter"),
+  timestamp: lazyNamed(
+    () => import("@/components/tools/TimestampConverter"),
+    "TimestampConverter",
+  ),
+  "date-difference": lazyNamed(
+    () => import("@/components/tools/DateDifference"),
+    "DateDifference",
+  ),
+  "cron-calculator": lazyNamed(
+    () => import("@/components/tools/CronCalculator"),
+    "CronCalculator",
+  ),
+  "color-palette": lazyNamed(() => import("@/components/tools/ColorPalette"), "ColorPalette"),
+  "image-converter": lazyNamed(() => import("@/components/tools/ImageConverter"), "ImageConverter"),
+  "text-compare": lazyNamed(() => import("@/components/tools/TextCompare"), "TextCompare"),
+  "jwt-decoder": lazyNamed(() => import("@/components/tools/JwtDecoder"), "JwtDecoder"),
+  "api-formatter": lazyNamed(() => import("@/components/tools/ApiFormatter"), "ApiFormatter"),
+  "unit-converter": lazyNamed(() => import("@/components/tools/UnitConverter"), "UnitConverter"),
+};
 
 const MAX_FAVORITES = 5;
 
@@ -133,7 +169,7 @@ const DevToolsApp = () => {
     getSystemDarkMode(typeof window !== "undefined" ? window.matchMedia.bind(window) : undefined)
   );
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
-  const [selectedTool, setSelectedTool] = useState<(typeof ALL_TOOLS)[number] | null>(null);
+  const [selectedTool, setSelectedTool] = useState<ToolDefinition | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const darkMode = resolveDarkMode(themePreference, systemDarkMode);
@@ -231,75 +267,48 @@ const DevToolsApp = () => {
 
   // Get favorite tool objects
   const favoriteTools = useMemo(() => {
-    return favorites.map((id) => ALL_TOOLS.find((t) => t.id === id)).filter(Boolean) as (typeof ALL_TOOLS)[number][];
+    return favorites
+      .map((id) => TOOL_BY_ID.get(id as ToolId))
+      .filter((tool): tool is ToolDefinition => Boolean(tool));
   }, [favorites]);
+
+  const selectTool = (tool: ToolDefinition | null) => {
+    startTransition(() => {
+      setSelectedTool(tool);
+    });
+  };
 
   // Render tool component based on selected tool
   const renderTool = () => {
     if (!selectedTool) return null;
 
-    switch (selectedTool.id) {
-      case "json-viewer":
-        return <JsonViewer />;
-      case "base64":
-        return <Base64Converter />;
-      case "uuid-generator":
-        return <UUIDGenerator />;
-      case "hash-generator":
-        return <HashGenerator />;
-      case "text-compare":
-        return <TextCompare />;
-      case "case-converter":
-        return <CaseConverter />;
-      case "password-generator":
-        return <PasswordGenerator />;
-      case "jwt-decoder":
-        return <JwtDecoder />;
-      case "url-encoder":
-        return <UrlEncoder />;
-      case "timestamp":
-        return <TimestampConverter />;
-      case "number-base":
-        return <NumberBaseConverter />;
-      case "csv-json":
-        return <CsvToJsonConverter />;
-      case "unit-converter":
-        return <UnitConverter />;
-      case "color-palette":
-        return <ColorPalette />;
-      case "json-typescript":
-        return <JsonToTypeScript />;
-      case "lorem-generator":
-        return <LoremGenerator />;
-      case "qr-generator":
-        return <QRGenerator />;
-      case "cron-calculator":
-        return <CronCalculator />;
-      case "date-difference":
-        return <DateDifference />;
-      case "api-formatter":
-        return <ApiFormatter />;
-      case "code-playground":
-        return <CodePlayground />;
-      case "regex-generator":
-        return <RegexGenerator />;
-      case "image-converter":
-        return <ImageConverter />;
-      case "markdown":
-        return <MarkdownEditor />;
-      case "bcrypt-generator":
-        return <BcryptGenerator />;
-      default:
-        return (
-          <div className="text-center py-12">
-            <Terminal className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-            <p className="text-muted-foreground">
-              The {selectedTool.name} is currently being implemented.
-            </p>
-          </div>
-        );
+    const SelectedToolComponent = TOOL_COMPONENTS[selectedTool.id];
+
+    if (!SelectedToolComponent) {
+      return (
+        <div className="text-center py-12">
+          <Terminal className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
+          <p className="text-muted-foreground">
+            The {selectedTool.name} is currently being implemented.
+          </p>
+        </div>
+      );
     }
+
+    return (
+      <Suspense
+        fallback={
+          <div className="py-12 text-center">
+            <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin text-[#EB5757]" />
+            <h3 className="text-lg font-medium mb-2">Loading {selectedTool.name}</h3>
+            <p className="text-muted-foreground">Preparing the tool interface...</p>
+          </div>
+        }
+      >
+        <SelectedToolComponent />
+      </Suspense>
+    );
   };
 
   // Theme colors
@@ -332,7 +341,7 @@ const DevToolsApp = () => {
       };
 
   // Tool button component
-  const ToolButton = ({ tool, showFavorite = false }: { tool: (typeof ALL_TOOLS)[number]; showFavorite?: boolean }) => {
+  const ToolButton = ({ tool, showFavorite = false }: { tool: ToolDefinition; showFavorite?: boolean }) => {
     const isFavorite = favorites.includes(tool.id);
     const isSelected = selectedTool?.id === tool.id;
 
@@ -343,7 +352,7 @@ const DevToolsApp = () => {
             ? `${theme.active} ${theme.text}`
             : `${theme.textDim} ${theme.hover}`
         }`}
-        onClick={() => setSelectedTool(tool)}
+        onClick={() => selectTool(tool)}
       >
         <tool.icon className="w-4 h-4 shrink-0" />
         <span className="flex-1 text-left truncate">{tool.name}</span>
@@ -421,7 +430,7 @@ const DevToolsApp = () => {
                   ? `${theme.active} ${theme.text}`
                   : `${theme.textDim} ${theme.hover}`
               }`}
-              onClick={() => setSelectedTool(null)}
+              onClick={() => selectTool(null)}
             >
               <Home className="w-4 h-4" />
               <span>Home</span>
@@ -563,7 +572,7 @@ const DevToolsApp = () => {
                   {ALL_TOOLS.slice(0, 6).map((tool) => (
                     <button
                       key={tool.id}
-                      onClick={() => setSelectedTool(tool)}
+                      onClick={() => selectTool(tool)}
                       className={`flex items-center gap-3 p-3 md:p-4 ${theme.card} rounded-lg border ${theme.border} text-left hover:border-[#EB5757]/50 transition-all`}
                     >
                       <div
