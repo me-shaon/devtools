@@ -419,7 +419,7 @@ const DevToolsApp = () => {
           ? `Version ${updateState.version} is available.`
           : "An update is available.";
       case "not-available":
-        return "You're up to date.";
+        return "";
       case "downloading":
         return updateState.progress
           ? `Downloading update: ${Math.round(updateState.progress)}%`
@@ -733,42 +733,44 @@ const DevToolsApp = () => {
         </nav>
 
         <div className={`px-3 py-2.5 ${theme.border} border-t`}>
-          <div className="space-y-1.5">
-            <p className={`text-xs ${theme.textMuted}`}>
+          <div className="space-y-1">
+            <p className={`text-center text-xs ${theme.textMuted}`}>
               Version {appVersion ? `v${appVersion}` : "Loading..."}
             </p>
             {updateStatusLabel && (
-              <p className={`text-[11px] leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
+              <p className={`text-center text-[11px] leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={`h-7 w-auto justify-start rounded-md border px-2.5 text-xs font-medium ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} hover:${theme.text}`}
-              onClick={handleUpdateAction}
-              disabled={updateState.status === "checking" || updateState.status === "downloading"}
-            >
-              <RefreshCw
-                className={`mr-1.5 h-3.5 w-3.5 ${
-                  updateState.status === "checking" || updateState.status === "downloading"
-                    ? "animate-spin"
-                    : ""
-                }`}
-              />
-              {updateButtonLabel}
-            </Button>
-            {releaseNotes && (
-              <button
+            <div className="flex flex-col items-center gap-1.5 pt-0.5">
+              <Button
                 type="button"
-                onClick={openWhatsNew}
-                className={`inline-flex items-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                variant="ghost"
+                size="sm"
+                className={`h-7 w-auto justify-start rounded-md border px-2.5 text-xs font-medium ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} hover:${theme.text}`}
+                onClick={handleUpdateAction}
+                disabled={updateState.status === "checking" || updateState.status === "downloading"}
               >
-                <span>What's New</span>
-                {hasUnreadWhatsNew && (
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#EB5757]" aria-hidden="true" />
-                )}
-              </button>
-            )}
+                <RefreshCw
+                  className={`mr-1.5 h-3.5 w-3.5 ${
+                    updateState.status === "checking" || updateState.status === "downloading"
+                      ? "animate-spin"
+                      : ""
+                  }`}
+                />
+                {updateButtonLabel}
+              </Button>
+              {releaseNotes && (
+                <button
+                  type="button"
+                  onClick={openWhatsNew}
+                  className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                >
+                  <span>What's New</span>
+                  {hasUnreadWhatsNew && (
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#EB5757]" aria-hidden="true" />
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </aside>
@@ -951,7 +953,7 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground ${theme.textMuted}`}
+              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:mb-2 prose-headings:text-inherit prose-h2:text-sm prose-h2:font-semibold prose-h2:uppercase prose-h2:tracking-wide prose-p:my-2 prose-p:text-[13px] prose-p:leading-6 prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground prose-ul:my-2 prose-ul:list-disc prose-ul:pl-5 prose-li:my-1 prose-li:text-[13px] prose-li:leading-6 ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
