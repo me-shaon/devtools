@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, dialog, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -11,9 +11,23 @@ const __dirname = dirname(__filename);
 const appName = app.getName();
 
 let win: BrowserWindow | null = null;
-let tray: Tray | null = null;
+let updateCheckTimeout: NodeJS.Timeout | null = null;
 
 const isDev = !app.isPackaged;
+
+function scheduleUpdateCheck() {
+  if (isDev || updateCheckTimeout) {
+    return;
+  }
+
+  // Let the renderer settle before starting network/update work.
+  updateCheckTimeout = setTimeout(() => {
+    updateCheckTimeout = null;
+    autoUpdater.checkForUpdates().catch((error) => {
+      console.error("Auto-updater check failed:", error);
+    });
+  }, 15000);
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -32,6 +46,7 @@ function createWindow() {
   // Show window when ready to prevent visual flash
   win.once("ready-to-show", () => {
     win?.show();
+    scheduleUpdateCheck();
   });
 
   const url = isDev
@@ -57,11 +72,7 @@ function createWindow() {
 }
 
 function createTray() {
-  // Note: You'll need to add a tray icon at src-electron/assets/tray.png
-  // For now, we'll skip tray creation if the icon doesn't exist
-  const trayIconPath = path.join(__dirname, "assets/tray.png");
-
-  // Only create tray if icon exists (we can add this later)
+  // Placeholder for future tray support.
   // tray = new Tray(trayIconPath);
   // tray.setToolTip("DevTools");
   // tray.on("click", () => {
@@ -80,10 +91,6 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
-
-  if (!isDev) {
-    autoUpdater.checkForUpdates();
-  }
 });
 
 app.on("window-all-closed", () => {
@@ -95,6 +102,13 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  }
+});
+
+app.on("before-quit", () => {
+  if (updateCheckTimeout) {
+    clearTimeout(updateCheckTimeout);
+    updateCheckTimeout = null;
   }
 });
 
