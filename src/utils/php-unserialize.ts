@@ -27,11 +27,18 @@ class PhpUnserializeError extends Error {
 /** Recursive-descent parser for the PHP serialize format. */
 class Parser {
   private pos = 0;
+  private readonly parsedValues: PhpValue[] = [];
+  private readonly utf8Encoder = new TextEncoder();
 
   constructor(private input: string) {}
 
   parse(): PhpValue {
     const value = this.readValue();
+    if (this.pos !== this.input.length) {
+      throw new PhpUnserializeError(
+        `Unexpected trailing characters at position ${this.pos}`,
+      );
+    }
     return value;
   }
 
@@ -89,7 +96,7 @@ class Parser {
     return this.input.slice(start, this.pos);
   }
 
-  private readString(): PhpValue {
+  private readString(registerValue: boolean = true): PhpValue {
     this.expect("s");
     this.expect(":");
     const lenStr = this.readUntil(":");
@@ -99,14 +106,17 @@ class Parser {
     }
     this.expect(":");
     this.expect('"');
-    const value = this.input.slice(this.pos, this.pos + len);
-    this.pos += len;
+    const value = this.readUtf8ByteLengthString(len);
     this.expect('"');
     this.expect(";");
-    return { type: "string", value };
+    const parsed: PhpValue = { type: "string", value };
+    if (registerValue) {
+      this.parsedValues.push(parsed);
+    }
+    return parsed;
   }
 
-  private readInt(): PhpValue {
+  private readInt(registerValue: boolean = true): PhpValue {
     this.expect("i");
     this.expect(":");
     const numStr = this.readUntil(";");
@@ -115,7 +125,11 @@ class Parser {
     if (isNaN(value)) {
       throw new PhpUnserializeError(`Invalid integer value: "${numStr}"`);
     }
-    return { type: "int", value };
+    const parsed: PhpValue = { type: "int", value };
+    if (registerValue) {
+      this.parsedValues.push(parsed);
+    }
+    return parsed;
   }
 
   private readFloat(): PhpValue {
@@ -134,7 +148,9 @@ class Parser {
         throw new PhpUnserializeError(`Invalid float value: "${numStr}"`);
       }
     }
-    return { type: "float", value };
+    const parsed: PhpValue = { type: "float", value };
+    this.parsedValues.push(parsed);
+    return parsed;
   }
 
   private readBool(): PhpValue {
@@ -145,13 +161,17 @@ class Parser {
     if (val !== "0" && val !== "1") {
       throw new PhpUnserializeError(`Invalid boolean value: "${val}"`);
     }
-    return { type: "bool", value: val === "1" };
+    const parsed: PhpValue = { type: "bool", value: val === "1" };
+    this.parsedValues.push(parsed);
+    return parsed;
   }
 
   private readNull(): PhpValue {
     this.expect("N");
     this.expect(";");
-    return { type: "null" };
+    const parsed: PhpValue = { type: "null" };
+    this.parsedValues.push(parsed);
+    return parsed;
   }
 
   private readArray(): PhpValue {
@@ -165,15 +185,22 @@ class Parser {
     this.expect(":");
     this.expect("{");
 
+    const parsed: { type: "array"; entries: Array<{ key: PhpValue; value: PhpValue }> } = {
+      type: "array",
+      entries: [],
+    };
+    this.parsedValues.push(parsed);
+
     const entries: Array<{ key: PhpValue; value: PhpValue }> = [];
     for (let i = 0; i < count; i++) {
-      const key = this.readValue();
+      const key = this.readArrayKey();
       const value = this.readValue();
       entries.push({ key, value });
     }
 
     this.expect("}");
-    return { type: "array", entries };
+    parsed.entries = entries;
+    return parsed;
   }
 
   private readObject(): PhpValue {
@@ -202,15 +229,27 @@ class Parser {
     this.expect(":");
     this.expect("{");
 
+    const parsed: {
+      type: "object";
+      className: string;
+      properties: Array<{ key: PhpValue; value: PhpValue }>;
+    } = {
+      type: "object",
+      className,
+      properties: [],
+    };
+    this.parsedValues.push(parsed);
+
     const properties: Array<{ key: PhpValue; value: PhpValue }> = [];
     for (let i = 0; i < count; i++) {
-      const key = this.readValue();
+      const key = this.readObjectKey();
       const value = this.readValue();
       properties.push({ key, value });
     }
 
     this.expect("}");
-    return { type: "object", className, properties };
+    parsed.properties = properties;
+    return parsed;
   }
 
   private readReference(): PhpValue {
@@ -218,7 +257,74 @@ class Parser {
     this.expect(":");
     const refStr = this.readUntil(";");
     this.expect(";");
-    return { type: "int", value: parseInt(refStr, 10) };
+    const refIndex = parseInt(refStr, 10);
+    if (isNaN(refIndex) || refIndex < 1) {
+      throw new PhpUnserializeError(`Invalid reference index: "${refStr}"`);
+    }
+
+    const referencedValue = this.parsedValues[refIndex - 1];
+    if (!referencedValue) {
+      throw new PhpUnserializeError(
+        `Reference index ${refIndex} does not exist`,
+      );
+    }
+
+    return referencedValue;
+  }
+
+  private readUtf8ByteLengthString(byteLength: number): string {
+    const start = this.pos;
+    let consumedBytes = 0;
+
+    while (consumedBytes < byteLength) {
+      if (this.pos >= this.input.length) {
+        throw new PhpUnserializeError(
+          "Unexpected end of input while reading string bytes",
+        );
+      }
+
+      const codePoint = this.input.codePointAt(this.pos);
+      if (codePoint === undefined) {
+        throw new PhpUnserializeError("Invalid string code point");
+      }
+
+      const char = String.fromCodePoint(codePoint);
+      const charByteLength = this.utf8Encoder.encode(char).length;
+      consumedBytes += charByteLength;
+      this.pos += char.length;
+    }
+
+    if (consumedBytes !== byteLength) {
+      throw new PhpUnserializeError(
+        `String byte length mismatch. Expected ${byteLength}, got ${consumedBytes}`,
+      );
+    }
+
+    return this.input.slice(start, this.pos);
+  }
+
+  private readArrayKey(): PhpValue {
+    const keyType = this.input[this.pos];
+    switch (keyType) {
+      case "i":
+        return this.readInt(false);
+      case "s":
+        return this.readString(false);
+      default:
+        throw new PhpUnserializeError(
+          `Invalid array key type "${keyType}" at position ${this.pos}`,
+        );
+    }
+  }
+
+  private readObjectKey(): PhpValue {
+    const keyType = this.input[this.pos];
+    if (keyType !== "s") {
+      throw new PhpUnserializeError(
+        `Invalid object property key type "${keyType}" at position ${this.pos}`,
+      );
+    }
+    return this.readString(false);
   }
 }
 
@@ -245,9 +351,24 @@ export function isValidSerialized(input: string): boolean {
 }
 
 function keyToString(key: PhpValue): string {
-  if (key.type === "int") return String(key.value);
-  if (key.type === "string") return key.value;
-  return String((key as { value?: unknown }).value ?? "");
+  switch (key.type) {
+    case "int":
+      return String(key.value);
+    case "string":
+      return key.value;
+    case "bool":
+      return key.value ? "1" : "0";
+    case "null":
+      return "";
+    case "float":
+      return String(Math.trunc(key.value));
+    default:
+      return "";
+  }
+}
+
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).length;
 }
 
 /** Formats a PhpValue tree as PHP print_r() output. */
@@ -273,28 +394,20 @@ export function formatPrintR(value: PhpValue, indent: number = 0): string {
       for (const entry of value.entries) {
         const k = keyToString(entry.key);
         const v = formatPrintR(entry.value, indent + 2);
-        if (entry.value.type === "array" || entry.value.type === "object") {
-          result += `${innerPad}[${k}] => ${v}\n\n`;
-        } else {
-          result += `${innerPad}[${k}] => ${v}\n`;
-        }
+        result += `${innerPad}[${k}] => ${v}\n`;
       }
       result += `${pad})`;
-      return result;
+      return indent > 0 ? `${result}\n` : result;
     }
     case "object": {
       let result = `${value.className} Object\n${pad}(\n`;
       for (const prop of value.properties) {
         const k = keyToString(prop.key);
         const v = formatPrintR(prop.value, indent + 2);
-        if (prop.value.type === "array" || prop.value.type === "object") {
-          result += `${innerPad}[${k}] => ${v}\n\n`;
-        } else {
-          result += `${innerPad}[${k}] => ${v}\n`;
-        }
+        result += `${innerPad}[${k}] => ${v}\n`;
       }
       result += `${pad})`;
-      return result;
+      return indent > 0 ? `${result}\n` : result;
     }
   }
 }
@@ -306,7 +419,7 @@ export function formatVarDump(value: PhpValue, indent: number = 0): string {
 
   switch (value.type) {
     case "string":
-      return `${pad}string(${value.value.length}) "${value.value}"`;
+      return `${pad}string(${utf8ByteLength(value.value)}) "${value.value}"`;
     case "int":
       return `${pad}int(${value.value})`;
     case "float":

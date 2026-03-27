@@ -97,26 +97,22 @@ export function PhpUnserializer() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-md border">
-            <button
+            <Button
               onClick={() => setFormat("print_r")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-l-md transition-colors ${
-                format === "print_r"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-foreground hover:bg-muted"
-              }`}
+              variant={format === "print_r" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-r-none border-r"
             >
               print_r()
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setFormat("var_dump")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-r-md border-l transition-colors ${
-                format === "var_dump"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-foreground hover:bg-muted"
-              }`}
+              variant={format === "var_dump" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-l-none"
             >
               var_dump()
-            </button>
+            </Button>
           </div>
         </div>
 

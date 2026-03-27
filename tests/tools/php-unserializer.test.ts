@@ -18,6 +18,11 @@ describe("PHP Unserialize Utils", () => {
       expect(result).toEqual({ type: "string", value: "" });
     });
 
+    it("should parse multi-byte UTF-8 strings by byte length", () => {
+      const result = phpUnserialize('s:4:"😊";');
+      expect(result).toEqual({ type: "string", value: "😊" });
+    });
+
     it("should parse an integer", () => {
       const result = phpUnserialize("i:42;");
       expect(result).toEqual({ type: "int", value: 42 });
@@ -148,6 +153,40 @@ describe("PHP Unserialize Utils", () => {
       });
     });
 
+    it("should resolve uppercase references to prior values", () => {
+      const result = phpUnserialize('a:2:{s:1:"x";s:3:"foo";s:1:"y";R:2;}');
+      expect(result).toEqual({
+        type: "array",
+        entries: [
+          {
+            key: { type: "string", value: "x" },
+            value: { type: "string", value: "foo" },
+          },
+          {
+            key: { type: "string", value: "y" },
+            value: { type: "string", value: "foo" },
+          },
+        ],
+      });
+    });
+
+    it("should resolve lowercase references to prior values", () => {
+      const result = phpUnserialize('a:2:{s:1:"x";s:3:"foo";s:1:"y";r:2;}');
+      expect(result).toEqual({
+        type: "array",
+        entries: [
+          {
+            key: { type: "string", value: "x" },
+            value: { type: "string", value: "foo" },
+          },
+          {
+            key: { type: "string", value: "y" },
+            value: { type: "string", value: "foo" },
+          },
+        ],
+      });
+    });
+
     it("should throw error for empty input", () => {
       expect(() => phpUnserialize("")).toThrow(
         "Please enter a serialized PHP string.",
@@ -163,6 +202,12 @@ describe("PHP Unserialize Utils", () => {
 
     it("should throw error for malformed string", () => {
       expect(() => phpUnserialize("s:99:\"short\";")).toThrow();
+    });
+
+    it("should throw error for invalid reference index", () => {
+      expect(() =>
+        phpUnserialize('a:1:{s:1:"x";R:99;}'),
+      ).toThrow("Reference index 99 does not exist");
     });
   });
 
@@ -247,6 +292,11 @@ describe("PHP Unserialize Utils", () => {
       expect(formatVarDump(parsed)).toBe('string(5) "hello"');
     });
 
+    it("should format UTF-8 string length in bytes", () => {
+      const parsed = phpUnserialize('s:4:"😊";');
+      expect(formatVarDump(parsed)).toBe('string(4) "😊"');
+    });
+
     it("should format an integer with type", () => {
       const parsed = phpUnserialize("i:42;");
       expect(formatVarDump(parsed)).toBe("int(42)");
@@ -312,6 +362,36 @@ describe("PHP Unserialize Utils", () => {
       expect(result).toContain('string(5) "Alice"');
       expect(result).toContain('["age"]=>');
       expect(result).toContain("int(30)");
+    });
+
+    it("should normalize non-standard key value types consistently", () => {
+      const parsed = {
+        type: "array",
+        entries: [
+          {
+            key: { type: "bool", value: true },
+            value: { type: "string", value: "one" },
+          },
+          {
+            key: { type: "null" },
+            value: { type: "string", value: "empty" },
+          },
+          {
+            key: { type: "float", value: 3.9 },
+            value: { type: "string", value: "three" },
+          },
+        ],
+      } as const;
+
+      const printR = formatPrintR(parsed);
+      expect(printR).toContain("[1] => one");
+      expect(printR).toContain("[] => empty");
+      expect(printR).toContain("[3] => three");
+
+      const varDump = formatVarDump(parsed);
+      expect(varDump).toContain("[\"1\"]=>");
+      expect(varDump).toContain("[\"\"]=>");
+      expect(varDump).toContain("[\"3\"]=>");
     });
   });
 });
