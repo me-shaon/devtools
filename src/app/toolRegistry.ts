@@ -7,6 +7,7 @@ import {
   Clock,
   Code,
   Database,
+  FileCode2,
   FileJson,
   FileText,
   Globe,
@@ -35,6 +36,7 @@ export const ALL_TOOLS = [
   { icon: Code, name: "Code Playground", id: "code-playground", category: "Development Tools" },
   { icon: Terminal, name: "Regex Generator", id: "regex-generator", category: "Development Tools" },
   { icon: Type, name: "JSON to TypeScript", id: "json-typescript", category: "Development Tools" },
+  { icon: FileCode2, name: "PHP Unserializer", id: "php-unserializer", category: "Development Tools" },
   { icon: Hash, name: "Hash Generator", id: "hash-generator", category: "Generators" },
   { icon: Key, name: "UUID Generator", id: "uuid-generator", category: "Generators" },
   { icon: Lock, name: "Password Generator", id: "password-generator", category: "Generators" },
@@ -91,6 +93,10 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   markdown: lazyNamed(() => import("@/components/tools/MarkdownEditor"), "MarkdownEditor"),
   "url-encoder": lazyNamed(() => import("@/components/tools/UrlEncoder"), "UrlEncoder"),
   "csv-json": lazyNamed(() => import("@/components/tools/CsvToJsonConverter"), "CsvToJsonConverter"),
+  "php-unserializer": lazyNamed(
+    () => import("@/components/tools/PhpUnserializer"),
+    "PhpUnserializer",
+  ),
   timestamp: lazyNamed(
     () => import("@/components/tools/TimestampConverter"),
     "TimestampConverter",
