@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { formatResult } from "@/utils/unit-converter";
 
 interface ConversionUnit {
   name: string;
@@ -101,11 +102,7 @@ export function UnitConverter() {
       const baseValue = from.toBase(value);
       const result = to.fromBase(baseValue);
 
-      if (Number.isInteger(result)) {
-        setToValue(result.toString());
-      } else {
-        setToValue(result.toFixed(6).replace(/\.?0+$/, ""));
-      }
+      setToValue(formatResult(result));   
     } catch (err) {
       console.error("Conversion error:", err);
       setToValue("");
@@ -209,8 +206,10 @@ export function UnitConverter() {
 
           <div className="p-4 bg-muted rounded-lg text-center">
             <p className="text-sm text-muted-foreground">
-              {fromValue}{currentConversion.units[fromUnit]?.name && ` ${currentConversion.units[fromUnit].name}`} ={" "}
-              {toValue}{currentConversion.units[toUnit]?.name && ` ${currentConversion.units[toUnit].name}`}
+              {fromValue}
+              {currentConversion.units[fromUnit]?.name && ` ${currentConversion.units[fromUnit].name}`} ={" "}
+              {toValue}
+              {currentConversion.units[toUnit]?.name && ` ${currentConversion.units[toUnit].name}`}
             </p>
           </div>
         </CardContent>
