@@ -209,8 +209,8 @@ export function UnitConverter() {
 
           <div className="p-4 bg-muted rounded-lg text-center">
             <p className="text-sm text-muted-foreground">
-              {fromValue} {currentConversion.units[fromUnit]?.name || ""} ={" "}
-              {toValue} {currentConversion.units[toUnit]?.name || ""}
+              {fromValue}{currentConversion.units[fromUnit]?.name && ` ${currentConversion.units[fromUnit].name}`} ={" "}
+              {toValue}{currentConversion.units[toUnit]?.name && ` ${currentConversion.units[toUnit].name}`}
             </p>
           </div>
         </CardContent>
