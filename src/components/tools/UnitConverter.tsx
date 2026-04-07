@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { formatResult } from "@/utils/unit-converter";
 
 interface ConversionUnit {
   name: string;
@@ -72,8 +73,14 @@ export function UnitConverter() {
   const currentConversion = conversions[category];
 
   useEffect(() => {
-    setFromUnit(Object.keys(currentConversion.units)[0]);
-    setToUnit(Object.keys(currentConversion.units)[1] || Object.keys(currentConversion.units)[0]);
+    const unitKeys = Object.keys(currentConversion.units);
+    if (unitKeys.length > 0) {
+      const newFrom = unitKeys[0];
+      const newTo = unitKeys.length > 1 ? unitKeys[1] : unitKeys[0];
+
+      setFromUnit(newFrom);
+      setToUnit(newTo);
+    }
   }, [category]);
 
   useEffect(() => {
@@ -82,19 +89,23 @@ export function UnitConverter() {
       return;
     }
 
-    const value = parseFloat(fromValue);
-    const from = currentConversion.units[fromUnit];
-    const to = currentConversion.units[toUnit];
+    try {
+      const value = parseFloat(fromValue);
+      const from = currentConversion.units[fromUnit];
+      const to = currentConversion.units[toUnit];
 
-    // Convert to base unit, then to target unit
-    const baseValue = from.toBase(value);
-    const result = to.fromBase(baseValue);
+      if (!from || !to) {
+        setToValue("");
+        return;
+      }
 
-    // Format the result
-    if (Number.isInteger(result)) {
-      setToValue(result.toString());
-    } else {
-      setToValue(result.toFixed(6).replace(/\.?0+$/, ""));
+      const baseValue = from.toBase(value);
+      const result = to.fromBase(baseValue);
+
+      setToValue(formatResult(result));   
+    } catch (err) {
+      console.error("Conversion error:", err);
+      setToValue("");
     }
   }, [fromValue, fromUnit, toUnit, category]);
 
@@ -123,7 +134,7 @@ export function UnitConverter() {
               </SelectTrigger>
               <SelectContent>
                 {Object.values(conversions).map((conv) => (
-                  <SelectItem key={conv.category} value={conv.category.toLowerCase()}>
+                  <SelectItem key={conv.category.toLowerCase()} value={conv.category.toLowerCase()}>
                     {conv.category}
                   </SelectItem>
                 ))}
@@ -195,7 +206,10 @@ export function UnitConverter() {
 
           <div className="p-4 bg-muted rounded-lg text-center">
             <p className="text-sm text-muted-foreground">
-              {fromValue} {currentConversion.units[fromUnit].name} = {toValue} {currentConversion.units[toUnit].name}
+              {fromValue}
+              {currentConversion.units[fromUnit]?.name && ` ${currentConversion.units[fromUnit].name}`} ={" "}
+              {toValue}
+              {currentConversion.units[toUnit]?.name && ` ${currentConversion.units[toUnit].name}`}
             </p>
           </div>
         </CardContent>
