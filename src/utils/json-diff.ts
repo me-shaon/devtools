@@ -17,6 +17,8 @@ export interface JsonDiffOptions {
   maxEntries?: number;
 }
 
+export const MAX_DIFF_ENTRIES = 10000;
+
 const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 function isObjectLike(value: unknown): value is Record<string, unknown> {
@@ -29,7 +31,7 @@ function formatObjectKey(key: string): string {
 
 function appendPath(parent: string, segment: string): string {
   if (parent === "$") {
-    return segment.startsWith("[") ? `$${segment}` : `$${segment}`;
+    return `$${segment}`;
   }
 
   return `${parent}${segment}`;
@@ -41,7 +43,7 @@ export function diffJsonValues(
   options: JsonDiffOptions = {},
 ): JsonDiffResult {
   const includeUnchanged = options.includeUnchanged ?? true;
-  const maxEntries = options.maxEntries ?? 5000;
+  const maxEntries = options.maxEntries ?? MAX_DIFF_ENTRIES;
   const entries: JsonDiffEntry[] = [];
   let truncated = false;
 

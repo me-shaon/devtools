@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { diffJsonValues, formatDiffValue, type JsonDiffEntry } from "@/utils/json-diff";
+import { diffJsonValues, formatDiffValue, MAX_DIFF_ENTRIES, type JsonDiffEntry, } from "@/utils/json-diff";
 
 const SAMPLE_ORIGINAL = JSON.stringify(
   {
@@ -103,21 +103,25 @@ export function JsonDiffViewer() {
       return;
     }
 
-    let parsedOriginal: unknown;
-    let parsedModified: unknown;
+    let parsedOriginal: unknown = null;
+    let parsedModified: unknown = null;
     let validationFailed = false;
 
     try {
-      parsedOriginal = JSON.parse(originalInput);
-      setOriginalInput(JSON.stringify(parsedOriginal, null, 2));
+      if (originalInput.trim()) {
+        parsedOriginal = JSON.parse(originalInput);
+        setOriginalInput(JSON.stringify(parsedOriginal, null, 2));
+      }
     } catch (error) {
       setOriginalError(`Invalid JSON: ${getErrorMessage(error)}`);
       validationFailed = true;
     }
 
     try {
-      parsedModified = JSON.parse(modifiedInput);
-      setModifiedInput(JSON.stringify(parsedModified, null, 2));
+      if (modifiedInput.trim()) {
+        parsedModified = JSON.parse(modifiedInput);
+        setModifiedInput(JSON.stringify(parsedModified, null, 2));
+      }
     } catch (error) {
       setModifiedError(`Invalid JSON: ${getErrorMessage(error)}`);
       validationFailed = true;
@@ -134,7 +138,7 @@ export function JsonDiffViewer() {
       setTimeout(() => {
         const result = diffJsonValues(parsedOriginal, parsedModified, {
           includeUnchanged: true,
-          maxEntries: 10000,
+          maxEntries: MAX_DIFF_ENTRIES,
         });
 
         setEntries(result.entries);
@@ -315,7 +319,7 @@ export function JsonDiffViewer() {
 
             {truncated && (
               <p className="text-sm text-muted-foreground">
-                Result limit reached. Showing the first 10,000 entries.
+                Result limit reached. Showing the first {MAX_DIFF_ENTRIES.toLocaleString()} entries.
               </p>
             )}
           </CardHeader>
