@@ -10,6 +10,7 @@ import {
   FileJson,
   FileText,
   Globe,
+  GitCompare,
   Hash,
   Image as ImageIcon,
   Key,
@@ -32,6 +33,7 @@ const lazyNamed = <T extends Record<string, ComponentType>>(
 
 export const ALL_TOOLS = [
   { icon: FileJson, name: "JSON Viewer", id: "json-viewer", category: "Development Tools" },
+  { icon: GitCompare, name: "JSON Diff Viewer", id: "json-diff-viewer", category: "Development Tools" },
   { icon: Code, name: "Code Playground", id: "code-playground", category: "Development Tools" },
   { icon: Terminal, name: "Regex Generator", id: "regex-generator", category: "Development Tools" },
   { icon: Type, name: "JSON to TypeScript", id: "json-typescript", category: "Development Tools" },
@@ -70,6 +72,7 @@ export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) =
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
   "json-viewer": lazyNamed(() => import("@/components/tools/JsonViewer"), "JsonViewer"),
+  "json-diff-viewer": lazyNamed(() => import("@/components/tools/JsonDiffViewer"), "JsonDiffViewer"),
   "code-playground": lazyNamed(() => import("@/components/tools/CodePlayground"), "CodePlayground"),
   "regex-generator": lazyNamed(() => import("@/components/tools/RegexGenerator"), "RegexGenerator"),
   "json-typescript": lazyNamed(() => import("@/components/tools/JsonToTypeScript"), "JsonToTypeScript"),
