@@ -22,6 +22,10 @@ percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[features]
+# Test-only behaviour for the end-to-end smoke test. Release builds never enable it.
+e2e = []
+
 [profile.release]
 codegen-units = 1
 lto = true

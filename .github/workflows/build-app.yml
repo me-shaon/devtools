@@ -32,6 +32,7 @@ jobs:
             arch: x64
             target: x86_64-pc-windows-msvc
             bundles: nsis
+            e2e: true
           - os: ubuntu-22.04
             platform: linux
             arch: x64
@@ -43,6 +44,7 @@ jobs:
             arch: arm64
             target: aarch64-unknown-linux-gnu
             bundles: appimage,deb,rpm
+            e2e: true
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -137,16 +139,15 @@ jobs:
           --bundle-dir src-tauri/target/${{ matrix.target }}/release/bundle
           --out release
 
-      - name: Install tauri-driver
-        if: matrix.e2e
-        run: cargo install tauri-driver --locked
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: devtools-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release/*
+          retention-days: 30
+          if-no-files-found: error
 
-      - name: Run end-to-end smoke test (Linux)
-        if: matrix.e2e && runner.os == 'Linux'
-        run: xvfb-run -a node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp
-
-      - name: Check that the app starts (Windows)
-        # tauri-driver cannot attach to WebView2 here, so check that the app starts and opens its window.
+      - name: Check that the shipped app starts (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -158,6 +159,54 @@ jobs:
           if ($app.MainWindowTitle -ne "DevToolsApp") { throw "The DevToolsApp window did not open" }
           Stop-Process -Id $app.Id
 
+      - name: Check that the shipped app starts (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/DevToolsApp.app/Contents/MacOS/DevToolsApp"
+          "$app" &
+          pid=$!
+          sleep 15
+          kill -0 "$pid" || { echo "DevToolsApp exited early"; exit 1; }
+          swift e2e/check-window.swift "$pid"
+          kill "$pid"
+
+      - name: Run Rust unit tests
+        if: matrix.e2e
+        run: cargo test --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }}
+
+      # The e2e build saves files to a test folder instead of the native dialog.
+      # On Windows it also opens a WebView2 debugging port for msedgedriver.
+      - name: Build app for end-to-end test
+        if: matrix.e2e
+        run: >
+          npx tauri build --target ${{ matrix.target }} --no-bundle
+          --features e2e --config e2e/tauri.e2e.conf.json
+
+      - name: Install tauri-driver
+        if: matrix.e2e && runner.os == 'Linux'
+        run: cargo install tauri-driver --locked
+
+      - name: Install msedgedriver
+        if: matrix.e2e && runner.os == 'Windows'
+        shell: pwsh
+        # msedgedriver must have the same version as the WebView2 runtime.
+        run: |
+          $key = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          $version = (Get-ItemProperty -Path $key).pv
+          Write-Host "WebView2 runtime version: $version"
+          $dir = Join-Path $env:RUNNER_TEMP "msedgedriver"
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$version/edgedriver_win64.zip" -OutFile "$dir.zip"
+          Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+          "NATIVE_DRIVER=$dir\msedgedriver.exe" >> $env:GITHUB_ENV
+
+      - name: Run end-to-end smoke test (Linux)
+        if: matrix.e2e && runner.os == 'Linux'
+        run: xvfb-run -a node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp
+
+      - name: Run end-to-end smoke test (Windows)
+        if: matrix.e2e && runner.os == 'Windows'
+        run: node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
+
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
         uses: actions/upload-artifact@v4
@@ -166,11 +215,3 @@ jobs:
           path: e2e/screenshots
           retention-days: 7
           if-no-files-found: ignore
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: devtools-${{ matrix.platform }}-${{ matrix.arch }}
-          path: release/*
-          retention-days: 30
-          if-no-files-found: error
