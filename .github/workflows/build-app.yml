@@ -173,15 +173,17 @@ jobs:
 
           gh release download v1.3.0 --repo "${{ github.repository }}" --pattern "DevToolsApp-windows-setup.exe" --dir "$env:RUNNER_TEMP\electron"
           Start-Process "$env:RUNNER_TEMP\electron\DevToolsApp-windows-setup.exe" -ArgumentList "/S" -Wait
-          Start-Sleep -Seconds 10
+          # The one-click installer can hand off to a child process, so wait for the files to appear.
+          $electronDir = Join-Path $env:LOCALAPPDATA "Programs\devtools"
+          $deadline = (Get-Date).AddMinutes(2)
+          while (-not ((Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe")) -and (Get-DevToolsEntries))) {
+            if ((Get-Date) -gt $deadline) { throw "The Electron version did not install to $electronDir" }
+            Start-Sleep -Seconds 2
+          }
+          Start-Sleep -Seconds 5
           Get-Process DevToolsApp -ErrorAction SilentlyContinue | Stop-Process -Force
           Write-Host "Before the upgrade:"
-          $electron = Get-DevToolsEntries
-          $electron | Format-List PSPath, DisplayName, DisplayVersion, UninstallString
-          $electronDir = Join-Path $env:LOCALAPPDATA "Programs\devtools"
-          if (-not (Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe"))) {
-            throw "The Electron version did not install to $electronDir"
-          }
+          Get-DevToolsEntries | Format-List PSPath, DisplayName, DisplayVersion, UninstallString
           Get-Content (Join-Path $electronDir "resources\app-update.yml")
 
           # electron-updater starts the new installer with --updated. CI adds /S to skip the wizard.
