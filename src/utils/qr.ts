@@ -31,7 +31,7 @@ export function generateQrCode(data: string, options: QrOptions = {}): string {
   const pattern = generatePattern(hash, size, margin);
 
   // Return as data URL (simplified QR code representation)
-  return `data:image/svg+xml;base64,${btoa(buildQrSvgString(pattern, size, margin, color))}`;
+  return `data:image/svg+xml;base64,${btoa(buildQrSvgString(pattern, size, margin, { dark: color.dark ?? '#000000', light: color.light ?? '#ffffff' }))}`;
 }
 
 /**

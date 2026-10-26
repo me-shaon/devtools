@@ -52,6 +52,7 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const results = useMemo(() => {
     if (!query.trim()) {
@@ -68,6 +69,7 @@ export function CommandPalette({
       return;
     }
 
+    const previousFocus = document.activeElement as HTMLElement | null;
     const frameId = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -75,12 +77,17 @@ export function CommandPalette({
 
     return () => {
       window.cancelAnimationFrame(frameId);
+      previousFocus?.focus();
     };
   }, [open]);
 
   useEffect(() => {
     setActiveIndex(0);
   }, [query]);
+
+  useEffect(() => {
+    if (open) document.getElementById(`palette-result-${activeIndex}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, open]);
 
   if (!open) {
     return null;
@@ -116,18 +123,33 @@ export function CommandPalette({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 p-4 pt-[12vh]">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/20 p-4 pt-[12vh]">
       <div
+        ref={dialogRef}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); onClose(); }
+          if (event.key !== "Tab") return;
+          const items = dialogRef.current?.querySelectorAll<HTMLElement>('input, button');
+          if (!items?.length) return;
+          const first = items[0]; const last = items[items.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }}
         role="dialog"
         aria-modal="true"
         aria-label="Command Palette"
-        className="w-full max-w-2xl overflow-hidden rounded-xl border bg-background shadow-2xl"
+        className="command-surface w-full max-w-xl overflow-hidden"
       >
         <div className="border-b px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={inputRef}
+              role="combobox"
+              aria-label="Search tools"
+              aria-expanded={open}
+              aria-controls="palette-results"
+              aria-activedescendant={results.length ? `palette-result-${Math.min(activeIndex, results.length - 1)}` : undefined}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleKeyDown}
@@ -139,13 +161,16 @@ export function CommandPalette({
 
         <div className="max-h-[50vh] overflow-y-auto p-2">
           {results.length ? (
-            <div className="space-y-1">
+            <div className="space-y-1" id="palette-results" role="listbox" aria-label="Tools">
               {results.map((tool, index) => {
                 const isActive = index === activeIndex;
 
                 return (
                   <button
                     key={tool.id}
+                    id={`palette-result-${index}`}
+                    role="option"
+                    aria-selected={isActive}
                     type="button"
                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors ${
                       isActive ? "bg-accent text-accent-foreground" : "hover:bg-muted"
@@ -153,12 +178,12 @@ export function CommandPalette({
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => onSelectTool(tool)}
                   >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
-                      <tool.icon className="h-4 w-4 text-[#EB5757]" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md">
+                      <tool.icon className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{tool.name}</p>
-                      <p className="truncate text-sm text-muted-foreground">{tool.category}</p>
+                      <p className="truncate text-xs text-muted-foreground">{tool.category}</p>
                     </div>
                   </button>
                 );

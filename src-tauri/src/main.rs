@@ -91,17 +91,6 @@ fn main() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|_app| {
-            // Open the web inspector in development builds.
-            #[cfg(debug_assertions)]
-            {
-                use tauri::Manager;
-                if let Some(window) = _app.get_webview_window("main") {
-                    window.open_devtools();
-                }
-            }
-            Ok(())
-        })
         .on_window_event(|_window, _event| {
             // Keep the app running in the dock when the window closes on macOS.
             #[cfg(target_os = "macos")]

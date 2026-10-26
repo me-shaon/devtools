@@ -86,10 +86,10 @@ export function CodePlayground() {
     setOutput("");
 
     if (language === "javascript") {
+      const originalLog = console.log;
       try {
         // Capture console.log output
         const logs: string[] = [];
-        const originalLog = console.log;
         console.log = (...args) => {
           logs.push(args.map(arg =>
             typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
@@ -106,7 +106,8 @@ export function CodePlayground() {
         toast.success("Code executed!");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
-        console.log = console.log; // Restore
+      } finally {
+        console.log = originalLog;
       }
     } else {
       toast.info(`${language.toUpperCase()} preview is read-only`);

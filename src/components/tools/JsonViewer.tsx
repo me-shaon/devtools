@@ -1,210 +1,100 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { FileJson, CheckCircle, XCircle, Info } from "lucide-react";
+import { AlignLeft, CheckCircle2, Columns2, Copy, Clipboard, Rows2, ShieldCheck } from "lucide-react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { getJsonStats, getJsonType } from "@/utils/json";
 import { toast } from "sonner";
 
-interface JSONInfo {
-  type: string;
-  size: number;
-  keys: number;
-  depth: number;
+const LAYOUT_KEY = "devtools-json-layout";
+
+function readLayout(): "side" | "below" {
+  try { return localStorage.getItem(LAYOUT_KEY) === "below" ? "below" : "side"; }
+  catch { return "side"; }
+}
+
+// React escapes every token; user content is never inserted as HTML.
+function JsonCode({ value }: { value: string }) {
+  const tokens = value.split(/("(?:\\.|[^"\\])*"\s*:|"(?:\\.|[^"\\])*"|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g);
+  return <>{tokens.map((token, index) => {
+    const kind = token.startsWith('"') ? (token.trimEnd().endsWith(":") ? "key" : "string") : /^(true|false|null)$/.test(token) ? "literal" : /^-?\d/.test(token) ? "number" : "plain";
+    return <span key={index} className={`json-${kind}`}>{token}</span>;
+  })}</>;
 }
 
 export function JsonViewer() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
-  const [jsonInfo, setJsonInfo] = useState<JSONInfo | null>(null);
+  const [valid, setValid] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const [indent, setIndent] = useState("2");
+  const [layout, setLayout] = useState(readLayout);
+  const [inputScroll, setInputScroll] = useState(0);
 
-  const formatJSON = () => {
-    if (!input.trim()) {
-      toast.error("Please enter JSON data to format.");
-      return;
-    }
-
+  const transform = (mode: "format" | "minify" | "validate") => {
+    if (!input.trim()) { toast.error("Enter JSON to continue."); return; }
     try {
-      const parsed = JSON.parse(input);
-      const formatted = JSON.stringify(parsed, null, 2);
-      setOutput(formatted);
-      setError("");
-      setJsonInfo(null);
-      toast.success("JSON formatted successfully!");
+      const parsed: unknown = JSON.parse(input);
+      if (mode !== "validate") setOutput(JSON.stringify(parsed, null, mode === "format" ? Number(indent) : undefined));
+      setError(""); setValid(true);
+      if (mode === "validate") {
+        const stats = getJsonStats(input);
+        setInfo(stats ? `${getJsonType(parsed)} · ${stats.size} characters · ${stats.keys} keys · depth ${stats.depth}` : null);
+      } else setInfo(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid JSON";
-      setError(`Invalid JSON: ${message}`);
-      setOutput("");
-      setJsonInfo(null);
+      setError(err instanceof Error ? err.message : "Check your JSON syntax.");
+      setValid(false); setOutput(""); setInfo(null);
     }
   };
-
-  const minifyJSON = () => {
-    if (!input.trim()) {
-      toast.error("Please enter JSON data to minify.");
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(input);
-      const minified = JSON.stringify(parsed);
-      setOutput(minified);
-      setError("");
-      setJsonInfo(null);
-      toast.success("JSON minified successfully!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid JSON";
-      setError(`Invalid JSON: ${message}`);
-      setOutput("");
-      setJsonInfo(null);
-    }
+  const changeLayout = (next: "side" | "below") => {
+    setLayout(next);
+    try { localStorage.setItem(LAYOUT_KEY, next); } catch { /* Session preference still works. */ }
+  };
+  const paste = async () => {
+    try { setInput(await navigator.clipboard.readText()); setValid(false); setError(""); setOutput(""); setInfo(null); }
+    catch { toast.error("Clipboard unavailable. Paste directly into the input instead."); }
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(output); toast.success("Copied to clipboard."); }
+    catch { toast.error("Could not copy. Select the output and copy it manually."); }
   };
 
-  const validateJSON = () => {
-    if (!input.trim()) {
-      toast.error("Please enter JSON data to validate.");
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(input);
-      const info = getJSONInfo(parsed);
-      setJsonInfo(info);
-      setOutput("");
-      setError("");
-      toast.success("JSON is valid!");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid JSON";
-      setError(`Invalid JSON: ${message}`);
-      setOutput("");
-      setJsonInfo(null);
-    }
-  };
-
-  const getJSONInfo = (obj: unknown): JSONInfo => {
-    const type = Array.isArray(obj) ? "Array" : typeof obj;
-    const size = JSON.stringify(obj).length;
-    const keys = countKeys(obj);
-    const depth = getMaxDepth(obj);
-    return { type, size, keys, depth };
-  };
-
-  const countKeys = (obj: unknown): number => {
-    if (typeof obj !== "object" || obj === null) return 0;
-    if (Array.isArray(obj)) return obj.length;
-
-    let count = 0;
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        count++;
-        if (typeof obj[key as keyof typeof obj] === "object" && obj[key as keyof typeof obj] !== null) {
-          count += countKeys(obj[key as keyof typeof obj]);
-        }
-      }
-    }
-    return count;
-  };
-
-  const getMaxDepth = (obj: unknown, depth = 0): number => {
-    if (typeof obj !== "object" || obj === null) return depth;
-
-    let maxDepth = depth;
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        maxDepth = Math.max(maxDepth, getMaxDepth(obj[key as keyof typeof obj], depth + 1));
-      }
-    }
-    return maxDepth;
-  };
-
-  const copyOutput = () => {
-    if (output) {
-      navigator.clipboard.writeText(output);
-      toast.success("Copied to clipboard!");
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Input */}
-      <div>
-        <label className="block text-sm font-medium mb-2">JSON Input</label>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Paste your JSON here..."
-          className="w-full h-48 p-3 rounded-md border bg-background text-foreground font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+  return <div className="json-workspace">
+    <div className="editor-toolbar">
+      <div className="toolbar-actions">
+        <button type="button" className="native-button" onClick={() => transform("format")}><AlignLeft size={15} />Format</button>
+        <button type="button" className="toolbar-text-button" onClick={() => transform("minify")}>Minify</button>
+        <button type="button" className="toolbar-text-button" onClick={() => transform("validate")}>Validate</button>
+        <label className="indent-control">Indent <select aria-label="Indentation" value={indent} onChange={(event) => setIndent(event.target.value)}><option value="2">2 spaces</option><option value="4">4 spaces</option></select></label>
       </div>
-
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={formatJSON} className="bg-primary hover:bg-primary/90">
-          <FileJson className="w-4 h-4 mr-2" />
-          Format
-        </Button>
-        <Button onClick={minifyJSON} variant="outline">
-          Minify
-        </Button>
-        <Button onClick={validateJSON} variant="outline">
-          Validate
-        </Button>
+      <div className="layout-switch" role="group" aria-label="Result layout">
+        <button type="button" aria-pressed={layout === "side"} onClick={() => changeLayout("side")}><Columns2 size={14} />Side</button>
+        <button type="button" aria-pressed={layout === "below"} onClick={() => changeLayout("below")}><Rows2 size={14} />Below</button>
       </div>
-
-      {/* Error */}
-      {error && (
-        <div className="flex items-start gap-3 p-4 rounded-md bg-destructive/10 border border-destructive/20">
-          <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-destructive">Invalid JSON</p>
-            <p className="text-sm text-destructive/80 mt-1">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* JSON Info */}
-      {jsonInfo && (
-        <div className="flex items-start gap-3 p-4 rounded-md bg-green-500/10 border border-green-500/20">
-          <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-medium text-green-500">Valid JSON</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Type</p>
-                <p className="font-medium">{jsonInfo.type}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Size</p>
-                <p className="font-medium">{jsonInfo.size.toLocaleString()} chars</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Keys/Items</p>
-                <p className="font-medium">{jsonInfo.keys.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Depth</p>
-                <p className="font-medium">{jsonInfo.depth}</p>
-              </div>
+    </div>
+    {info && <div className="json-info" role="status">{info}</div>}
+    {error && <div className="json-error" role="alert"><strong>Invalid JSON.</strong> {error}</div>}
+    <div className="editor-panels" data-layout={layout}>
+      <PanelGroup direction={layout === "side" ? "horizontal" : "vertical"} key={layout}>
+        <Panel minSize={20} defaultSize={50}>
+          <div className="editor-pane">
+            <div className="editor-pane-header"><label htmlFor="json-workspace-input">JSON Input</label><button type="button" className="toolbar-text-button" onClick={paste}><Clipboard size={14} />Paste</button></div>
+            <div className="code-input-wrap">
+              <div className="line-numbers" aria-hidden="true"><div style={{ transform: `translateY(-${inputScroll}px)` }}>{Array.from({ length: input.split("\n").length }, (_, index) => <div key={index}>{index + 1}</div>)}</div></div>
+              <textarea id="json-workspace-input" spellCheck={false} autoCapitalize="off" autoCorrect="off" wrap="off" value={input} onScroll={(event) => setInputScroll(event.currentTarget.scrollTop)} onChange={(event) => { setInput(event.target.value); setValid(false); setError(""); setOutput(""); setInfo(null); }} placeholder={'Paste JSON here to get started…\n\nYour data stays on this device.'} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); transform("format"); } }} />
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Output */}
-      {output && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium">Output</label>
-            <Button onClick={copyOutput} variant="ghost" size="sm">
-              Copy
-            </Button>
+        </Panel>
+        <PanelResizeHandle className="editor-resize" aria-label="Resize input and output" />
+        <Panel minSize={20} defaultSize={50}>
+          <div className="editor-pane">
+            <div className="editor-pane-header"><span id="json-output-label">Output</span><button type="button" disabled={!output} className="toolbar-text-button" onClick={copy}><Copy size={14} />Copy</button></div>
+            <div className="code-output" tabIndex={0} role="region" aria-labelledby="json-output-label">
+              {output ? <pre>{output.split("\n").map((line, index) => <div className="code-line" key={index}><span className="output-line-number" aria-hidden="true">{index + 1}</span><code><JsonCode value={line} /></code></div>)}</pre> : <div className="editor-empty"><AlignLeft size={24} strokeWidth={1.3} /><p>Formatted JSON appears here.</p><span>Paste JSON, then choose Format or Minify.</span></div>}
+            </div>
           </div>
-          <div className="relative">
-            <pre className="w-full h-64 p-4 rounded-md border bg-muted overflow-auto text-sm">
-              <code>{output}</code>
-            </pre>
-          </div>
-        </div>
-      )}
+        </Panel>
+      </PanelGroup>
     </div>
-  );
+    <footer className="editor-status" aria-live="polite"><span>{valid ? <><CheckCircle2 size={14} className="status-valid" />Valid JSON</> : error ? "Check input" : "Ready"}</span>{output && <span>{output.split("\n").length} lines · {new TextEncoder().encode(output).length} bytes</span>}<span className="ml-auto">UTF-8</span><span><ShieldCheck size={13} />Local processing</span></footer>
+  </div>;
 }

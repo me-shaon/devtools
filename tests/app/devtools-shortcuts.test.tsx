@@ -84,7 +84,7 @@ describe("DevToolsApp shortcuts", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: /json viewer/i })[0]);
 
-    const textarea = await screen.findByPlaceholderText("Paste your JSON here...");
+    const textarea = await screen.findByRole("textbox", { name: "JSON Input" });
     fireEvent.focus(textarea);
     fireEvent.keyDown(textarea, { key: "k", ctrlKey: true });
 

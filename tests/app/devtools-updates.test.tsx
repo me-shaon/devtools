@@ -106,3 +106,24 @@ describe("DevToolsApp updates", () => {
     expect(screen.getByRole("button", { name: "What's New" })).toBeInTheDocument();
   });
 });
+
+it.each(["darwin", "win32"])("uses desktop tab shortcuts on %s without intercepting app switching", async (platform) => {
+  setupMatchMedia();
+  const bridge = createBridge("0.0.0", { status: "idle" });
+  bridge.platform = platform;
+  render(<DevToolsApp />);
+  fireEvent.click(screen.getByRole("button", { name: "JSON Viewer", exact: true }));
+  const input = await screen.findByRole("textbox", { name: "JSON Input" });
+  fireEvent.change(input, { target: { value: '{"saved":true}' } });
+  fireEvent.click(screen.getByRole("button", { name: "Home", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Hash Generator", exact: true }));
+  await screen.findByPlaceholderText("Enter text to generate hashes...", {}, { timeout: 5000 });
+  fireEvent.keyDown(window, { key: "Tab", ctrlKey: true, shiftKey: true });
+  expect(screen.getByRole("tab", { name: "JSON Viewer", exact: true })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("textbox", { name: "JSON Input" })).toHaveValue('{"saved":true}');
+  fireEvent.keyDown(window, { key: "Tab", metaKey: true });
+  expect(screen.getByRole("tab", { name: "JSON Viewer", exact: true })).toHaveAttribute("aria-selected", "true");
+  fireEvent.keyDown(window, { key: "w", metaKey: platform === "darwin", ctrlKey: platform !== "darwin" });
+  expect(screen.queryByRole("tab", { name: "JSON Viewer", exact: true })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Hash Generator", exact: true })).toHaveAttribute("aria-selected", "true");
+});

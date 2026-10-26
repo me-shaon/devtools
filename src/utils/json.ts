@@ -334,7 +334,7 @@ function countKeys(obj: any): number {
   if (obj !== null && typeof obj === 'object') {
     return (
       Object.keys(obj).length +
-      Object.values(obj).reduce((sum, val) => sum + countKeys(val), 0)
+      Object.values(obj).reduce<number>((sum, val) => sum + countKeys(val), 0)
     );
   }
   return 0;
@@ -348,7 +348,7 @@ function countArrays(obj: any): number {
     return 1 + obj.reduce((sum, item) => sum + countArrays(item), 0);
   }
   if (obj !== null && typeof obj === 'object') {
-    return Object.values(obj).reduce((sum, val) => sum + countArrays(val), 0);
+    return Object.values(obj).reduce<number>((sum, val) => sum + countArrays(val), 0);
   }
   return 0;
 }
@@ -363,7 +363,7 @@ function countObjects(obj: any): number {
   if (obj !== null && typeof obj === 'object') {
     return (
       1 +
-      Object.values(obj).reduce((sum, val) => sum + countObjects(val), 0)
+      Object.values(obj).reduce<number>((sum, val) => sum + countObjects(val), 0)
     );
   }
   return 0;

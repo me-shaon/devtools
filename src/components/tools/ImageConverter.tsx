@@ -254,7 +254,7 @@ export function ImageConverter() {
       return undefined;
     }
 
-    const initialResults = bulkFiles.map((file) => ({
+    const initialResults: BulkCompressionResult[] = bulkFiles.map((file) => ({
       id: getFileId(file),
       name: file.name,
       originalSize: file.size,
@@ -403,7 +403,7 @@ export function ImageConverter() {
       ),
     );
 
-    const zipBlob = new Blob([zipSync(zipEntries, { level: 6 })], {
+    const zipBlob = new Blob([new Uint8Array(zipSync(zipEntries, { level: 6 }))], {
       type: "application/zip",
     });
 

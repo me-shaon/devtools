@@ -91,11 +91,11 @@ async function openTool(name) {
   const toolButton = await browser.$$(`button*=${name}`)[0];
   await toolButton.waitForClickable({ timeout: 10000 });
   await toolButton.click();
-  // The home page heading can still be present while the tool page renders.
-  await browser.waitUntil(async () => (await browser.$$("main h1").map((heading) => heading.getText())).includes(name), {
-    timeout: 10000,
-    timeoutMsg: `Tool page did not open: ${name}`,
-  });
+  await browser.waitUntil(async () => {
+    const selected = await browser.$('[role="tab"][aria-selected="true"]');
+    return await selected.isExisting() && (await selected.getText()) === name;
+  }, { timeout: 10000, timeoutMsg: `Tool page did not open: ${name}` });
+  await browser.$('section[role="tabpanel"]:not([hidden])').waitForDisplayed();
 }
 
 async function waitForText(element, text) {
@@ -210,8 +210,8 @@ try {
 
   await step("formats JSON", async () => {
     await openTool("JSON Viewer");
-    await (await browser.$('textarea[placeholder="Paste your JSON here..."]')).setValue('{"a":1,"b":[true]}');
-    await (await browser.$("button*=Format")).click();
+    await (await browser.$('#json-workspace-input')).setValue('{"a":1,"b":[true]}');
+    await (await browser.$('section.tool-panel:not([hidden]) button=Format')).click();
     await waitForText(await browser.$("main"), '"b": [');
   });
 
