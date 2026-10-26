@@ -159,9 +159,30 @@ jobs:
           Expand-Archive "$dir.zip" -DestinationPath $dir -Force
           "NATIVE_DRIVER=$dir\msedgedriver.exe" >> $env:GITHUB_ENV
 
+      - name: Check that the app starts (Windows)
+        if: matrix.e2e && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath "src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe" -PassThru
+          Start-Sleep -Seconds 15
+          if ($app.HasExited) { throw "DevToolsApp exited with code $($app.ExitCode)" }
+          $app.Refresh()
+          Write-Host "Window title: $($app.MainWindowTitle)"
+          if ($app.MainWindowTitle -ne "DevToolsApp") { throw "The DevToolsApp window did not open" }
+          Stop-Process -Id $app.Id
+
       - name: Run end-to-end smoke test (Windows)
         if: matrix.e2e && runner.os == 'Windows'
         run: node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
+
+      - name: Show WebView2 diagnostics (Windows)
+        if: failure() && matrix.e2e && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem $env:LOCALAPPDATA, $env:TEMP -Recurse -Filter DevToolsActivePort -ErrorAction SilentlyContinue |
+            Select-Object FullName, LastWriteTime
+          Get-ChildItem "$env:LOCALAPPDATA\com.meshaon.devtoolsapp" -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+            Select-Object FullName
 
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
