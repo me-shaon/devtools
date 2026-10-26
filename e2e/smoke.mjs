@@ -92,7 +92,8 @@ async function openTool(name) {
   await toolButton.waitForClickable({ timeout: 10000 });
   await toolButton.click();
   await browser.waitUntil(async () => {
-    const selected = await browser.$('[role="tab"][aria-selected="true"]');
+    // App tool tabs have ids that start with "tab-". Tools can contain their own tabs.
+    const selected = await browser.$('[role="tab"][aria-selected="true"][id^="tab-"]');
     return await selected.isExisting() && (await selected.getText()) === name;
   }, { timeout: 10000, timeoutMsg: `Tool page did not open: ${name}` });
   await browser.$('section[role="tabpanel"]:not([hidden])').waitForDisplayed();
@@ -211,7 +212,8 @@ try {
   await step("formats JSON", async () => {
     await openTool("JSON Viewer");
     await (await browser.$('#json-workspace-input')).setValue('{"a":1,"b":[true]}');
-    await (await browser.$('section.tool-panel:not([hidden]) button=Format')).click();
+    // Text selectors cannot follow a CSS selector, so find the visible panel first.
+    await (await browser.$("section.tool-panel:not([hidden])").$("button=Format")).click();
     await waitForText(await browser.$("main"), '"b": [');
   });
 

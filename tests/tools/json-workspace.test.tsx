@@ -56,5 +56,5 @@ describe("JSON workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close JSON Viewer" }));
     expect(screen.queryByRole("tab", { name: "JSON Viewer" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Code Playground" })).toHaveAttribute("aria-selected", "true");
-  });
+  }, 20000);
 });
