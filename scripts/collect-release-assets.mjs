@@ -1,13 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { getBundleRules } from "./release-assets.mjs";
 
-// Copies Tauri bundles into one folder with stable, version-free file names.
-// The README download links and the updater manifest depend on these names.
+// Copies Tauri bundles into one folder with the stable names from release-assets.mjs.
 //
 // Usage: node scripts/collect-release-assets.mjs --arch <x64|arm64> [--bundle-dir <dir>] [--out <dir>]
-
-const PRODUCT_NAME = "DevToolsApp";
 
 function fail(message) {
   console.error(`Collect release assets failed: ${message}`);
@@ -41,29 +39,7 @@ if (!fs.existsSync(bundleDir)) {
   fail(`Bundle directory not found: ${bundleDir}`);
 }
 
-const isArm = arch === "arm64";
-
-// Each rule maps a bundle subfolder and file suffix to a stable output name.
-const RULES = {
-  darwin: [
-    { dir: "dmg", suffix: ".dmg", name: `${PRODUCT_NAME}-macos-${arch}.dmg` },
-    { dir: "macos", suffix: ".app.tar.gz", name: `${PRODUCT_NAME}-macos-${arch}.app.tar.gz` },
-  ],
-  win32: [
-    { dir: "nsis", suffix: "-setup.exe", name: `${PRODUCT_NAME}-windows-setup.exe` },
-  ],
-  linux: [
-    {
-      dir: "appimage",
-      suffix: ".AppImage",
-      name: `${PRODUCT_NAME}-linux-${isArm ? "arm64" : "x86_64"}.AppImage`,
-    },
-    { dir: "deb", suffix: ".deb", name: `${PRODUCT_NAME}-linux-${isArm ? "arm64" : "amd64"}.deb` },
-    { dir: "rpm", suffix: ".rpm", name: `${PRODUCT_NAME}-linux-${isArm ? "aarch64" : "x86_64"}.rpm` },
-  ],
-};
-
-const rules = RULES[platform];
+const rules = getBundleRules(platform, arch);
 if (!rules) {
   fail(`Unsupported platform: ${platform}`);
 }
@@ -89,8 +65,7 @@ let copied = 0;
 for (const rule of rules) {
   const source = findBundle(rule.dir, rule.suffix);
   if (!source) {
-    // Updater archives exist only when a signing key is available.
-    if (rule.suffix === ".app.tar.gz") {
+    if (rule.optional) {
       continue;
     }
     fail(`Missing ${rule.suffix} bundle in ${path.join(bundleDir, rule.dir)}`);

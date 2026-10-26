@@ -66,6 +66,16 @@ Get the latest release for your platform:
 - **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.AppImage)**
 - **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
 
+### Upgrading from v1.3.0 or earlier
+
+Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron versions cannot update to the Tauri versions automatically.
+
+1. Download the installer for your platform from the list above.
+2. Install the new version.
+3. Remove the old version.
+
+Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after you install it.
+
 ## Quick Start
 
 ```bash
@@ -160,8 +170,8 @@ npm run icon             # Generate app icons from src-tauri/app-icon.png
 ## Adding a Tool
 
 1. Create component in `src/components/tools/YourTool.tsx`
-2. Add tool definition to `ALL_TOOLS` array in `src/app/DevToolsApp.tsx`
-3. Register the lazy-loaded component in `TOOL_COMPONENTS` in `src/app/DevToolsApp.tsx`
+2. Add tool definition to `ALL_TOOLS` array in `src/app/toolRegistry.ts`
+3. Register the lazy-loaded component in `TOOL_COMPONENTS` in `src/app/toolRegistry.ts`
 4. Add tests if the new tool has non-trivial behavior
 5. That's it! The tool will appear in the sidebar automatically
 

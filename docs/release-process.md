@@ -36,9 +36,9 @@ The release workflow uses the secrets in the `Production` environment.
 | `CSC_KEY_PASSWORD` | Password of the macOS certificate. |
 | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | macOS notarization. |
 
-If `TAURI_SIGNING_PRIVATE_KEY` is missing, the release has no `latest.json` and installed apps cannot update. If the macOS certificate is missing, the macOS app gets an ad-hoc signature.
+If `TAURI_SIGNING_PRIVATE_KEY` is missing or a platform has no signed updater asset, the release job fails. A release without a complete `latest.json` would stop installed apps from updating. If the macOS certificate is missing, the macOS app gets an ad-hoc signature.
 
-Keep a backup of the updater private key. If you lose it, installed apps cannot verify new updates. To replace the key, run `npx tauri signer generate`, put the new public key in `src-tauri/tauri.conf.json`, and update the secret. Users of older versions must then download the new version manually.
+Keep a backup of the updater private key. If you lose it, installed apps cannot verify new updates. To replace the key, run `npx tauri signer generate`. Put the new public key in `src-tauri/tauri.conf.json`. Update the secret. Users of older versions must then download the new version manually.
 
 The release assets use fixed names, for example `DevToolsApp-macos-arm64.dmg`. The download links in `README.md` depend on these names. `scripts/collect-release-assets.mjs` sets the names.
 

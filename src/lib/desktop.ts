@@ -35,6 +35,7 @@ export interface DesktopBridge {
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
+const UPDATE_CHECK_TIMEOUT_MS = 30000;
 
 function toNodePlatform(osPlatform: string): string {
   if (osPlatform === "macos") {
@@ -74,10 +75,15 @@ function createTauriBridge(): DesktopBridge {
       return withCurrentVersion();
     }
 
+    // A new check would drop the update that is in progress or ready to install.
+    if (["checking", "downloading", "downloaded"].includes(updateState.status)) {
+      return withCurrentVersion();
+    }
+
     setUpdateState({ status: "checking" });
 
     try {
-      pendingUpdate = await check();
+      pendingUpdate = await check({ timeout: UPDATE_CHECK_TIMEOUT_MS });
       setUpdateState(
         pendingUpdate
           ? { status: "available", version: pendingUpdate.version }

@@ -6,20 +6,17 @@ import process from "node:process";
 import { remote } from "webdriverio";
 
 // Drives the built desktop app through tauri-driver and checks the main flows.
-// tauri-driver supports Linux (WebKitWebDriver) and Windows (msedgedriver).
+// Runs on Linux with WebKitWebDriver. CI runs it under xvfb.
 //
 // Usage: node e2e/smoke.mjs [path-to-app-binary]
 
 const rootDir = path.resolve(import.meta.dirname, "..");
-const binaryName = process.platform === "win32" ? "DevToolsApp.exe" : "DevToolsApp";
 const application = path.resolve(
-  process.argv[2] ?? path.join(rootDir, "src-tauri", "target", "release", binaryName),
+  process.argv[2] ?? path.join(rootDir, "src-tauri", "target", "release", "DevToolsApp"),
 );
 const screenshotDir = path.join(rootDir, "e2e", "screenshots");
 const expectedVersion = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf8")).version;
-const tauriDriverPath =
-  process.env.TAURI_DRIVER ??
-  path.join(os.homedir(), ".cargo", "bin", process.platform === "win32" ? "tauri-driver.exe" : "tauri-driver");
+const tauriDriverPath = process.env.TAURI_DRIVER ?? path.join(os.homedir(), ".cargo", "bin", "tauri-driver");
 
 if (!fs.existsSync(application)) {
   console.error(`App binary not found: ${application}`);
@@ -28,9 +25,7 @@ if (!fs.existsSync(application)) {
 
 fs.mkdirSync(screenshotDir, { recursive: true });
 
-// On Windows, NATIVE_DRIVER points to an msedgedriver that matches the WebView2 version.
-const driverArgs = process.env.NATIVE_DRIVER ? ["--native-driver", process.env.NATIVE_DRIVER] : [];
-const tauriDriver = spawn(tauriDriverPath, driverArgs, { stdio: ["ignore", "inherit", "inherit"] });
+const tauriDriver = spawn(tauriDriverPath, [], { stdio: ["ignore", "inherit", "inherit"] });
 let browser;
 
 async function openTool(name) {
@@ -116,7 +111,7 @@ try {
 
   await step("opens a tool from the command palette shortcut", async () => {
     await (await browser.$("body")).click();
-    await browser.keys([process.platform === "darwin" ? "Meta" : "Control", "k"]);
+    await browser.keys(["Control", "k"]);
     const paletteInput = await browser.$('input[placeholder="Search tools..."]');
     await paletteInput.waitForDisplayed({ timeout: 5000 });
     await paletteInput.setValue("UUID");

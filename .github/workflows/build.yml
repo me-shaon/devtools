@@ -79,6 +79,10 @@ jobs:
           if ls release-assets/*.sig >/dev/null 2>&1; then
             node scripts/create-updater-manifest.mjs "${{ needs.test.outputs.tag }}" --assets release-assets
             cat release-assets/latest.json
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            # Without latest.json, installed apps cannot find this release.
+            echo "::error::No updater signatures found. Set TAURI_SIGNING_PRIVATE_KEY in the Production environment."
+            exit 1
           else
             echo "::warning::No updater signatures found. Skipping latest.json."
           fi
@@ -92,7 +96,7 @@ jobs:
           retention-days: 7
 
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*

@@ -1,12 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { REQUIRED_UPDATER_PLATFORMS, UPDATER_PLATFORM_ASSETS } from "./release-assets.mjs";
 
 // Builds the Tauri updater manifest (latest.json) from collected release assets.
 //
-// Usage: node scripts/create-updater-manifest.mjs <tag> [--assets <dir>] [--repo <owner/name>] [--out <file>]
-
-const PRODUCT_NAME = "DevToolsApp";
+// Usage: node scripts/create-updater-manifest.mjs <tag> [--assets <dir>] [--repo <owner/name>] [--out <file>] [--allow-partial]
+//
+// Fails when a required platform has no signed asset, unless --allow-partial is set.
 
 function fail(message) {
   console.error(`Create updater manifest failed: ${message}`);
@@ -41,22 +42,9 @@ if (!fs.existsSync(assetsDir)) {
   fail(`Assets directory not found: ${assetsDir}`);
 }
 
-// Updater platform keys mapped to the stable asset names from collect-release-assets.mjs.
-const PLATFORM_ASSETS = {
-  "darwin-x86_64": `${PRODUCT_NAME}-macos-x64.app.tar.gz`,
-  "darwin-aarch64": `${PRODUCT_NAME}-macos-arm64.app.tar.gz`,
-  "windows-x86_64": `${PRODUCT_NAME}-windows-setup.exe`,
-  "linux-x86_64": `${PRODUCT_NAME}-linux-x86_64.AppImage`,
-  "linux-aarch64": `${PRODUCT_NAME}-linux-arm64.AppImage`,
-  "linux-x86_64-deb": `${PRODUCT_NAME}-linux-amd64.deb`,
-  "linux-aarch64-deb": `${PRODUCT_NAME}-linux-arm64.deb`,
-  "linux-x86_64-rpm": `${PRODUCT_NAME}-linux-x86_64.rpm`,
-  "linux-aarch64-rpm": `${PRODUCT_NAME}-linux-aarch64.rpm`,
-};
-
 const platforms = {};
 
-for (const [platformKey, assetName] of Object.entries(PLATFORM_ASSETS)) {
+for (const [platformKey, assetName] of Object.entries(UPDATER_PLATFORM_ASSETS)) {
   const signaturePath = path.join(assetsDir, `${assetName}.sig`);
   if (!fs.existsSync(path.join(assetsDir, assetName)) || !fs.existsSync(signaturePath)) {
     continue;
@@ -69,7 +57,12 @@ for (const [platformKey, assetName] of Object.entries(PLATFORM_ASSETS)) {
 }
 
 if (Object.keys(platforms).length === 0) {
-  fail(`No signed updater assets found in ${assetsDir}.`);
+  fail(`No signed updater assets found in ${assetsDir}. Check that TAURI_SIGNING_PRIVATE_KEY is set for the release build.`);
+}
+
+const missing = REQUIRED_UPDATER_PLATFORMS.filter((platformKey) => !platforms[platformKey]);
+if (missing.length > 0 && !process.argv.includes("--allow-partial")) {
+  fail(`Missing signed updater assets for: ${missing.join(", ")}.`);
 }
 
 const manifest = {

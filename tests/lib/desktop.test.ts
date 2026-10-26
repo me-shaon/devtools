@@ -108,6 +108,88 @@ describe("getDesktopBridge", () => {
     });
   });
 
+  it("passes a timeout to the update check", async () => {
+    tauri.check.mockResolvedValue(null);
+    const { getDesktopBridge } = await loadDesktop();
+
+    await getDesktopBridge()!.checkForUpdates();
+
+    expect(tauri.check).toHaveBeenCalledWith({ timeout: 30000 });
+  });
+
+  it("does not start a new check while an update downloads", async () => {
+    let finishDownload = () => {};
+    const update = {
+      version: "1.4.0",
+      download: vi.fn(() => new Promise<void>((resolve) => (finishDownload = resolve))),
+      install: vi.fn(async () => {}),
+    };
+    tauri.check.mockResolvedValue(update);
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+
+    await bridge.checkForUpdates();
+    const download = bridge.downloadUpdate();
+
+    await expect(bridge.checkForUpdates()).resolves.toMatchObject({ status: "downloading" });
+    expect(tauri.check).toHaveBeenCalledTimes(1);
+
+    finishDownload();
+    await download;
+    await expect(bridge.checkForUpdates()).resolves.toMatchObject({ status: "downloaded" });
+    await expect(bridge.installUpdate()).resolves.toBe(true);
+    expect(update.install).toHaveBeenCalled();
+  });
+
+  it("reports download errors and rethrows them", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    tauri.check.mockResolvedValue({
+      version: "1.4.0",
+      download: vi.fn(async () => {
+        throw new Error("connection reset");
+      }),
+      install: vi.fn(),
+    });
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+
+    await bridge.checkForUpdates();
+
+    await expect(bridge.downloadUpdate()).rejects.toThrow("connection reset");
+    await expect(bridge.getUpdateState()).resolves.toMatchObject({
+      status: "error",
+      message: "connection reset",
+    });
+  });
+
+  it("does not install or relaunch without a pending update", async () => {
+    tauri.check.mockResolvedValue(null);
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+
+    await expect(bridge.installUpdate()).resolves.toBe(false);
+    expect(tauri.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("does not relaunch when the install fails", async () => {
+    const update = {
+      version: "1.4.0",
+      download: vi.fn(async () => {}),
+      install: vi.fn(async () => {
+        throw new Error("install failed");
+      }),
+    };
+    tauri.check.mockResolvedValue(update);
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+
+    await bridge.checkForUpdates();
+    await bridge.downloadUpdate();
+
+    await expect(bridge.installUpdate()).rejects.toThrow("install failed");
+    expect(tauri.relaunch).not.toHaveBeenCalled();
+  });
+
   it("disables updates in development builds", async () => {
     vi.stubEnv("DEV", true);
     const { getDesktopBridge } = await loadDesktop();
