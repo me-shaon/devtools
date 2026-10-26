@@ -3,6 +3,9 @@
 
 use std::path::PathBuf;
 
+#[cfg(feature = "e2e")]
+mod e2e;
+
 use percent_encoding::percent_decode_str;
 use tauri::ipc::{InvokeBody, Request};
 use tauri::AppHandle;
@@ -63,13 +66,31 @@ async fn save_file(app: AppHandle, request: Request<'_>) -> Result<Option<String
 }
 
 fn main() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    #[cfg(not(feature = "e2e"))]
+    let builder = builder.invoke_handler(tauri::generate_handler![save_file]);
+
+    #[cfg(feature = "e2e")]
+    let builder = builder
+        .invoke_handler(tauri::generate_handler![
+            save_file,
+            e2e::e2e_report,
+            e2e::e2e_saved_files,
+            e2e::e2e_tool_names
+        ])
+        .on_page_load(|webview, payload| {
+            if let tauri::webview::PageLoadEvent::Finished = payload.event() {
+                e2e::start_selftest(webview);
+            }
+        });
+
+    let app = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![save_file])
         .setup(|_app| {
             // Open the web inspector in development builds.
             #[cfg(debug_assertions)]
