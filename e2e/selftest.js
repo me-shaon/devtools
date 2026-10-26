@@ -23,7 +23,9 @@
     throw new Error(`Timed out: ${description}`);
   }
 
-  const text = (element = document.body) => element.innerText || "";
+  // innerText leaves out the values of text fields, so add them.
+  const text = (element = document.body) =>
+    [element.innerText || "", ...[...element.querySelectorAll("textarea, input")].map((field) => field.value)].join("\n");
   const buttons = (label) =>
     [...document.querySelectorAll("button")].filter((button) => text(button).includes(label));
 
