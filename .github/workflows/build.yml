@@ -6,6 +6,11 @@ on:
       - "v*"
   # Dry run: build and sign every platform and create latest.json without publishing.
   workflow_dispatch:
+    inputs:
+      draft_release:
+        description: Upload the assets to a draft release (visible only to collaborators).
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -100,11 +105,14 @@ jobs:
           retention-days: 7
 
       - name: Create Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || inputs.draft_release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          draft: false
+          # A dry run uploads to a draft under a separate tag name, so it never publishes.
+          draft: ${{ github.event_name != 'push' }}
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || format('{0}-dry-run-{1}', needs.test.outputs.tag, github.run_number) }}
+          target_commitish: ${{ github.sha }}
           prerelease: false
           generate_release_notes: false
           body_path: release-notes/${{ needs.test.outputs.tag }}.md
