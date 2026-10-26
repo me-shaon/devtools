@@ -91,7 +91,8 @@ async function openTool(name) {
   const toolButton = await browser.$$(`button*=${name}`)[0];
   await toolButton.waitForClickable({ timeout: 10000 });
   await toolButton.click();
-  await browser.waitUntil(async () => (await (await browser.$("main h1")).getText()) === name, {
+  // The home page heading can still be present while the tool page renders.
+  await browser.waitUntil(async () => (await browser.$$("main h1").map((heading) => heading.getText())).includes(name), {
     timeout: 10000,
     timeoutMsg: `Tool page did not open: ${name}`,
   });
