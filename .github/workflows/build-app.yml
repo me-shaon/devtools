@@ -111,6 +111,9 @@ jobs:
 
           if [ "${{ runner.os }}" = "macOS" ]; then
             if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ]; then
+              # Tauri decodes the certificate strictly. Remove line breaks and other
+              # characters that are not base64, as electron-builder did.
+              APPLE_CERTIFICATE=$(printf '%s' "$APPLE_CERTIFICATE" | tr -cd 'A-Za-z0-9+/=')
               for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
                 export_if_set "$name"
               done
@@ -143,13 +146,22 @@ jobs:
         if: matrix.e2e && runner.os == 'Linux'
         run: xvfb-run -a node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp
 
+      - name: Install msedgedriver
+        if: matrix.e2e && runner.os == 'Windows'
+        shell: pwsh
+        # tauri-driver needs an msedgedriver with the same version as the WebView2 runtime.
+        run: |
+          $key = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          $version = (Get-ItemProperty -Path $key).pv
+          Write-Host "WebView2 runtime version: $version"
+          $dir = Join-Path $env:RUNNER_TEMP "msedgedriver"
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$version/edgedriver_win64.zip" -OutFile "$dir.zip"
+          Expand-Archive "$dir.zip" -DestinationPath $dir -Force
+          "NATIVE_DRIVER=$dir\msedgedriver.exe" >> $env:GITHUB_ENV
+
       - name: Run end-to-end smoke test (Windows)
         if: matrix.e2e && runner.os == 'Windows'
-        shell: bash
-        # The runner image includes an msedgedriver that matches its Edge and WebView2 version.
-        run: |
-          export NATIVE_DRIVER="$EDGEWEBDRIVER/msedgedriver.exe"
-          node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
+        run: node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
 
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
