@@ -123,7 +123,7 @@ export function CommandPalette({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/20 p-4 pt-[12vh]">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center modal-backdrop p-4 pt-[12vh]">
       <div
         ref={dialogRef}
         onKeyDown={(event) => {
@@ -138,9 +138,9 @@ export function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Command Palette"
-        className="command-surface w-full max-w-xl overflow-hidden"
+        className="modal-surface command-surface w-full max-w-xl overflow-hidden"
       >
-        <div className="border-b px-4 py-3">
+        <div className="modal-header px-4 py-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -159,7 +159,7 @@ export function CommandPalette({
           </div>
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto p-2">
+        <div className="modal-body max-h-[50vh] overflow-y-auto p-2">
           {results.length ? (
             <div className="space-y-1" id="palette-results" role="listbox" aria-label="Tools">
               {results.map((tool, index) => {
@@ -196,7 +196,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
+        <div className="modal-footer flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
           <span>Use arrows to navigate</span>
           <span>Enter to open • Esc to close</span>
         </div>

@@ -24,6 +24,29 @@ const setupMatchMedia = () => {
 };
 
 describe("DevToolsApp shortcuts", () => {
+  it("traps dialog focus, cancels recording before closing, and restores the opener", async () => {
+    setupMatchMedia();
+    render(<DevToolsApp />);
+    const opener = screen.getByRole("button", { name: "Shortcuts", exact: true });
+    opener.focus();
+    fireEvent.click(opener);
+    const close = screen.getByRole("button", { name: "Close shortcut settings" });
+    expect(close).toHaveFocus();
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+    expect(close).toHaveFocus();
+    const record = screen.getByRole("button", { name: "Record Open Command Palette" });
+    record.focus();
+    fireEvent.click(record);
+    fireEvent.keyDown(record, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Shortcut Settings" })).toBeInTheDocument();
+    expect(record).toHaveAttribute("aria-pressed", "false");
+    fireEvent.keyDown(record, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Shortcut Settings" })).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
   it("opens the command palette with Ctrl+K and launches a tool with Enter", async () => {
     setupMatchMedia();
 

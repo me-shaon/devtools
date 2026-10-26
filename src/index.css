@@ -305,3 +305,60 @@ body:has(.workspace[data-platform="darwin"]) #root,
     background: var(--surface-sidebar); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
   }
 }
+
+/* Dialogs share the window's cool glass chrome, with opaque reading surfaces. */
+.modal-backdrop { background: rgb(22 33 53 / .20); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal-surface { background: hsl(var(--card) / .94); border: 1px solid hsl(var(--foreground) / .14); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 70px rgb(17 30 53 / .24), 0 4px 12px rgb(17 30 53 / .12); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+.modal-header, .modal-footer { flex-shrink: 0; padding: 18px 24px; background: linear-gradient(120deg, hsl(var(--card) / .85), hsl(var(--accent) / .35)); }
+.modal-header { border-bottom: 1px solid hsl(var(--foreground) / .08); box-shadow: inset 0 1px rgb(255 255 255 / .45); }
+.modal-header h2 { font-size: 18px; letter-spacing: -.3px; }
+.modal-header p { font-size: 12px; line-height: 1.5; }
+.modal-footer { border-top: 1px solid hsl(var(--foreground) / .08); padding-top: 12px; padding-bottom: 12px; }
+.modal-body { background: hsl(var(--card)); scrollbar-width: thin; }
+.shortcut-dialog { display: flex; flex-direction: column; width: 100%; max-width: 760px; max-height: calc(100dvh - 48px); }
+.shortcut-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 14px 0; }
+.shortcut-row + .shortcut-row { border-top: 1px solid hsl(var(--foreground) / .07); }
+.shortcut-description { font-size: 12px; line-height: 1.5; margin-top: 3px; max-width: 40ch; }
+.shortcut-row > div:last-child { display: grid; grid-template-columns: 105px 40px 40px; gap: 3px; }
+.shortcut-recorder { min-width: 105px; font-size: 12px; height: 30px; box-shadow: inset 0 1px hsl(var(--card)), 0 1px 2px rgb(0 0 0 / .04); }
+.shortcut-recorder[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--ring) / .25); }
+.shortcut-row button:not(.shortcut-recorder) { padding: 0 7px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.shortcut-dialog section > div > p { font-size: 12px; }
+.release-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
+.command-surface .modal-header { padding: 8px 12px; }
+.command-surface .modal-footer { padding: 10px 16px; font-size: 11px; }
+.dark .modal-header { box-shadow: inset 0 1px rgb(255 255 255 / .06); }
+@media (max-width: 600px) {
+  .shortcut-row { grid-template-columns: 1fr; gap: 9px; }
+  .modal-header, .modal-footer { padding-left: 18px; padding-right: 18px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .modal-backdrop, .modal-surface { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .modal-surface { background: hsl(var(--card)); }
+}
+
+/* Tool controls use the same compact desktop scale as the window chrome. */
+.desktop-button, .desktop-input, .desktop-select-trigger { font-size: 13px; }
+.tool-panel-form { padding: 24px; }
+.tool-panel-form label { font-size: 12px; font-weight: 600; }
+.tool-panel-form textarea { border-color: hsl(var(--foreground) / .14); background-color: var(--surface-editor); border-radius: 7px; line-height: 1.6; }
+.tool-panel-form textarea[readonly] { background-color: hsl(var(--muted) / .45); }
+.desktop-input, .desktop-select-trigger { background: hsl(var(--card)); border-color: hsl(var(--foreground) / .16); box-shadow: inset 0 1px 2px rgb(18 30 50 / .025); }
+.desktop-segments { background: hsl(var(--muted)); border: 1px solid hsl(var(--foreground) / .08); padding: 2px; border-radius: 7px; }
+.desktop-segments [role="tab"] { font-size: 12px; padding-top: 3px; padding-bottom: 3px; }
+.desktop-segments [data-state="active"] { background: hsl(var(--card)); box-shadow: 0 1px 3px rgb(15 28 48 / .12); }
+.tool-panel-form .tool-card { border-color: hsl(var(--foreground) / .09); border-radius: 9px; }
+.desktop-menu, .desktop-tooltip { background: hsl(var(--card) / .97); color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / .12); box-shadow: 0 10px 28px rgb(17 30 53 / .16), 0 2px 6px rgb(17 30 53 / .08); backdrop-filter: blur(24px); border-radius: 8px; }
+.desktop-menu { max-height: min(384px, var(--radix-select-content-available-height)); }
+.desktop-menu [role="option"], .desktop-tooltip { font-size: 12px; }
+.tool-help { border-top: 1px solid hsl(var(--foreground) / .10); padding-top: 16px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.tool-help summary { cursor: pointer; padding: 6px 0; font-weight: 500; }
+.tool-help summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: 3px; }
+.tool-help-content { padding: 10px 0 0 14px; }
+.tool-help-question + .tool-help-question { border-top: 1px solid hsl(var(--foreground) / .06); }
+.tool-help-question summary { color: hsl(var(--foreground)); padding: 10px 0; }
+.tool-help-question p { max-width: 72ch; line-height: 1.65; padding: 0 0 14px; }
+@media (prefers-reduced-transparency: reduce) {
+  .desktop-menu, .desktop-tooltip { background: hsl(var(--card)); backdrop-filter: none; }
+}
+.tool-panel-form select { min-height: 32px; padding-top: 4px; padding-bottom: 4px; font-size: 13px; border-color: hsl(var(--foreground) / .16); border-radius: 6px; }

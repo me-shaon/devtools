@@ -1,3 +1,4 @@
+import { useDialogFocus } from "@/components/app/useDialogFocus";
 import {
   Suspense,
   startTransition,
@@ -293,6 +294,8 @@ const DevToolsApp = () => {
 
     setShowWhatsNew(false);
   };
+  const releaseDialogRef = useDialogFocus(showWhatsNew, closeWhatsNew);
+
 
   const openCommandPalette = () => {
     setShowShortcutSettings(false);
@@ -889,18 +892,16 @@ const DevToolsApp = () => {
       />
 
       {showWhatsNew && releaseNotes && (
-        <div className="release-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
+            ref={releaseDialogRef}
             aria-labelledby="whats-new-title"
-            className={`release-sheet w-full max-w-xl rounded-xl border ${theme.border} p-7`}
+            className="modal-surface release-dialog w-full max-w-xl"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="modal-header flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">
-                  What's New
-                </p>
                 <h2 id="whats-new-title" className={`text-xl font-semibold ${theme.text}`}>
                   {releaseNotes.title}
                 </h2>
@@ -916,11 +917,11 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`release-body max-h-[55vh] overflow-y-auto pr-3 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
+              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
-            <div className="mt-5 flex justify-end">
+            <div className="modal-footer flex justify-end">
               <Button type="button" onClick={closeWhatsNew}>
                 Got it
               </Button>
