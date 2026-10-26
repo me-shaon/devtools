@@ -22,11 +22,13 @@ jobs:
             arch: arm64
             target: aarch64-apple-darwin
             bundles: app,dmg
+            e2e: true
           - os: macos-latest
             platform: darwin
             arch: x64
             target: x86_64-apple-darwin
             bundles: app,dmg
+            e2e: true
           - os: windows-latest
             platform: win32
             arch: x64
@@ -243,6 +245,14 @@ jobs:
       - name: Run end-to-end smoke test (Windows)
         if: matrix.e2e && runner.os == 'Windows'
         run: node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
+
+      # macOS has no WebDriver for WKWebView, so the e2e build runs an in-app self-test.
+      - name: Run end-to-end self-test (macOS)
+        if: matrix.e2e && runner.os == 'macOS'
+        run: |
+          save_dir=$(mktemp -d)
+          DEVTOOLS_E2E_SELFTEST=1 DEVTOOLS_E2E_SAVE_DIR="$save_dir" \
+            perl -e 'alarm 300; exec @ARGV' src-tauri/target/${{ matrix.target }}/release/DevToolsApp
 
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
