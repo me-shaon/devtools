@@ -166,8 +166,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           function Get-DevToolsEntries {
-            Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall" |
-              Get-ItemProperty | Where-Object DisplayName -like "DevToolsApp*"
+            # Some system keys cannot be read on the runner. Skip them.
+            Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue |
+              Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object DisplayName -like "DevToolsApp*"
           }
 
           gh release download v1.3.0 --repo "${{ github.repository }}" --pattern "DevToolsApp-windows-setup.exe" --dir "$env:RUNNER_TEMP\electron"
