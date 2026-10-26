@@ -22,6 +22,7 @@ On tag push, CI will:
 - build the desktop packages for macOS (arm64 and x64), Windows (x64), and Linux (x64 and arm64)
 - run the end-to-end smoke test on Linux
 - create the updater manifest `latest.json`
+- create the electron-updater manifests (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml`), so that installs of the Electron version (v1.3.0 and earlier) update to the new release
 - publish the GitHub release using `release-notes/vX.Y.Z.md` as the release body
 
 ## Signing and Updates

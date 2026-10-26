@@ -68,13 +68,13 @@ Get the latest release for your platform:
 
 ### Upgrading from v1.3.0 or earlier
 
-Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron versions cannot update to the Tauri versions automatically.
+Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron version updates to the Tauri version through its usual update button.
 
-1. Download the installer for your platform from the list above.
-2. Install the new version.
-3. Remove the old version.
+- On macOS, the app closes after the update. Open DevToolsApp again to start the new version.
+- On Windows, the new installer removes the Electron version.
+- On Linux, the new `.deb` and `.rpm` packages replace the old `devtools` package. An AppImage is replaced in place.
 
-Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after you install it.
+Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after the update.
 
 ## Quick Start
 

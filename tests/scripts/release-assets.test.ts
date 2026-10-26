@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const rootDir = path.resolve(__dirname, "..", "..");
 const collectScript = path.join(rootDir, "scripts", "collect-release-assets.mjs");
 const manifestScript = path.join(rootDir, "scripts", "create-updater-manifest.mjs");
+const bridgeScript = path.join(rootDir, "scripts", "create-electron-bridge.mjs");
 
 const tempDirs: string[] = [];
 
@@ -58,17 +60,21 @@ describe("collect-release-assets", () => {
     ]);
   });
 
-  it("skips the optional macOS updater archive", () => {
+  it("zips the macOS app and skips the optional updater archive", () => {
     const bundleDir = makeTempDir();
     const outDir = makeTempDir();
     writeFile(path.join(bundleDir, "dmg", "DevToolsApp_1.4.0_x64.dmg"));
+    writeFile(path.join(bundleDir, "macos", "DevToolsApp.app", "Contents", "Info.plist"), "<plist/>");
 
     const result = run(collectScript, [
       "--platform", "darwin", "--arch", "x64", "--bundle-dir", bundleDir, "--out", outDir,
     ]);
 
     expect(result.status).toBe(0);
-    expect(fs.readdirSync(outDir)).toEqual(["DevToolsApp-macos-x64.dmg"]);
+    expect(fs.readdirSync(outDir).sort()).toEqual(["DevToolsApp-macos-x64.dmg", "DevToolsApp-macos-x64.zip"]);
+    const zip = fs.readFileSync(path.join(outDir, "DevToolsApp-macos-x64.zip"));
+    expect(zip.subarray(0, 2).toString()).toBe("PK");
+    expect(zip.includes(Buffer.from("DevToolsApp.app/Contents/Info.plist"))).toBe(true);
   });
 
   it("fails when a required bundle is missing", () => {
@@ -159,5 +165,52 @@ describe("create-updater-manifest", () => {
 
     expect(result.status).toBe(1);
     expect(result.output).toContain("Pass a release tag like v1.2.0");
+  });
+});
+
+describe("create-electron-bridge", () => {
+  const allAssets = [
+    "DevToolsApp-macos-arm64.zip",
+    "DevToolsApp-macos-x64.zip",
+    "DevToolsApp-windows-setup.exe",
+    "DevToolsApp-linux-x86_64.AppImage",
+    "DevToolsApp-linux-amd64.deb",
+    "DevToolsApp-linux-x86_64.rpm",
+    "DevToolsApp-linux-arm64.AppImage",
+    "DevToolsApp-linux-arm64.deb",
+    "DevToolsApp-linux-aarch64.rpm",
+  ];
+
+  it("writes the electron-updater manifests with sha512 and size", () => {
+    const assetsDir = makeTempDir();
+    allAssets.forEach((name) => writeFile(path.join(assetsDir, name), `content of ${name}`));
+
+    const result = run(bridgeScript, ["v1.4.0", "--assets", assetsDir]);
+
+    expect(result.status).toBe(0);
+    const mac = fs.readFileSync(path.join(assetsDir, "latest-mac.yml"), "utf8");
+    const content = "content of DevToolsApp-macos-arm64.zip";
+    const sha512 = crypto.createHash("sha512").update(content).digest("base64");
+    expect(mac).toContain("version: 1.4.0\n");
+    expect(mac).toContain(`  - url: DevToolsApp-macos-arm64.zip\n    sha512: ${sha512}\n    size: ${content.length}\n`);
+    expect(mac).toContain("  - url: DevToolsApp-macos-x64.zip\n");
+    expect(mac).toContain(`path: DevToolsApp-macos-arm64.zip\nsha512: ${sha512}\n`);
+    expect(fs.readFileSync(path.join(assetsDir, "latest.yml"), "utf8")).toContain(
+      "path: DevToolsApp-windows-setup.exe\n",
+    );
+    const linuxArm = fs.readFileSync(path.join(assetsDir, "latest-linux-arm64.yml"), "utf8");
+    expect(linuxArm).toContain("path: DevToolsApp-linux-arm64.AppImage\n");
+    expect(linuxArm).toContain("  - url: DevToolsApp-linux-arm64.deb\n");
+    expect(linuxArm).toContain("  - url: DevToolsApp-linux-aarch64.rpm\n");
+  });
+
+  it("fails when an asset is missing", () => {
+    const assetsDir = makeTempDir();
+    allAssets.slice(1).forEach((name) => writeFile(path.join(assetsDir, name)));
+
+    const result = run(bridgeScript, ["v1.4.0", "--assets", assetsDir]);
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("Missing assets for latest-mac.yml: DevToolsApp-macos-arm64.zip");
   });
 });

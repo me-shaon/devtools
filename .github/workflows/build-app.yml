@@ -159,6 +159,31 @@ jobs:
           if ($app.MainWindowTitle -ne "DevToolsApp") { throw "The DevToolsApp window did not open" }
           Stop-Process -Id $app.Id
 
+      - name: Check the upgrade from the Electron version (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $electronKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\4255d8c1-2180-5d21-b4ff-327fb490628a"
+          gh release download v1.3.0 --repo "${{ github.repository }}" --pattern "DevToolsApp-windows-setup.exe" --dir "$env:RUNNER_TEMP\electron"
+          Start-Process "$env:RUNNER_TEMP\electron\DevToolsApp-windows-setup.exe" -ArgumentList "/S" -Wait
+          Start-Sleep -Seconds 5
+          Get-Process DevToolsApp -ErrorAction SilentlyContinue | Stop-Process -Force
+          $electronDir = (Get-ItemProperty $electronKey).InstallLocation
+          Write-Host "Electron version installed at: $electronDir"
+          Get-Content (Join-Path $electronDir "resources\app-update.yml")
+
+          # electron-updater starts the new installer with --updated. CI adds /S to skip the wizard.
+          Start-Process "release\DevToolsApp-windows-setup.exe" -ArgumentList "--updated", "/S" -Wait
+          if (Test-Path $electronKey) { throw "The Electron uninstall entry is still present" }
+          if (Test-Path $electronDir) { throw "The Electron install folder is still present: $electronDir" }
+          $tauriApp = Join-Path $env:LOCALAPPDATA "DevToolsApp\DevToolsApp.exe"
+          if (-not (Test-Path $tauriApp)) { throw "The Tauri app is not installed at $tauriApp" }
+          Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall" |
+            Get-ItemProperty | Where-Object DisplayName -like "DevToolsApp*" |
+            Select-Object PSChildName, DisplayName, DisplayVersion, InstallLocation | Format-List
+
       - name: Check that the shipped app starts (macOS)
         if: runner.os == 'macOS'
         run: |

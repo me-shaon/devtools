@@ -51,12 +51,18 @@
     },
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerHooks": "windows/installer-hooks.nsh"
       }
     },
     "linux": {
       "deb": {
-        "section": "devel"
+        "section": "devel",
+        "conflicts": ["devtools"],
+        "replaces": ["devtools"]
+      },
+      "rpm": {
+        "obsoletes": ["devtools"]
       }
     }
   },

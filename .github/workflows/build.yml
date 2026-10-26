@@ -87,6 +87,10 @@ jobs:
             echo "::warning::No updater signatures found. Skipping latest.json."
           fi
 
+      # Lets installs of the Electron version (v1.3.0 and earlier) update to this release.
+      - name: Create Electron updater manifests
+        run: node scripts/create-electron-bridge.mjs "${{ needs.test.outputs.tag }}" --assets release-assets
+
       - name: Upload release assets (dry run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -60,6 +61,15 @@ function findBundle(dir, suffix) {
   return matches.length === 1 ? path.join(fullDir, matches[0]) : null;
 }
 
+// Zips an app bundle. ditto keeps the code signature, symlinks, and the stapled notarization.
+function zipApp(source, target) {
+  if (process.platform === "darwin") {
+    execFileSync("ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", source, target]);
+  } else {
+    execFileSync("zip", ["-qry", target, path.basename(source)], { cwd: path.dirname(source) });
+  }
+}
+
 let copied = 0;
 
 for (const rule of rules) {
@@ -71,7 +81,13 @@ for (const rule of rules) {
     fail(`Missing ${rule.suffix} bundle in ${path.join(bundleDir, rule.dir)}`);
   }
 
-  fs.copyFileSync(source, path.join(outDir, rule.name));
+  const target = path.join(outDir, rule.name);
+  fs.rmSync(target, { force: true });
+  if (rule.zipApp) {
+    zipApp(source, target);
+  } else {
+    fs.copyFileSync(source, target);
+  }
   console.log(`${path.relative(process.cwd(), source)} -> ${rule.name}`);
   copied += 1;
 
