@@ -28,7 +28,9 @@ if (!fs.existsSync(application)) {
 
 fs.mkdirSync(screenshotDir, { recursive: true });
 
-const tauriDriver = spawn(tauriDriverPath, [], { stdio: ["ignore", "inherit", "inherit"] });
+// On Windows, NATIVE_DRIVER points to an msedgedriver that matches the WebView2 version.
+const driverArgs = process.env.NATIVE_DRIVER ? ["--native-driver", process.env.NATIVE_DRIVER] : [];
+const tauriDriver = spawn(tauriDriverPath, driverArgs, { stdio: ["ignore", "inherit", "inherit"] });
 let browser;
 
 async function openTool(name) {

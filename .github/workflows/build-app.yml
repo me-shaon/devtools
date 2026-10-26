@@ -32,6 +32,7 @@ jobs:
             arch: x64
             target: x86_64-pc-windows-msvc
             bundles: nsis
+            e2e: true
           - os: ubuntu-22.04
             platform: linux
             arch: x64
@@ -138,15 +139,23 @@ jobs:
         if: matrix.e2e
         run: cargo install tauri-driver --locked
 
-      - name: Run end-to-end smoke test
-        if: matrix.e2e
+      - name: Run end-to-end smoke test (Linux)
+        if: matrix.e2e && runner.os == 'Linux'
         run: xvfb-run -a node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp
+
+      - name: Run end-to-end smoke test (Windows)
+        if: matrix.e2e && runner.os == 'Windows'
+        shell: bash
+        # The runner image includes an msedgedriver that matches its Edge and WebView2 version.
+        run: |
+          export NATIVE_DRIVER="$EDGEWEBDRIVER/msedgedriver.exe"
+          node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp.exe
 
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-screenshots
+          name: e2e-screenshots-${{ matrix.platform }}-${{ matrix.arch }}
           path: e2e/screenshots
           retention-days: 7
           if-no-files-found: ignore
