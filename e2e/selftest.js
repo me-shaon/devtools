@@ -26,8 +26,20 @@
   // innerText leaves out the values of text fields, so add them.
   const text = (element = document.body) =>
     [element.innerText || "", ...[...element.querySelectorAll("textarea, input")].map((field) => field.value)].join("\n");
-  const buttons = (label) =>
-    [...document.querySelectorAll("button")].filter((button) => text(button).includes(label));
+  // Only visible buttons. Open tools can stay mounted in hidden panels.
+  const buttons = (label, { exact = false } = {}) =>
+    [...document.querySelectorAll("button")].filter((button) => {
+      const buttonLabel = (button.innerText || "").trim();
+      return button.offsetParent !== null && (exact ? buttonLabel === label : buttonLabel.includes(label));
+    });
+
+  // The tool page shows the tool name as a page title or as the selected tab.
+  const isToolOpen = (name) =>
+    [...document.querySelectorAll('main h1, [role="tab"][aria-selected="true"]')].some(
+      (element) => (element.innerText || "").trim() === name,
+    );
+  const toolContent = () =>
+    document.querySelector("section.tool-panel:not([hidden])") || document.querySelector("main");
 
   function setValue(element, value) {
     const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -39,10 +51,7 @@
     setValue(document.querySelector('input[placeholder="Search..."]'), name);
     const button = await waitFor(() => buttons(name)[0], `tool button ${name}`);
     button.click();
-    await waitFor(
-      () => [...document.querySelectorAll("main h1")].some((heading) => text(heading) === name),
-      `tool page ${name}`,
-    );
+    await waitFor(() => isToolOpen(name), `tool page ${name}`);
   }
 
   async function step(name, run) {
@@ -88,7 +97,7 @@
       }
       for (const name of toolNames) {
         await openTool(name);
-        await waitFor(() => text(document.querySelector("main")).length > name.length + 20, `content of ${name}`);
+        await waitFor(() => text(toolContent()).length > name.length + 20, `content of ${name}`);
       }
     });
 
@@ -112,9 +121,12 @@
 
     await step("formats JSON", async () => {
       await openTool("JSON Viewer");
-      setValue(document.querySelector('textarea[placeholder="Paste your JSON here..."]'), '{"a":1,"b":[true]}');
-      buttons("Format")[0].click();
-      await waitFor(() => text(document.querySelector("main")).includes('"b": ['), "formatted JSON");
+      const input =
+        document.querySelector("#json-workspace-input") ||
+        document.querySelector('textarea[placeholder="Paste your JSON here..."]');
+      setValue(input, '{"a":1,"b":[true]}');
+      buttons("Format", { exact: true })[0].click();
+      await waitFor(() => text(toolContent()).includes('"b": ['), "formatted JSON");
     });
 
     await step("saves a QR code PNG through the save_file command", async () => {
