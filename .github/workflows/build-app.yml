@@ -176,10 +176,10 @@ jobs:
           Get-Process DevToolsApp -ErrorAction SilentlyContinue | Stop-Process -Force
           Write-Host "Before the upgrade:"
           $electron = Get-DevToolsEntries
-          $electron | Format-List PSPath, DisplayName, DisplayVersion, InstallLocation, UninstallString
-          $electronDir = $electron.InstallLocation
-          if (-not $electronDir -or -not (Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe"))) {
-            throw "The Electron version did not install as expected"
+          $electron | Format-List PSPath, DisplayName, DisplayVersion, UninstallString
+          $electronDir = Join-Path $env:LOCALAPPDATA "Programs\devtools"
+          if (-not (Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe"))) {
+            throw "The Electron version did not install to $electronDir"
           }
           Get-Content (Join-Path $electronDir "resources\app-update.yml")
 
@@ -187,7 +187,7 @@ jobs:
           Start-Process "release\DevToolsApp-windows-setup.exe" -ArgumentList "--updated", "/S" -Wait
           Write-Host "After the upgrade:"
           $entries = Get-DevToolsEntries
-          $entries | Format-List PSPath, DisplayName, DisplayVersion, InstallLocation
+          $entries | Format-List PSPath, DisplayName, DisplayVersion, UninstallString
           if (Test-Path $electronDir) { throw "The Electron install folder is still present: $electronDir" }
           if (@($entries).Count -ne 1) { throw "Expected one DevToolsApp uninstall entry, found $(@($entries).Count)" }
           $tauriApp = Join-Path $env:LOCALAPPDATA "DevToolsApp\DevToolsApp.exe"
