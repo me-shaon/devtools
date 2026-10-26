@@ -174,13 +174,23 @@ jobs:
           }
 
           gh release download v1.3.0 --repo "${{ github.repository }}" --pattern "DevToolsApp-windows-setup.exe" --dir "$env:RUNNER_TEMP\electron"
-          Start-Process "$env:RUNNER_TEMP\electron\DevToolsApp-windows-setup.exe" -ArgumentList "/S" -Wait
-          # The one-click installer can hand off to a child process, so wait for the files to appear.
           $electronDir = Join-Path $env:LOCALAPPDATA "Programs\devtools"
-          $deadline = (Get-Date).AddMinutes(2)
-          while (-not ((Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe")) -and (Get-DevToolsEntries))) {
-            if ((Get-Date) -gt $deadline) { throw "The Electron version did not install to $electronDir" }
-            Start-Sleep -Seconds 2
+          function Test-ElectronInstalled {
+            (Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe")) -and (Get-DevToolsEntries)
+          }
+
+          # The one-click installer can hand off to a child process, so wait for the files to appear.
+          # Shared runners are sometimes slow, so try the install a second time before failing.
+          foreach ($attempt in 1..2) {
+            $installer = Start-Process "$env:RUNNER_TEMP\electron\DevToolsApp-windows-setup.exe" -ArgumentList "/S" -Wait -PassThru
+            Write-Host "Electron installer attempt $attempt exited with code $($installer.ExitCode)"
+            $deadline = (Get-Date).AddMinutes(4)
+            while (-not (Test-ElectronInstalled) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
+            if (Test-ElectronInstalled) { break }
+          }
+          if (-not (Test-ElectronInstalled)) {
+            Get-ChildItem (Join-Path $env:LOCALAPPDATA "Programs") -ErrorAction SilentlyContinue | Format-Table Name, LastWriteTime
+            throw "The Electron version did not install to $electronDir"
           }
           Start-Sleep -Seconds 5
           Get-Process DevToolsApp -ErrorAction SilentlyContinue | Stop-Process -Force
