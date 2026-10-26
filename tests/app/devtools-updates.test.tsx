@@ -1,12 +1,35 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DevToolsApp from "@/app/DevToolsApp";
+import type { DesktopBridge } from "@/lib/desktop";
+
+const desktopMock = vi.hoisted(() => ({ bridge: null as DesktopBridge | null }));
+
+vi.mock("@/lib/desktop", () => ({
+  getDesktopBridge: () => desktopMock.bridge,
+  saveFile: vi.fn(async () => true),
+}));
 
 afterEach(() => {
   document.documentElement.classList.remove("dark");
   localStorage.clear();
-  delete (window as Window & { electronAPI?: unknown }).electronAPI;
+  desktopMock.bridge = null;
 });
+
+const createBridge = (version: string, updateState: Awaited<ReturnType<DesktopBridge["getUpdateState"]>>) => {
+  const bridge: DesktopBridge = {
+    platform: "darwin",
+    getVersion: vi.fn(async () => version),
+    getUpdateState: vi.fn(async () => updateState),
+    onUpdateState: vi.fn(() => () => {}),
+    checkForUpdates: vi.fn(async () => updateState),
+    downloadUpdate: vi.fn(async () => true),
+    installUpdate: vi.fn(async () => true),
+  };
+
+  desktopMock.bridge = bridge;
+  return bridge;
+};
 
 const setupMatchMedia = () => {
   Object.defineProperty(window, "matchMedia", {
@@ -28,22 +51,11 @@ describe("DevToolsApp updates", () => {
   it("shows the app version and update action in the sidebar footer", async () => {
     setupMatchMedia();
 
-    window.electronAPI = {
-      invoke: vi.fn(async (channel: string) => {
-        if (channel === "app-version") {
-          return "1.2.3";
-        }
-
-        if (channel === "update-status") {
-          return { status: "available", version: "1.3.0", currentVersion: "1.2.3" };
-        }
-
-        return null;
-      }),
-      on: vi.fn(() => () => {}),
-      platform: "darwin",
-      version: "40.0.0",
-    };
+    const bridge = createBridge("1.2.3", {
+      status: "available",
+      version: "1.3.0",
+      currentVersion: "1.2.3",
+    });
 
     render(<DevToolsApp />);
 
@@ -52,30 +64,21 @@ describe("DevToolsApp updates", () => {
     expect(screen.getByRole("button", { name: "Update to v1.3.0" })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(window.electronAPI.invoke).toHaveBeenCalledWith("app-version");
-      expect(window.electronAPI.invoke).toHaveBeenCalledWith("update-status");
+      expect(bridge.getVersion).toHaveBeenCalled();
+      expect(bridge.getUpdateState).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Update to v1.3.0" }));
+
+    await waitFor(() => {
+      expect(bridge.downloadUpdate).toHaveBeenCalled();
     });
   });
 
   it("shows what's new on first launch after a version bump and persists dismissal", async () => {
     setupMatchMedia();
 
-    window.electronAPI = {
-      invoke: vi.fn(async (channel: string) => {
-        if (channel === "app-version") {
-          return "1.1.0";
-        }
-
-        if (channel === "update-status") {
-          return { status: "not-available", currentVersion: "1.1.0" };
-        }
-
-        return null;
-      }),
-      on: vi.fn(() => () => {}),
-      platform: "darwin",
-      version: "40.0.0",
-    };
+    createBridge("1.1.0", { status: "not-available", currentVersion: "1.1.0" });
 
     const { unmount } = render(<DevToolsApp />);
 

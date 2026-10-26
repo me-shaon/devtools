@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/desktop";
 import {
   buildOutputFilename,
   formatSavingsLabel,
@@ -76,15 +77,6 @@ function getUniqueFileName(fileName: string, usedNames: Map<string, number>): st
   const extension = extensionIndex === -1 ? "" : fileName.slice(extensionIndex);
 
   return `${baseName}-${currentCount + 1}${extension}`;
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const downloadUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = downloadUrl;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(downloadUrl);
 }
 
 async function loadImage(file: File): Promise<HTMLImageElement> {
@@ -368,13 +360,23 @@ export function ImageConverter() {
     setBulkFiles(supportedFiles);
   };
 
-  const handleSingleDownload = () => {
+  const handleSingleDownload = async () => {
     if (!singleFile || !singleResult) {
       return;
     }
 
-    downloadBlob(singleResult.blob, buildOutputFilename(singleFile.name, singleResult.format));
-    toast.success("Compressed image downloaded.");
+    try {
+      const saved = await saveFile(
+        singleResult.blob,
+        buildOutputFilename(singleFile.name, singleResult.format),
+      );
+      if (saved) {
+        toast.success("Compressed image downloaded.");
+      }
+    } catch (error) {
+      console.error("Failed to save compressed image:", error);
+      toast.error("Unable to save the compressed image.");
+    }
   };
 
   const handleBulkDownload = async () => {
@@ -405,8 +407,14 @@ export function ImageConverter() {
       type: "application/zip",
     });
 
-    downloadBlob(zipBlob, "compressed-images.zip");
-    toast.success("ZIP download is ready.");
+    try {
+      if (await saveFile(zipBlob, "compressed-images.zip")) {
+        toast.success("ZIP download is ready.");
+      }
+    } catch (error) {
+      console.error("Failed to save ZIP file:", error);
+      toast.error("Unable to save the ZIP file.");
+    }
   };
 
   const bulkHasQualityControl = bulkFiles.some((file) =>

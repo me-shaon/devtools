@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Slider } from "@/components/ui/slider";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/desktop";
 
 export function QrGenerator() {
   const [text, setText] = useState("");
@@ -85,11 +86,21 @@ export function QrGenerator() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const link = document.createElement("a");
-    link.download = `qr-code-${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    toast.success("QR code downloaded!");
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        toast.error("Unable to create the QR code image.");
+        return;
+      }
+
+      try {
+        if (await saveFile(blob, `qr-code-${Date.now()}.png`)) {
+          toast.success("QR code downloaded!");
+        }
+      } catch (error) {
+        console.error("Failed to save QR code:", error);
+        toast.error("Unable to save the QR code.");
+      }
+    }, "image/png");
   };
 
   return (

@@ -53,23 +53,7 @@ import {
   resolveDarkMode,
   syncDarkClass,
 } from "@/utils/theme";
-type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error"
-  | "unsupported";
-
-interface RendererUpdateState {
-  status: UpdateStatus;
-  currentVersion?: string;
-  version?: string;
-  progress?: number;
-  message?: string;
-}
+import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
 const MAX_FAVORITES = 5;
 const MAX_RECENT_TOOLS = 6;
@@ -79,7 +63,8 @@ const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
 const WHATS_NEW_SEEN_STORAGE_KEY = "devtools-whats-new-seen-version";
 
 const DevToolsApp = () => {
-  const platform = typeof window !== "undefined" ? window.electronAPI?.platform : undefined;
+  const desktop = getDesktopBridge();
+  const platform = desktop?.platform;
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [themePreference, setThemePreference] = useState(() =>
     getStoredThemePreference(typeof window !== "undefined" ? window.localStorage : undefined)
@@ -93,14 +78,14 @@ const DevToolsApp = () => {
   const [recentToolIds, setRecentToolIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [appVersion, setAppVersion] = useState<string>("");
-  const [updateState, setUpdateState] = useState<RendererUpdateState>({ status: "idle" });
+  const [updateState, setUpdateState] = useState<UpdateState>({ status: "idle" });
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [seenWhatsNewVersion, setSeenWhatsNewVersion] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcutSettings, setShowShortcutSettings] = useState(false);
   const [shortcutBindings, setShortcutBindings] = useState<ShortcutBindings>(() =>
     loadStoredShortcutBindings(
-      typeof window !== "undefined" ? window.electronAPI?.platform : undefined,
+      platform,
       typeof window !== "undefined" ? window.localStorage : undefined,
     ),
   );
@@ -215,7 +200,7 @@ const DevToolsApp = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.electronAPI) {
+    if (!desktop) {
       return undefined;
     }
 
@@ -224,14 +209,14 @@ const DevToolsApp = () => {
     const loadAppMeta = async () => {
       try {
         const [version, currentUpdateState] = await Promise.all([
-          window.electronAPI.invoke("app-version"),
-          window.electronAPI.invoke("update-status"),
+          desktop.getVersion(),
+          desktop.getUpdateState(),
         ]);
 
         if (!cancelled) {
           setAppVersion(typeof version === "string" ? version : "");
           if (currentUpdateState && typeof currentUpdateState === "object") {
-            setUpdateState(currentUpdateState as RendererUpdateState);
+            setUpdateState(currentUpdateState as UpdateState);
           }
         }
       } catch (error) {
@@ -241,9 +226,9 @@ const DevToolsApp = () => {
 
     loadAppMeta();
 
-    const unsubscribe = window.electronAPI.on("update-status", (nextState) => {
+    const unsubscribe = desktop.onUpdateState((nextState) => {
       if (!cancelled && nextState && typeof nextState === "object") {
-        setUpdateState(nextState as RendererUpdateState);
+        setUpdateState(nextState as UpdateState);
       }
     });
 
@@ -251,7 +236,7 @@ const DevToolsApp = () => {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [desktop]);
 
   useEffect(() => {
     if (!releaseNotes) {
@@ -264,22 +249,22 @@ const DevToolsApp = () => {
   }, [seenWhatsNewVersion, releaseNotes]);
 
   const handleUpdateAction = async () => {
-    if (!window.electronAPI) {
+    if (!desktop) {
       return;
     }
 
     try {
       if (updateState.status === "available") {
-        await window.electronAPI.invoke("download-update");
+        await desktop.downloadUpdate();
         return;
       }
 
       if (updateState.status === "downloaded") {
-        await window.electronAPI.invoke("install-update");
+        await desktop.installUpdate();
         return;
       }
 
-      await window.electronAPI.invoke("check-for-updates");
+      await desktop.checkForUpdates();
     } catch (error) {
       console.error("Failed to run update action:", error);
       toast.error("Unable to complete the update action.");

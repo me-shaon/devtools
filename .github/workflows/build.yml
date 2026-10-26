@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+          cache: npm
 
       - name: Validate release metadata
         run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
@@ -30,64 +31,10 @@ jobs:
   build:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
-    environment: Production
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        include:
-          - os: windows-latest
-            artifact_name: devtools-windows
-          - os: macos-latest
-            artifact_name: devtools-macos
-          - os: ubuntu-latest
-            artifact_name: devtools-linux
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Linux packaging dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fakeroot rpm
-
-      - name: Build and package
-        run: npm run dist
-        env:
-          DEBUG: electron-builder,electron-osx-sign*,electron-notarize*
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: devtools-${{ matrix.os }}
-          path: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-            release/*.yml
-            release/*.blockmap
-          retention-days: 30
-          if-no-files-found: error
+    uses: ./.github/workflows/build-app.yml
+    with:
+      release: true
+    secrets: inherit
 
   release:
     needs: build
@@ -101,30 +48,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-artifacts
+          pattern: devtools-*
+          path: release-assets
+          merge-multiple: true
 
-      - name: Display structure of downloaded files
-        run: ls -R release-artifacts
+      - name: Display downloaded files
+        run: ls -la release-assets
+
+      - name: Create updater manifest
+        run: |
+          if ls release-assets/*.sig >/dev/null 2>&1; then
+            node scripts/create-updater-manifest.mjs "$GITHUB_REF_NAME" --assets release-assets
+          else
+            echo "::warning::No updater signatures found. Skipping latest.json."
+          fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release-artifacts/**/*.dmg
-            release-artifacts/**/*.zip
-            release-artifacts/**/*.exe
-            release-artifacts/**/*.AppImage
-            release-artifacts/**/*.deb
-            release-artifacts/**/*.rpm
-            release-artifacts/**/latest*.yml
-            release-artifacts/**/*.blockmap
+          files: release-assets/*
           draft: false
           prerelease: false
           generate_release_notes: false
           body_path: release-notes/${{ github.ref_name }}.md
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

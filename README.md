@@ -78,13 +78,22 @@ npm install
 npm run dev
 
 # Build for distribution
-npm run dist
+npm run build
 ```
 
 ## Requirements
 
-- Node.js 18+
-- npm or yarn
+- Node.js 22+
+- npm
+- Rust (stable). Install it with [rustup](https://rustup.rs).
+- The Tauri system dependencies for your platform. Refer to the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+On Debian or Ubuntu, install the Linux dependencies with this command:
+
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+  libxdo-dev libssl-dev patchelf file rpm
+```
 
 ## Architecture
 
@@ -96,14 +105,18 @@ src/
 │   └── DevToolsApp.tsx   # Main app with sidebar navigation
 └── main.tsx         # React entry point
 
-src-electron/
-├── main.ts          # Electron main process
-└── preload.ts       # Secure IPC bridge
+src/lib/
+└── desktop.ts       # Bridge to the Tauri runtime (version, updates, file saving)
+
+src-tauri/
+├── src/main.rs      # Tauri app entry point and native commands
+├── tauri.conf.json  # Window, bundle, and updater configuration
+└── capabilities/    # Permissions for the app window
 ```
 
 ### Tech Stack
 
-- **Electron** 40+ for desktop runtime
+- **Tauri** 2 for the desktop runtime (system webview and a Rust backend)
 - **React** 18+ with TypeScript
 - **Vite** for fast builds and hot reload
 - **Tailwind CSS** for styling
@@ -112,24 +125,36 @@ src-electron/
 
 ## Development
 
+The installers go to `src-tauri/target/release/bundle/`. Each platform builds only its own installers. CI builds all platforms.
+
+### End-to-End Test
+
+The `e2e/smoke.mjs` script starts the built app with [tauri-driver](https://v2.tauri.app/develop/tests/webdriver/) and checks the main flows. It runs on Linux and in CI:
+
+```bash
+cargo install tauri-driver --locked
+npm run build
+xvfb-run node e2e/smoke.mjs
+```
+
 ### Running in Development
 
 ```bash
-npm run dev    # Starts Vite dev server + Electron
+npm run dev    # Starts the Vite dev server and the Tauri app
 ```
 
 ### Build Scripts
 
 ```bash
 npm run dev              # Development mode with hot reload
-npm run build            # Build React app + Electron
+npm run dev:web          # Run only the web UI in a browser
+npm run build            # Build the app and the installers for the current platform
 npm run test             # Run the test suite
 npm run lint             # Run ESLint
-npm run dist             # Create installers for all platforms
-npm run dist:mac         # Build macOS packages
-npm run dist:win         # Build Windows packages
-npm run dist:linux       # Build Linux packages
-npm run dist:publish     # Build and publish to GitHub releases
+npm run dist:mac         # Build macOS packages (.app, .dmg)
+npm run dist:win         # Build the Windows installer (NSIS .exe)
+npm run dist:linux       # Build Linux packages (.AppImage, .deb, .rpm)
+npm run icon             # Generate app icons from src-tauri/app-icon.png
 ```
 
 ## Adding a Tool

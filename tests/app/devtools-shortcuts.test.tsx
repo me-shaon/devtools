@@ -5,7 +5,6 @@ import DevToolsApp from "@/app/DevToolsApp";
 afterEach(() => {
   document.documentElement.classList.remove("dark");
   localStorage.clear();
-  delete (window as Window & { electronAPI?: unknown }).electronAPI;
 });
 
 const setupMatchMedia = () => {

@@ -32,6 +32,7 @@ const tag = `v${version}`;
 
 const packageJsonPath = path.join(cwd, "package.json");
 const packageLockPath = path.join(cwd, "package-lock.json");
+const cargoTomlPath = path.join(cwd, "src-tauri", "Cargo.toml");
 const releaseNotesPath = path.join(cwd, "release-notes", `${tag}.md`);
 
 if (!fs.existsSync(packageJsonPath)) {
@@ -59,6 +60,17 @@ if (packageLock.version !== version) {
 
 if (packageLock.packages?.[""]?.version !== version) {
   fail(`package-lock.json root package version is ${packageLock.packages?.[""]?.version}, expected ${version}.`);
+}
+
+if (!fs.existsSync(cargoTomlPath)) {
+  fail("src-tauri/Cargo.toml not found.");
+}
+
+const cargoVersion = fs
+  .readFileSync(cargoTomlPath, "utf8")
+  .match(/^\[package\][\s\S]*?^version = "([^"]*)"/m)?.[1];
+if (cargoVersion !== version) {
+  fail(`src-tauri/Cargo.toml version is ${cargoVersion}, expected ${version}.`);
 }
 
 const releaseNotes = fs.readFileSync(releaseNotesPath, "utf8").trim();

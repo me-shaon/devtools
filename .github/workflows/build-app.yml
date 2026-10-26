@@ -1,0 +1,160 @@
+name: Build App
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        description: Sign the bundles and create updater artifacts with the Production secrets.
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }}-${{ matrix.arch }})
+    environment: ${{ inputs.release && 'Production' || '' }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - os: macos-latest
+            platform: darwin
+            arch: x64
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb,rpm
+            e2e: true
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: arm64
+            target: aarch64-unknown-linux-gnu
+            bundles: appimage,deb,rpm
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev patchelf file rpm xvfb webkit2gtk-driver
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure signing
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.CSC_LINK }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Export only the values that exist. Tauri fails on empty signing variables.
+          export_if_set() {
+            if [ -n "${!1}" ]; then
+              {
+                echo "$1<<__SIGNING_EOF__"
+                echo "${!1}"
+                echo "__SIGNING_EOF__"
+              } >> "$GITHUB_ENV"
+            fi
+          }
+
+          build_args="--target ${{ matrix.target }} --bundles ${{ matrix.bundles }}"
+
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            export_if_set TAURI_SIGNING_PRIVATE_KEY
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" >> "$GITHUB_ENV"
+            build_args="$build_args --config src-tauri/tauri.updater.conf.json"
+          elif [ "${{ inputs.release }}" = "true" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY is not set. The release will not include updater artifacts."
+          fi
+
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ]; then
+              for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+                export_if_set "$name"
+              done
+            else
+              # Ad-hoc signature so the app runs on Apple Silicon without a Developer ID.
+              echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+            fi
+          fi
+
+          echo "BUILD_ARGS=$build_args" >> "$GITHUB_ENV"
+
+      - name: Build app
+        shell: bash
+        run: npx tauri build $BUILD_ARGS
+
+      - name: Collect release assets
+        shell: bash
+        run: >
+          node scripts/collect-release-assets.mjs
+          --platform ${{ matrix.platform }}
+          --arch ${{ matrix.arch }}
+          --bundle-dir src-tauri/target/${{ matrix.target }}/release/bundle
+          --out release
+
+      - name: Install tauri-driver
+        if: matrix.e2e
+        run: cargo install tauri-driver --locked
+
+      - name: Run end-to-end smoke test
+        if: matrix.e2e
+        run: xvfb-run -a node e2e/smoke.mjs src-tauri/target/${{ matrix.target }}/release/DevToolsApp
+
+      - name: Upload e2e screenshots
+        if: matrix.e2e && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e/screenshots
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: devtools-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release/*
+          retention-days: 30
+          if-no-files-found: error

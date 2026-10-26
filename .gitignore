@@ -89,7 +89,6 @@ web_modules/
 # Next.js build output
 .next
 out
-dist-electron/
 
 # Nuxt.js build / generate output
 .nuxt
@@ -133,19 +132,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Electron-specific ignores
-# Build output directories
-build/*
-!build/entitlements.*.plist
-!build/icon.*
-!build/linux/**
-
-# Electron Forge
-.makers/
-
-# Electron Builder
-# https://www.electron.build/configuration/configuration#directories
-app-builds/
+# Tauri build output
+src-tauri/target/
+src-tauri/gen/schemas/
 
 # Generated installers
 *.dmg
@@ -239,3 +228,8 @@ storybook-static
 # Temporary folders
 tmp/
 temp/
+e2e/screenshots/
+
+# Keep the Tauri app icons (the macOS "Icon?" rule matches this folder)
+!src-tauri/icons/
+!src-tauri/icons/**

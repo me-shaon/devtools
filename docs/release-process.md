@@ -2,8 +2,9 @@
 
 This project uses a small human-reviewed release workflow with CI validation. The goal is to keep these in sync for every version bump:
 
-- app version in `package.json`
+- app version in `package.json` (the Tauri bundle reads its version from this file)
 - packaged app version in `package-lock.json`
+- Rust crate version in `src-tauri/Cargo.toml`
 - GitHub release notes in `release-notes/vX.Y.Z.md`
 
 ## Quick Flow
@@ -18,8 +19,28 @@ On tag push, CI will:
 
 - verify the version and changelog files are consistent
 - run the test suite
-- build the desktop packages
+- build the desktop packages for macOS (arm64 and x64), Windows (x64), and Linux (x64 and arm64)
+- run the end-to-end smoke test on Linux
+- create the updater manifest `latest.json`
 - publish the GitHub release using `release-notes/vX.Y.Z.md` as the release body
+
+## Signing and Updates
+
+The release workflow uses the secrets in the `Production` environment.
+
+| Secret | Use |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | Signs the updater artifacts. The public key is in `src-tauri/tauri.conf.json`. |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password of the updater key. Leave it empty if the key has no password. |
+| `CSC_LINK` | Base64 Developer ID Application certificate (`.p12`) for macOS code signing. |
+| `CSC_KEY_PASSWORD` | Password of the macOS certificate. |
+| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | macOS notarization. |
+
+If `TAURI_SIGNING_PRIVATE_KEY` is missing, the release has no `latest.json` and installed apps cannot update. If the macOS certificate is missing, the macOS app gets an ad-hoc signature.
+
+Keep a backup of the updater private key. If you lose it, installed apps cannot verify new updates. To replace the key, run `npx tauri signer generate`, put the new public key in `src-tauri/tauri.conf.json`, and update the secret. Users of older versions must then download the new version manually.
+
+The release assets use fixed names, for example `DevToolsApp-macos-arm64.dmg`. The download links in `README.md` depend on these names. `scripts/collect-release-assets.mjs` sets the names.
 
 ## Source Files
 
