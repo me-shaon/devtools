@@ -65,7 +65,13 @@
     const isMac = navigator.platform.toLowerCase().includes("mac");
 
     await step("shows What's New for the installed version through the Tauri API", async () => {
-      const dialog = await waitFor(() => document.querySelector('[role="dialog"]'), "What's New dialog", 20000);
+      // A first launch opens the dialog by itself. A later launch has marked it as seen.
+      await waitFor(() => text().includes(`Version v${version}`), "app start", 20000);
+      await delay(1000);
+      if (!document.querySelector('[role="dialog"]')) {
+        buttons("What's New")[0].click();
+      }
+      const dialog = await waitFor(() => document.querySelector('[role="dialog"]'), "What's New dialog");
       await waitFor(() => text(dialog).includes(`DevToolsApp v${version}`), "dialog version");
       buttons("Got it")[0].click();
       await waitFor(() => !document.querySelector('[role="dialog"]'), "dialog closes");
