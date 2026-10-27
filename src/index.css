@@ -407,3 +407,5 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .command-surface .modal-header { border-bottom: 1px solid hsl(var(--border)); }
 .command-surface .modal-header input,
 .command-surface .modal-header input:focus-visible { outline: none; box-shadow: none; border: 0; font-size: 15px; }
+.sidebar-auto-update { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 8px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.sidebar-auto-update button[role="switch"] { transform: scale(.8); transform-origin: right center; }

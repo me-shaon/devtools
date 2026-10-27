@@ -14,6 +14,15 @@ pub fn start_selftest(webview: &Webview) {
     }
 }
 
+/// Quits the way Cmd+Q or the tray's Quit item does, so a test can check install-on-quit.
+#[tauri::command]
+pub fn e2e_request_quit(app: AppHandle, log: String) {
+    println!("{log}");
+    if crate::request_quit(&app) {
+        app.exit(0);
+    }
+}
+
 /// Prints the self-test log and exits with the test result.
 #[tauri::command]
 pub fn e2e_report(app: AppHandle, passed: bool, output: String) {

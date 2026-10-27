@@ -8,6 +8,7 @@ const tauri = vi.hoisted(() => ({
   openUrl: vi.fn(async () => {}),
   relaunch: vi.fn(async () => {}),
   check: vi.fn(),
+  listen: vi.fn(async () => () => {}),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: tauri.isTauri, invoke: tauri.invoke }));
@@ -16,6 +17,7 @@ vi.mock("@tauri-apps/plugin-os", () => ({ platform: tauri.platform }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: tauri.openUrl }));
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: tauri.relaunch }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: tauri.check }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: tauri.listen }));
 
 const blobOf = (bytes: number[]) =>
   ({ arrayBuffer: async () => new Uint8Array(bytes).buffer }) as Blob;
@@ -50,7 +52,7 @@ describe("getDesktopBridge", () => {
     expect(getDesktopBridge()?.platform).toBe("win32");
   });
 
-  it("checks, downloads, and installs an available update", async () => {
+  it("checks, downloads, and installs an available update when updating by hand", async () => {
     const update = {
       version: "1.4.0",
       download: vi.fn(async (onEvent: (event: unknown) => void) => {
@@ -64,6 +66,7 @@ describe("getDesktopBridge", () => {
 
     const { getDesktopBridge } = await loadDesktop();
     const bridge = getDesktopBridge()!;
+    bridge.setAutoUpdate?.(false);
     const states: string[] = [];
     bridge.onUpdateState((state) => states.push(`${state.status}:${state.progress ?? ""}`));
 
@@ -85,6 +88,97 @@ describe("getDesktopBridge", () => {
     ]);
     expect(update.install).toHaveBeenCalled();
     expect(tauri.relaunch).toHaveBeenCalled();
+  });
+
+  it("downloads an update in the background and tells the shell it is ready", async () => {
+    const update = { version: "1.4.0", download: vi.fn(async () => {}), install: vi.fn(async () => {}) };
+    tauri.check.mockResolvedValue(update);
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+
+    await bridge.checkForUpdates();
+
+    await vi.waitFor(() => expect(tauri.invoke).toHaveBeenCalledWith("set_update_ready", { ready: true }));
+    expect(update.download).toHaveBeenCalledTimes(1);
+    expect(update.install).not.toHaveBeenCalled();
+    // A manual download after the automatic one does not download again.
+    await expect(bridge.downloadUpdate()).resolves.toBe(true);
+    expect(update.download).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not download in the background when automatic updates are off", async () => {
+    const update = { version: "1.4.0", download: vi.fn(async () => {}), install: vi.fn(async () => {}) };
+    tauri.check.mockResolvedValue(update);
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+    bridge.setAutoUpdate?.(false);
+
+    await bridge.checkForUpdates();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(update.download).not.toHaveBeenCalled();
+    // Turning it back on downloads the update that was found.
+    bridge.setAutoUpdate?.(true);
+    await vi.waitFor(() => expect(update.download).toHaveBeenCalledTimes(1));
+  });
+
+  it("checks again every six hours while the app runs", async () => {
+    vi.useFakeTimers();
+    try {
+      tauri.check.mockResolvedValue(null);
+      const { getDesktopBridge, UPDATE_CHECK_INTERVAL_MS } = await loadDesktop();
+      await getDesktopBridge()!.getUpdateState();
+
+      await vi.advanceTimersByTimeAsync(15000);
+      expect(tauri.check).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_INTERVAL_MS);
+      expect(tauri.check).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_INTERVAL_MS);
+      expect(tauri.check).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("installs a downloaded update when the shell reports a quit, then quits", async () => {
+    const update = { version: "1.4.0", download: vi.fn(async () => {}), install: vi.fn(async () => {}) };
+    tauri.check.mockResolvedValue(update);
+    let onQuit: (() => Promise<void>) | undefined;
+    tauri.listen.mockImplementation(async (event: string, handler: () => Promise<void>) => {
+      if (event === "install-update-and-quit") onQuit = handler;
+      return () => {};
+    });
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+    await bridge.getUpdateState();
+    await bridge.checkForUpdates();
+    await vi.waitFor(() => expect(tauri.invoke).toHaveBeenCalledWith("set_update_ready", { ready: true }));
+
+    await onQuit!();
+
+    expect(update.install).toHaveBeenCalled();
+    expect(tauri.invoke).toHaveBeenLastCalledWith("quit_now");
+    expect(tauri.relaunch).not.toHaveBeenCalled();
+  });
+
+  it("still quits when installing on quit fails", async () => {
+    const update = { version: "1.4.0", download: vi.fn(async () => {}), install: vi.fn(async () => { throw new Error("disk full"); }) };
+    tauri.check.mockResolvedValue(update);
+    let onQuit: (() => Promise<void>) | undefined;
+    tauri.listen.mockImplementation(async (event: string, handler: () => Promise<void>) => {
+      if (event === "install-update-and-quit") onQuit = handler;
+      return () => {};
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { getDesktopBridge } = await loadDesktop();
+    const bridge = getDesktopBridge()!;
+    await bridge.getUpdateState();
+    await bridge.checkForUpdates();
+    await vi.waitFor(() => expect(tauri.invoke).toHaveBeenCalledWith("set_update_ready", { ready: true }));
+
+    await onQuit!();
+
+    expect(tauri.invoke).toHaveBeenLastCalledWith("quit_now");
   });
 
   it("reports when no update is available", async () => {
