@@ -37,6 +37,7 @@ import {
   type ToolId,
 } from "@/app/toolRegistry";
 import { getReleaseNotes } from "@/data/releaseNotes";
+import { parseDeepLink } from "@/utils/deep-link";
 import { convertMarkdown } from "@/utils/markdown";
 import {
   formatShortcutBinding,
@@ -55,6 +56,7 @@ import {
 } from "@/utils/theme";
 import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
+const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
 const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader"]);
@@ -305,10 +307,13 @@ const DevToolsApp = () => {
   const releaseDialogRef = useDialogFocus(showWhatsNew, closeWhatsNew);
 
 
-  const openCommandPalette = () => {
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const openCommandPaletteWith = (query: string) => {
     setShowShortcutSettings(false);
+    setPaletteQuery(query);
     setShowCommandPalette(true);
   };
+  const openCommandPalette = () => openCommandPaletteWith("");
 
   const closeCommandPalette = () => {
     setShowCommandPalette(false);
@@ -500,6 +505,20 @@ const DevToolsApp = () => {
       );
     }
   };
+
+  // devtoolsapp:// links from Raycast, Alfred, scripts, or a browser. The ref keeps the
+  // listener on the latest handlers without subscribing again on every render.
+  const deepLinkHandlerRef = useRef<(url: string) => void>(() => {});
+  deepLinkHandlerRef.current = (url: string) => {
+    const action = parseDeepLink(url, TOOL_IDS);
+    if (!action) return;
+    setShowWhatsNew(false);
+    setShowShortcutSettings(false);
+    if (action.type === "tool") selectTool(TOOL_BY_ID.get(action.toolId as ToolId) ?? null);
+    else if (action.type === "search") openCommandPaletteWith(action.query);
+    else selectTool(null);
+  };
+  useEffect(() => desktop?.onDeepLink?.((url) => deepLinkHandlerRef.current(url)), [desktop]);
 
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabsOverflow, setTabsOverflow] = useState(false);
@@ -917,6 +936,7 @@ const DevToolsApp = () => {
         recents={recentToolIds}
         onClose={closeCommandPalette}
         onSelectTool={selectTool}
+        initialQuery={paletteQuery}
       />
 
       <ShortcutSettingsDialog

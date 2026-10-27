@@ -45,6 +45,19 @@ fn choose_save_path(app: &AppHandle, file_name: &str) -> Result<Option<PathBuf>,
 /// Returns the saved path, or `None` when the user cancels the dialog.
 /// Sets the native window appearance. On macOS the sidebar material follows it,
 /// so it must match the app theme. `None` follows the system.
+/// Brings the main window to the front, including after the window was closed or the app hidden.
+fn show_main_window(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    // Hide (Cmd+H) hides the whole app, which window.show() does not undo.
+    #[cfg(target_os = "macos")]
+    let _ = app.show();
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[tauri::command]
 fn set_window_theme(window: tauri::WebviewWindow, theme: Option<String>) -> Result<(), String> {
     let theme = match theme.as_deref() {
@@ -98,12 +111,29 @@ fn main() {
             }
         });
 
+    // A second launch, usually from a devtoolsapp:// link, focuses the running window. With the
+    // deep-link feature, the plugin also passes that link on to the deep-link plugin.
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        show_main_window(app);
+    }));
+
     let app = builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            use tauri_plugin_deep_link::DeepLinkExt;
+            // Installers register the scheme on macOS, Windows, and deb/rpm. An AppImage and a
+            // development build register it at run time. A failure only disables links.
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            let _ = app.deep_link().register_all();
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |_event| show_main_window(&handle));
+            Ok(())
+        })
         .on_window_event(|_window, _event| {
             // Keep the app running in the dock when the window closes on macOS.
             #[cfg(target_os = "macos")]
@@ -119,11 +149,7 @@ fn main() {
         // Show the hidden window again when the dock icon is clicked.
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = _event {
-            use tauri::Manager;
-            if let Some(window) = _app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            show_main_window(_app);
         }
     });
 }

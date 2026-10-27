@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -37,6 +38,11 @@ export interface DesktopBridge {
    * so it must match the app theme. Pass null to follow the system.
    */
   setWindowTheme?: (theme: "light" | "dark" | null) => Promise<void>;
+  /**
+   * Calls back with each devtoolsapp:// link: the one that launched the app, then any that
+   * arrive while it runs. Returns a function that stops listening.
+   */
+  onDeepLink?: (callback: (url: string) => void) => () => void;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
@@ -124,8 +130,28 @@ function createTauriBridge(): DesktopBridge {
     }
   };
 
+  const onDeepLink = (callback: (url: string) => void) => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    const deliver = (urls: string[] | null) => {
+      if (active) urls?.forEach(callback);
+    };
+    getCurrentDeepLinks().then(deliver).catch(() => {});
+    onOpenUrl(deliver)
+      .then((stop) => {
+        if (active) unlisten = stop;
+        else stop();
+      })
+      .catch((error) => console.error("Failed to listen for links:", error));
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  };
+
   return {
     setWindowTheme,
+    onDeepLink,
     platform: toNodePlatform(getOsPlatform()),
     getVersion,
     getUpdateState: async () => {

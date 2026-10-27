@@ -85,6 +85,18 @@ Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron 
 
 Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after the update.
 
+## Open a Tool from Other Apps
+
+DevTools registers the `devtoolsapp://` link scheme, so Raycast, Alfred, Shortcuts, a terminal, or a browser can open a tool directly. A link reuses the running window.
+
+| Link | Result |
+|---|---|
+| `devtoolsapp://open/<tool-id>` | Opens a tool, for example `devtoolsapp://open/json-viewer`. The tool IDs are in `src/app/toolRegistry.ts`. |
+| `devtoolsapp://search?q=<text>` | Opens the command palette with the text. |
+| `devtoolsapp://home` | Shows the home page. |
+
+From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Linux, run `xdg-open` with the same link. On Windows, run `start` with the link.
+
 ## Quick Start
 
 ```bash
