@@ -1,229 +1,315 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, Info } from "lucide-react";
+import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
-import { describeCronExpression, getNextRunTime } from "@/utils/cron";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  CRON_DIALECT_LABELS,
+  CRON_EXAMPLES,
+  CRON_FIELD_LABELS,
+  cronLayout,
+  describeCron,
+  describeCronField,
+  formatCronValues,
+  formatTimeUntil,
+  isValidTimeZone,
+  nextCronRuns,
+  parseCron,
+  readCronInput,
+  replaceCronField,
+  type CronFieldName,
+} from "@/utils/cron";
 
-interface CronPart {
-  type: string;
-  options: string[];
-}
-
-const cronParts: CronPart[] = [
-  {
-    type: "minute",
-    options: ["*", "*/5", "*/15", "0", "15", "30", "45"],
-  },
-  {
-    type: "hour",
-    options: ["*", "*/2", "*/6", "*/12", "0", "6", "12", "18"],
-  },
-  {
-    type: "dayOfMonth",
-    options: ["*", "1", "15", "28"],
-  },
-  {
-    type: "month",
-    options: ["*", "1", "6", "12"],
-  },
-  {
-    type: "dayOfWeek",
-    options: ["*", "1", "1-5", "5", "6"],
-  },
-];
+const RUN_COUNT = 5;
+const LOCAL_ZONE = "local";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
     q: "What cron format does this tool use?",
-    a: "This builder uses the common 5-part cron format: minute, hour, day of month, month, and day of week. It does not include a seconds field in the UI.",
+    a: "It reads 5 fields as standard cron: minute, hour, day of month, month, and day of week. It reads 6 fields as seconds first, as in Spring and node-cron. An expression with `?` or 7 fields is read as Quartz. The line under the description shows which format the tool used.",
   },
   {
-    q: "Why are times shown in my local timezone?",
-    a: "Cron schedules are interpreted relative to a timezone, so this tool previews next runs in your current local timezone. If your server runs in a different timezone, the actual schedule can shift.",
+    q: "Can I paste a whole crontab line or a YAML line?",
+    a: "Yes. The tool shows a command after the schedule but does not use it. It also removes `- cron:` and `schedule:` keys and quotes from GitHub Actions and Kubernetes files. A `CRON_TZ=` prefix sets the time zone, and `cron(...)` is read as AWS EventBridge.",
   },
   {
-    q: "What does `*/5` mean?",
-    a: "Step syntax means every N units within that field. For example, `*/5` in the minute field means every 5 minutes.",
+    q: "Why does `0 0 13 * 5` run on more days than I expect?",
+    a: "In standard cron, a day runs when it matches the day of month or the day of week, if both fields are set. So this runs on every 13th and on every Friday. Seconds-first and Quartz formats need both fields to match.",
   },
   {
-    q: "Does this builder support every cron feature?",
-    a: "No. This screen focuses on common numeric wildcards, ranges, and step values. Advanced vendor-specific syntax like Quartz-specific fields is outside this builder's scope.",
+    q: "Which time zone does cron use?",
+    a: "Cron uses the time zone of the machine or service that runs it. GitHub Actions always uses UTC. A Kubernetes CronJob uses the controller's zone unless you set `timeZone`. Pick that zone to see the correct next runs.",
+  },
+  {
+    q: "What happens on daylight saving time changes?",
+    a: "This preview skips a wall time that does not exist, such as 02:30 on the day clocks go forward. Cron daemons differ here. Some run the skipped job right after the change.",
+  },
+  {
+    q: "What do `L`, `W`, and `#` mean?",
+    a: "`L` in day of month is the last day. `15W` is the weekday nearest the 15th. `5L` in day of week is the last Friday, and `MON#2` is the second Monday. Standard cron daemons such as Vixie cron do not support these.",
   },
 ];
 
+/** A field editor that keeps a local draft, so a cleared field does not change the expression. */
+function FieldInput({ name, value, invalid, onCommit }: { name: CronFieldName; value: string; invalid: boolean; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <Input
+      type="text"
+      aria-label={`${CRON_FIELD_LABELS[name]} field`}
+      aria-invalid={invalid}
+      spellCheck={false}
+      autoComplete="off"
+      className={`h-7 w-28 font-mono ${invalid ? "border-destructive" : ""}`}
+      value={draft}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        const next = event.target.value.replace(/\s+/g, "");
+        if (next) onCommit(next);
+      }}
+    />
+  );
+}
+
 export function CronCalculator() {
-  const [parts, setParts] = useState<string[]>(["*", "*", "*", "*", "*"]);
-  const [expression, setExpression] = useState("* * * * *");
-  const [nextRuns, setNextRuns] = useState<Date[]>([]);
-  const [description, setDescription] = useState("Run every minute");
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+  const [input, setInput] = useState("0 9 * * MON-FRI");
+  const [zoneChoice, setZoneChoice] = useState(LOCAL_ZONE);
+  const text = useDebouncedValue(input);
+  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+  const zones = useMemo(() => {
+    const supported = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+    return supported.filter((zone) => zone !== "UTC");
+  }, []);
 
-  useEffect(() => {
-    const nextExpression = parts.join(" ");
-    setExpression(nextExpression);
-    setDescription(describeCronExpression(nextExpression) ?? "Unsupported cron expression");
-    calculateNextRuns(nextExpression);
-  }, [parts]);
+  const view = useMemo(() => {
+    const read = readCronInput(text);
+    const result = parseCron(read.expression, { aws: read.aws });
+    const macroExpansion = result.ok ? result.schedule.expanded : undefined;
+    const tokens = (macroExpansion ?? read.expression).trim().split(/\s+/).filter(Boolean);
+    const layout = "schedule" in result ? result.schedule.fields.map((field) => field.name) : (result.layout ?? cronLayout(read.expression, read.aws));
+    return { read, result, tokens, layout };
+  }, [text]);
 
-  const updatePart = (index: number, value: string) => {
-    const newParts = [...parts];
-    newParts[index] = value;
-    setParts(newParts);
-  };
+  const { read, result, tokens, layout } = view;
+  const zoneError = read.timeZone && !isValidTimeZone(read.timeZone) ? `Unknown time zone "${read.timeZone}" in the prefix. Use an IANA name such as Europe/Berlin.` : "";
+  const timeZone = read.timeZone && !zoneError ? read.timeZone : zoneChoice === LOCAL_ZONE ? undefined : zoneChoice;
+  const zoneLabel = timeZone ?? localZone;
 
-  const calculateNextRuns = (cronExpression: string) => {
-    const runs: Date[] = [];
-    let cursor = new Date();
+  const runs = useMemo(() => {
+    if (!result.ok || zoneError) return [];
+    return nextCronRuns(result.schedule, new Date(), RUN_COUNT, timeZone);
+  }, [result, timeZone, zoneError]);
 
-    for (let i = 0; i < 5; i++) {
-      const nextDate = getNextRunTime(cronExpression, cursor);
-      if (!nextDate) {
-        break;
-      }
+  const hasSeconds = result.ok && result.schedule.fields[0].name === "second";
+  const runFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        timeZone,
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: hasSeconds ? "2-digit" : undefined,
+        hourCycle: "h23",
+        timeZoneName: "short",
+      }),
+    [timeZone, hasSeconds],
+  );
 
-      runs.push(nextDate);
-      cursor = nextDate;
-    }
-
-    setNextRuns(runs);
-  };
-
-  const getPartLabel = (type: string) => {
-    switch (type) {
-      case "minute":
-        return "Minute";
-      case "hour":
-        return "Hour";
-      case "dayOfMonth":
-        return "Day of Month";
-      case "month":
-        return "Month";
-      case "dayOfWeek":
-        return "Day of Week";
-    }
-  };
-
-  const getPartDescription = (index: number) => {
-    switch (index) {
-      case 0:
-        return "At " + (parts[0] === "*" ? "every minute" : `minute ${parts[0]}`);
-      case 1:
-        return parts[1] === "*"
-          ? "every hour"
-          : parts[1].startsWith("*/")
-          ? `every ${parts[1].slice(2)} hours`
-          : `at hour ${parts[1]}`;
-      case 2:
-        return parts[2] === "*"
-          ? "every day"
-          : `on day ${parts[2]}`;
-      case 3:
-        return parts[3] === "*" ? "every month" : `in month ${parts[3]}`;
-      case 4:
-        return parts[4] === "*"
-          ? "every day of the week"
-          : parts[4] === "1-5"
-          ? "on weekdays"
-          : `on day-of-week ${parts[4]}`;
-    }
-  };
+  const errorIndex = "error" in result ? result.fieldIndex : undefined;
+  const fieldRows = layout && tokens.length === layout.length ? layout : null;
+  const now = Date.now();
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Cron Expression Builder</CardTitle>
-          <CardDescription>Build and understand cron expressions</CardDescription>
+          <CardTitle>Cron Expression</CardTitle>
+          <CardDescription>Type or paste a schedule from a crontab, GitHub Actions, or Kubernetes.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Expression Display */}
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Expression</Label>
-            <div className="p-4 bg-muted rounded-lg">
-              <code className="text-lg">{expression}</code>
+            <Label htmlFor="cron-expression">Expression</Label>
+            <div className="flex gap-2">
+              <Input
+                id="cron-expression"
+                type="text"
+                aria-label="Cron expression"
+                aria-invalid={!result.ok}
+                aria-describedby="cron-description"
+                spellCheck={false}
+                autoComplete="off"
+                placeholder="e.g., 0 */6 * * 1-5 or @daily"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                className="font-mono"
+              />
+              <CopyButton value={read.expression} label="Copy expression" iconOnly />
+              <Select value="" onValueChange={(value) => setInput(value)}>
+                <SelectTrigger className="h-8 w-40 shrink-0" aria-label="Examples">
+                  <SelectValue placeholder="Examples" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CRON_EXAMPLES.map((example) => (
+                    <SelectItem key={example.expression} value={example.expression}>
+                      {example.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-sm text-muted-foreground">{description}</p>
           </div>
 
-          {/* Cron Parts */}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {cronParts.map((part, index) => (
-              <div key={part.type} className="space-y-2 rounded-lg bg-muted/50 p-3">
-                <Label className="text-xs font-semibold text-muted-foreground">
-                  {getPartLabel(part.type)}
-                </Label>
-                <Select
-                  value={parts[index]}
-                  onValueChange={(value) => updatePart(index, value)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {part.options.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {getPartDescription(index)}
+          <div id="cron-description" className="space-y-1">
+            {result.ok ? (
+              <>
+                <p className="text-base font-medium">{describeCron(result.schedule)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Read as {CRON_DIALECT_LABELS[result.schedule.dialect]}
+                  {result.schedule.expanded && (
+                    <>
+                      . Same as <code>{result.schedule.expanded}</code>
+                    </>
+                  )}
+                  {result.schedule.dayOr && ". A day runs when it matches either day field"}.
                 </p>
+              </>
+            ) : (
+              <div className="workspace-notice rounded-md" data-tone="error" role="alert">
+                {"error" in result && result.error}
               </div>
-            ))}
+            )}
+            {read.command && (
+              <p className="text-xs text-muted-foreground">
+                Command (not used): <code>{read.command}</code>
+              </p>
+            )}
           </div>
+
+          {fieldRows && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs" aria-label="Field breakdown">
+                <thead className="text-left text-muted-foreground">
+                  <tr className="border-b border-border/50">
+                    <th scope="col" className="py-1.5 pr-2 font-medium">Field</th>
+                    <th scope="col" className="px-2 py-1.5 font-medium">Value</th>
+                    <th scope="col" className="px-2 py-1.5 font-medium">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fieldRows.map((name, index) => {
+                    const field = result.ok ? result.schedule.fields[index] : undefined;
+                    const invalid = errorIndex === index;
+                    return (
+                      <tr key={name} className="border-b border-border/50">
+                        <th scope="row" className="py-1.5 pr-2 text-left font-normal">{CRON_FIELD_LABELS[name]}</th>
+                        <td className="px-2 py-1.5">
+                          <FieldInput
+                            name={name}
+                            value={tokens[index]}
+                            invalid={invalid}
+                            onCommit={(value) => setInput((current) => replaceCronField(current, index, value))}
+                          />
+                        </td>
+                        <td className={`px-2 py-1.5 ${invalid ? "text-destructive" : ""}`}>
+                          {field ? (
+                            <>
+                              <span className="block">{describeCronField(field)}</span>
+                              {!field.wildcard && field.values.length > 0 && (
+                                <span className="block font-mono text-muted-foreground">{formatCronValues(field)}</span>
+                              )}
+                            </>
+                          ) : invalid ? (
+                            "See the error above."
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Next Runs */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Next Scheduled Runs
-          </CardTitle>
-          <CardDescription>Times shown in {timeZone}</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Next Runs
+            </CardTitle>
+            <CardDescription>
+              {read.timeZone && !zoneError ? `Times in ${zoneLabel}, from the CRON_TZ prefix` : `Times in ${zoneLabel}`}
+            </CardDescription>
+          </div>
+          <Select value={zoneChoice} onValueChange={setZoneChoice} disabled={Boolean(read.timeZone && !zoneError)}>
+            <SelectTrigger className="h-8 w-48" aria-label="Time zone">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={LOCAL_ZONE}>Local ({localZone})</SelectItem>
+              <SelectItem value="UTC">UTC</SelectItem>
+              {zones.map((zone) => (
+                <SelectItem key={zone} value={zone}>
+                  {zone}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent>
-          {nextRuns.length > 0 ? (
+          {zoneError ? (
+            <div className="workspace-notice rounded-md" data-tone="error" role="alert">{zoneError}</div>
+          ) : runs.length > 0 ? (
             <div className="space-y-2">
-              {nextRuns.map((date, index) => (
-                <div key={date.toISOString()} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              {runs.map((date) => (
+                <div key={date.toISOString()} className="flex items-center gap-3 rounded-lg bg-muted p-3">
+                  <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <time dateTime={date.toISOString()} className="font-mono text-sm">
-                    {date.toLocaleString()}
+                    {runFormatter.format(date)}
                   </time>
-                  <span className="text-xs text-muted-foreground">Run {index + 1}</span>
+                  <span className="text-xs text-muted-foreground">{formatTimeUntil(date.getTime() - now)}</span>
                 </div>
               ))}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No upcoming runs could be calculated for this expression.
+              {result.ok
+                ? "This schedule never runs in the next 30 years. Check that the day and month can happen together. For example, February has no day 30."
+                : "Fix the expression to see the next runs."}
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Info Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Info className="h-4 w-4" />
-            Cron Format
+            Cron Syntax
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p>Format: <code>minute hour dayOfMonth month dayOfWeek</code></p>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-              <li><code>*</code> - Every value</li>
-              <li><code>*/n</code> - Every n units</li>
-              <li><code>n</code> - At specific value</li>
-              <li><code>a-b</code> - Inclusive range</li>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Format: <code>minute hour day-of-month month day-of-week</code>. Add a seconds field at the start for Spring or Quartz.
+            </p>
+            <ul className="ml-2 list-inside list-disc space-y-1">
+              <li><code>*</code> matches every value. <code>?</code> means any day (Quartz).</li>
+              <li><code>1,15</code> is a list. <code>1-5</code> is an inclusive range.</li>
+              <li><code>*/15</code> is every 15 units. <code>5/15</code> starts at 5.</li>
+              <li><code>JAN</code> to <code>DEC</code> and <code>SUN</code> to <code>SAT</code> work as names.</li>
+              <li><code>L</code>, <code>15W</code>, <code>5L</code>, and <code>MON#2</code> set special days.</li>
+              <li><code>@yearly</code>, <code>@monthly</code>, <code>@weekly</code>, <code>@daily</code>, and <code>@hourly</code> are macros.</li>
             </ul>
           </div>
         </CardContent>

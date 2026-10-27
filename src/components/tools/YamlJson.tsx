@@ -1,13 +1,21 @@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
-import { jsonToYaml, yamlToJson, type YamlIndent } from "@/utils/yaml-json";
-
-type Direction = "yaml-to-json" | "json-to-yaml";
+import {
+  CONFIG_FORMATS,
+  FORMAT_NAMES,
+  convertConfig,
+  detectConfigFormat,
+  loadToml,
+  needsToml,
+  type ConfigFormat,
+  type EnvNesting,
+  type TomlModule,
+  type YamlIndent,
+} from "@/utils/yaml-json";
 
 interface Result {
   output: string;
@@ -17,18 +25,46 @@ interface Result {
 
 const EMPTY: Result = { output: "", error: "", documents: 0 };
 
+const PLACEHOLDERS: Record<ConfigFormat, string> = {
+  yaml: "name: DevTools\ntags:\n  - offline\n  - desktop",
+  json: '{"name":"DevTools","tags":["offline","desktop"]}',
+  toml: '[package]\nname = "devtools"\nversion = "2.1.0"',
+  env: "# .env\nPORT=3000\nDATABASE_URL=\"postgres://localhost/app\"",
+  properties: "server.port=8080\nspring.application.name=devtools",
+};
+
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
     q: "Is my data uploaded?",
     a: "No. The conversion runs on this device. Nothing is sent over the network.",
   },
   {
-    q: "What happens with several YAML documents?",
-    a: "YAML files can hold several documents separated by a line with three dashes (---). The tool converts them to a JSON array with one item for each document.",
+    q: "Which formats can I convert?",
+    a: "JSON, YAML, TOML, .env, and Java .properties, in any direction. Pick the source and target formats in the toolbar. When you paste into an empty input, the tool picks the source format for you.",
   },
   {
-    q: "Why are my YAML comments missing from the JSON?",
-    a: "JSON has no comments, so they cannot be kept. Anchors and aliases are expanded into full copies of the values.",
+    q: "What happens with several YAML documents?",
+    a: "YAML files can hold several documents separated by a line with three dashes (---). JSON output is an array with one item for each document. YAML output keeps the documents separate. TOML, .env, and .properties need one document.",
+  },
+  {
+    q: "How are nested values written to a .env file?",
+    a: "Each nested key becomes one UPPER_SNAKE variable. Parts join with two underscores by default, so database.maxPool becomes DATABASE__MAX_POOL. ASP.NET Core and pydantic read this style. Set Nested keys to A_B for Spring Boot, which reads DATABASE_MAX_POOL. List items use their index, for example SERVERS__0.",
+  },
+  {
+    q: "How are .properties keys turned into nested YAML or JSON?",
+    a: "Dots in a key make nested objects, and [0] makes a list, the way Spring Boot reads application.properties. A key cannot hold a value and also have nested keys, for example a=1 and a.b=2. The tool shows an error for this. When the target is .properties, nested keys join with dots again.",
+  },
+  {
+    q: "Why are numbers from .env and .properties files in quotes?",
+    a: "These files store every value as text. The tool keeps the values as strings, so 8080 becomes \"8080\" in YAML. This also matches a Kubernetes ConfigMap, which needs string values. The tool does not expand ${VAR} references in .env files.",
+  },
+  {
+    q: "Why does TOML show an error for null?",
+    a: "TOML has no null value. Remove the key or give it a value before you convert. TOML dates become ISO 8601 text in the other formats.",
+  },
+  {
+    q: "Why are my comments missing from the output?",
+    a: "The tool reads the data and writes it again, so comments are not kept. YAML anchors and aliases are expanded into full copies of the values.",
   },
   {
     q: "How do I find a syntax error?",
@@ -36,53 +72,97 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
 ];
 
+const FormatSelect = ({ label, name, value, onChange }: { label: string; name: string; value: ConfigFormat; onChange: (next: ConfigFormat) => void }) => (
+  <label className="indent-control">
+    {label}
+    <select aria-label={name} value={value} onChange={(e) => onChange(e.target.value as ConfigFormat)}>
+      {CONFIG_FORMATS.map((format) => (
+        <option key={format} value={format}>{FORMAT_NAMES[format]}</option>
+      ))}
+    </select>
+  </label>
+);
+
 export function YamlJson() {
-  const [direction, setDirection] = useState<Direction>("yaml-to-json");
+  const [from, setFrom] = useState<ConfigFormat>("yaml");
+  const [to, setTo] = useState<ConfigFormat>("json");
   const [input, setInput] = useState("");
   const [indent, setIndent] = useState<YamlIndent>(2);
+  const [envNesting, setEnvNesting] = useState<EnvNesting>("__");
+  const [toml, setToml] = useState<TomlModule>();
+  const [loadError, setLoadError] = useState("");
 
-  // Debounce input and direction together so a direction change never runs on stale text
-  const job = useMemo(() => ({ input, direction }), [input, direction]);
+  const tomlNeeded = needsToml(from, to);
+  useEffect(() => {
+    if (!tomlNeeded || toml) return;
+    let cancelled = false;
+    loadToml()
+      .then((mod) => !cancelled && setToml(mod))
+      .catch(() => !cancelled && setLoadError("Could not load the TOML parser."));
+    return () => {
+      cancelled = true;
+    };
+  }, [tomlNeeded, toml]);
+
+  // Debounce input and formats together so a format change never runs on stale text
+  const job = useMemo(() => ({ input, from, to }), [input, from, to]);
   const pending = useDebouncedValue(job);
-  const toJson = direction === "yaml-to-json";
+  const waitingForToml = needsToml(pending.from, pending.to) && !toml;
 
   const result = useMemo<Result>(() => {
-    if (!pending.input.trim()) return EMPTY;
+    if (!pending.input.trim() || waitingForToml) return EMPTY;
     try {
-      const converted =
-        pending.direction === "yaml-to-json" ? yamlToJson(pending.input, indent) : jsonToYaml(pending.input, indent);
+      const converted = convertConfig(pending.input, pending.from, pending.to, { indent, envNesting }, toml);
       return { ...converted, error: "" };
     } catch (error) {
       return { ...EMPTY, error: error instanceof Error ? error.message : "Could not convert the data." };
     }
-  }, [pending, indent]);
+  }, [pending, indent, envNesting, toml, waitingForToml]);
 
-  // A result for the previous direction or text is stale until the debounce catches up
-  const current = pending.direction === direction && input.trim() ? result : EMPTY;
+  // A result for the previous formats or text is stale until the debounce catches up
+  const current = pending.from === from && pending.to === to && input.trim() ? result : EMPTY;
+  const error = loadError || current.error;
+
+  const changeInput = (next: string) => {
+    // A paste into an empty input sets the source format. Typing never changes it.
+    if (!input.trim() && next.trim().length > 1) {
+      const detected = detectConfigFormat(next);
+      if (detected && detected !== from) {
+        setFrom(detected);
+        if (detected === to) setTo(detected === "json" ? "yaml" : "json");
+      }
+    }
+    setInput(next);
+  };
+
+  // Picking the format on the other side swaps the two, so source and target stay different.
+  const changeFrom = (next: ConfigFormat) => {
+    if (next === to) setTo(from);
+    setFrom(next);
+  };
+  const changeTo = (next: ConfigFormat) => {
+    if (next === from) setFrom(to);
+    setTo(next);
+  };
 
   const swap = () => {
     setInput(current.output);
-    setDirection(toJson ? "json-to-yaml" : "yaml-to-json");
+    setFrom(to);
+    setTo(from);
   };
 
-  const changeDirection = (next: Direction) => {
-    if (next === direction) return;
-    // Use the last result as the next input.
-    if (current.output) setInput(current.output);
-    setDirection(next);
-  };
-
-  const inputName = toJson ? "YAML" : "JSON";
-  const outputName = toJson ? "JSON" : "YAML";
+  const inputName = FORMAT_NAMES[from];
+  const outputName = FORMAT_NAMES[to];
 
   const status = () => {
-    if (current.error) return <span className="text-destructive">Invalid input</span>;
+    if (error) return <span className="text-destructive">Invalid input</span>;
+    if (input.trim() && waitingForToml) return <span>Loading the TOML parser</span>;
     if (!current.output) return <span>Ready</span>;
     const lines = current.output.split("\n").length;
     return (
       <>
         <span>{lines} {lines === 1 ? "line" : "lines"}</span>
-        {toJson && current.documents > 1 && <span>{current.documents} documents converted to a JSON array</span>}
+        {to === "json" && current.documents > 1 && <span>{current.documents} documents converted to a JSON array</span>}
       </>
     );
   };
@@ -92,19 +172,26 @@ export function YamlJson() {
       id="yaml-json"
       toolbar={
         <>
-          <Tabs value={direction} onValueChange={(v) => changeDirection(v as Direction)}>
-            <TabsList aria-label="Direction">
-              <TabsTrigger value="yaml-to-json">YAML to JSON</TabsTrigger>
-              <TabsTrigger value="json-to-yaml">JSON to YAML</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <label className="indent-control">
-            Indent
-            <select aria-label="Indentation" value={indent} onChange={(e) => setIndent(Number(e.target.value) as YamlIndent)}>
-              <option value="2">2 spaces</option>
-              <option value="4">4 spaces</option>
-            </select>
-          </label>
+          <FormatSelect label="From" name="Source format" value={from} onChange={changeFrom} />
+          <FormatSelect label="To" name="Target format" value={to} onChange={changeTo} />
+          {(to === "json" || to === "yaml") && (
+            <label className="indent-control">
+              Indent
+              <select aria-label="Indentation" value={indent} onChange={(e) => setIndent(Number(e.target.value) as YamlIndent)}>
+                <option value="2">2 spaces</option>
+                <option value="4">4 spaces</option>
+              </select>
+            </label>
+          )}
+          {to === "env" && (
+            <label className="indent-control">
+              Nested keys
+              <select aria-label="Nested keys" value={envNesting} onChange={(e) => setEnvNesting(e.target.value as EnvNesting)}>
+                <option value="__">A__B</option>
+                <option value="_">A_B</option>
+              </select>
+            </label>
+          )}
           <button type="button" className="toolbar-text-button" onClick={swap} disabled={!current.output}>
             <ArrowLeftRight size={14} aria-hidden="true" />
             Swap
@@ -112,8 +199,8 @@ export function YamlJson() {
         </>
       }
       notice={
-        current.error ? (
-          <div className="workspace-notice" data-tone="error" role="alert">{current.error}</div>
+        error ? (
+          <div className="workspace-notice" data-tone="error" role="alert">{error}</div>
         ) : undefined
       }
       first={
@@ -121,9 +208,9 @@ export function YamlJson() {
           actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}>
           <CodeTextarea
             id="yaml-json-input"
-            placeholder={toJson ? "name: DevTools\ntags:\n  - offline\n  - desktop" : '{"name":"DevTools","tags":["offline","desktop"]}'}
+            placeholder={PLACEHOLDERS[from]}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => changeInput(e.target.value)}
           />
         </EditorPane>
       }

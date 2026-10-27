@@ -131,7 +131,7 @@
     await step("saves a QR code PNG through the save_file command", async () => {
       await openTool("QR Generator");
       setValue(document.querySelector("#qr-text"), "https://example.com");
-      (await waitFor(() => buttons("Download QR Code")[0], "download button")).click();
+      (await waitFor(() => buttons("Save PNG")[0], "download button")).click();
       await waitFor(async () => {
         const files = await invoke("e2e_saved_files");
         return files.some(([name, header]) => /^qr-code-\d+\.png$/.test(name) && header === PNG_HEADER);

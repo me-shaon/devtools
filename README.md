@@ -74,9 +74,9 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Development Tools
 
-- **JSON Viewer** - Format, validate, minify, and sort JSON, run JSONPath queries, and convert to YAML or XML
+- **JSON Viewer** - Format, minify, sort, and query JSON live, convert it to YAML or XML, and repair JSON5, NDJSON, and Python, Ruby, or JavaScript literals
 - **Code Playground** - Experiment with JavaScript, HTML, and CSS
-- **Regex Generator** - Interactive regex construction with live testing
+- **Regex Tester** - Test a pattern as you type, with highlighted matches, capture groups, and live replace
 - **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
@@ -88,7 +88,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **UUID Generator** - Generate v1/v3/v4/v5/v6/v7 UUIDs and ULIDs, and inspect existing IDs
 - **Password Generator** - Generate secure passwords and passphrases with strength analysis
 - **Lorem Ipsum** - Generate placeholder text and fake names, emails, URLs, and titles as text or a JSON array
-- **QR Generator** - Generate scannable QR codes and save them as PNG files
+- **QR Generator** - Make QR codes for text, Wi-Fi, contacts, email, phone, SMS, locations and events, with an optional logo, and save them as PNG or SVG
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 - **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
 
@@ -99,8 +99,8 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
-- **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
-- **YAML to JSON** - Convert YAML to JSON and back, including multi-document YAML
+- **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters and nested key flattening
+- **Config Converter** - Convert between JSON, YAML, TOML, .env, and Java .properties files, including multi-document YAML
 - **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
@@ -111,7 +111,8 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 - **Timestamp** - Convert Unix timestamps (seconds to nanoseconds) and date strings as you type, with offsets such as now - 1d and extra time zones
 - **Date Difference** - Calculate the difference between two dates
-- **Cron Calculator** - Build cron expressions with plain English descriptions
+- **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone
+- **Date Format Translator** - Translate date format strings between Go, strftime, Java, date-fns, Moment.js, PHP, and .NET, with a live preview
 
 ### Media
 
@@ -121,8 +122,8 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Text Tools
 
-- **Text Compare** - Line-by-line diff that can ignore whitespace and case
-- **JWT Decoder** - Decode JWT tokens and verify HS256, HS384, and HS512 signatures
+- **Text Compare** - Aligned line, word and character diff with change navigation that can ignore whitespace and case
+- **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
 - **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines

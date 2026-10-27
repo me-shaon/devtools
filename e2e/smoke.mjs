@@ -188,8 +188,10 @@ try {
     for (const name of toolNames) {
       await openTool(name);
       // Each lazy-loaded tool renders its own content below the page title.
+      // innerText through execute, because WebKitGTK's WebDriver getText fails on some tool markup
+      // ("Cannot check the displayedness of a non-Element argument").
       await browser.waitUntil(
-        async () => (await (await browser.$("main")).getText()).length > name.length + 20,
+        async () => (await browser.execute(() => document.querySelector("main").innerText.length)) > name.length + 20,
         { timeout: 10000, timeoutMsg: `Tool content did not render: ${name}` },
       );
     }
@@ -243,7 +245,7 @@ try {
   await step("saves a QR code PNG through the save_file command", async () => {
     await openTool("QR Generator");
     await (await browser.$("#qr-text")).setValue("https://example.com");
-    await (await browser.$("button*=Download QR Code")).click();
+    await (await browser.$("button*=Save PNG")).click();
     const png = await waitForSavedFile(/^qr-code-\d+\.png$/);
     if (!png.subarray(0, 4).equals(PNG_SIGNATURE)) {
       throw new Error("The saved QR code is not a PNG file.");

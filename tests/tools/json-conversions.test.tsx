@@ -82,9 +82,9 @@ describe("JSON Viewer conversions", () => {
   });
   it("converts to YAML and XML", () => {
     setup('{"a":[1,2]}');
-    fireEvent.click(screen.getByRole("button", { name: "Convert to YAML" }));
+    fireEvent.click(screen.getByRole("button", { name: "YAML" }));
     expect(text()).toBe("a:\n  - 1\n  - 2");
-    fireEvent.click(screen.getByRole("button", { name: "Convert to XML" }));
+    fireEvent.click(screen.getByRole("button", { name: "XML" }));
     expect(text()).toContain("<a>1</a>");
   });
   it("runs a query and reports no match", () => {

@@ -409,3 +409,27 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .command-surface .modal-header input:focus-visible { outline: none; box-shadow: none; border: 0; font-size: 15px; }
 .sidebar-auto-update { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 8px; font-size: 11px; color: hsl(var(--muted-foreground)); }
 .sidebar-auto-update button[role="switch"] { transform: scale(.8); transform-origin: right center; }
+/* Regex Tester: the highlight layer sits behind a transparent textarea. Both wrap the same way
+   and reserve the same scrollbar gutter, so the marks line up with the text. */
+.toolbar-actions:has(> .regex-fields) { flex: 1; min-width: 0; }
+.regex-fields { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.regex-field { flex: 2 1 260px; display: flex; align-items: center; gap: 4px; min-width: 0; font: 12px var(--font-code); color: hsl(var(--muted-foreground)); }
+.regex-field + .regex-field { flex: 1 1 200px; }
+.regex-editor { position: relative; flex: 1; min-height: 0; display: flex; }
+.regex-editor .code-textarea, .regex-highlights { white-space: pre-wrap; overflow-wrap: break-word; scrollbar-gutter: stable; }
+.regex-editor textarea { position: relative; }
+.regex-highlights { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; }
+.regex-mark { color: transparent; background: hsl(var(--primary) / .2); border-radius: 2px; }
+.regex-mark[data-alt="true"] { background: hsl(var(--success) / .25); }
+.regex-mark:empty { box-shadow: -1px 0 0 hsl(var(--primary)); }
+.regex-matches { list-style: none; margin: 0; padding: 8px 16px 16px; }
+.regex-matches li { padding: 10px 0; border-bottom: 1px solid hsl(var(--border) / .5); }
+.regex-match-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.regex-match-value { display: block; margin-top: 4px; font: 13px/20px var(--font-code); white-space: pre-wrap; word-break: break-all; }
+.regex-groups { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin-top: 6px; font: 12px/18px var(--font-code); }
+.regex-groups dt { color: hsl(var(--muted-foreground)); }
+.regex-groups dd { margin: 0; white-space: pre-wrap; word-break: break-all; }
+.regex-empty-value { color: hsl(var(--muted-foreground)); font-style: italic; font-family: var(--font-ui); }
+.regex-cheatsheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; padding-bottom: 12px; }
+.regex-cheatsheet div { display: flex; gap: 10px; }
+.regex-cheatsheet dt { min-width: 64px; font-family: var(--font-code); color: hsl(var(--foreground)); }

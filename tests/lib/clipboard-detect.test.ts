@@ -9,12 +9,17 @@ describe("detectPastedContent", () => {
   it("recognises common developer content", () => {
     expect(first("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U")).toBe("jwt-decoder");
     expect(first('{"name": "DevTools", "tools": [1, 2]}')).toBe("json-viewer");
+    expect(detectPastedContent("{'name': 'Ada', 'admin': True}", ids)[0]).toMatchObject({ toolId: "json-viewer", label: "a data literal" });
+    expect(first('{"id"=>1, :role=>:admin}')).toBe("json-viewer");
     expect(first("550e8400-e29b-41d4-a716-446655440000")).toBe("uuid-generator");
     expect(first("1761562800")).toBe("timestamp");
     expect(first("1761562800123")).toBe("timestamp");
     expect(first("1761562800123456")).toBe("timestamp");
     expect(first("1761562800123456789")).toBe("timestamp");
     expect(first("*/5 * * * *")).toBe("cron-calculator");
+    expect(first("0 2 * * * /usr/bin/backup.sh --full")).toBe("cron-calculator");
+    expect(first("0 0 12 ? * MON-FRI 2030")).toBe("cron-calculator");
+    expect(first("@daily")).toBe("cron-calculator");
     expect(first("#3b82f6")).toBe("color-palette");
     expect(first("oklch(62.3% 0.188 259.8)")).toBe("color-palette");
     expect(first("0xDEADBEEF")).toBe("number-base");
@@ -40,6 +45,15 @@ describe("detectPastedContent", () => {
 
   it("only suggests tools that exist", () => {
     expect(detectPastedContent("curl https://example.com", new Set(["json-viewer"]))).toEqual([]);
+  });
+
+  it("sends TOML and .env files to the config converter", () => {
+    const detect = (text: string) => detectPastedContent(text, ids)[0];
+    expect(detect('[package]\nname = "demo"\nversion = "0.1.0"')).toMatchObject({ toolId: "yaml-json", label: "TOML" });
+    expect(detect("# local\nDB_HOST=localhost\nexport DB_PORT=5432")).toMatchObject({ toolId: "yaml-json", label: ".env" });
+    expect(detect("name: demo\nversion: 1")).toMatchObject({ toolId: "yaml-json", label: "YAML" });
+    expect(first("PATH=/usr/bin")).toBeUndefined();
+    expect(first("[link]\nsee the docs")).toBeUndefined();
   });
 
   it("returns at most three suggestions, surest first", () => {

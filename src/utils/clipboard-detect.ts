@@ -1,3 +1,5 @@
+import { readJson } from "@/utils/json-repair";
+
 /** A tool suggestion for pasted text. Higher scores are surer matches. */
 export interface PasteSuggestion {
   toolId: string;
@@ -38,9 +40,15 @@ const isJson = (text: string) => {
 
 const CRON_FIELD = /^(\*|\?|L|W|#|\d+|[A-Z]{3})([-/,]?(\*|\d+|[A-Z]{3}|L|W))*(#\d)?$/i;
 
+const CRON_MACRO = /^@(yearly|annually|monthly|weekly|daily|midnight|hourly)(\s|$)/i;
+
 const isCron = (text: string) => {
+  if (CRON_MACRO.test(text)) return true;
   const fields = text.split(/\s+/);
-  return (fields.length === 5 || fields.length === 6) && fields.every((field) => CRON_FIELD.test(field)) && fields.some((field) => field.includes("*") || field.includes("/"));
+  // A crontab line has a command after the 5 schedule fields.
+  const command = fields.length > 7 || (fields.length > 5 && !fields.slice(5).every((field) => CRON_FIELD.test(field)));
+  const schedule = command ? fields.slice(0, 5) : fields;
+  return schedule.length >= 5 && schedule.length <= 7 && schedule.every((field) => CRON_FIELD.test(field)) && schedule.some((field) => field.includes("*") || field.includes("/"));
 };
 
 const isPrintableBase64 = (text: string) => {
@@ -63,6 +71,12 @@ const isTimestamp = (text: string) => {
   return ms > Date.UTC(2000, 0, 1) && ms < Date.UTC(2100, 0, 1);
 };
 
+/** Two or more KEY=value lines with UPPER_SNAKE keys, and nothing else but comments. */
+const isEnvFile = (text: string) => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith("#"));
+  return lines.length >= 2 && lines.every((line) => /^(export\s+)?[A-Z_][A-Z0-9_]*=/.test(line));
+};
+
 /**
  * Guesses which tools fit pasted text, surest first. Runs only on a paste the user makes,
  * so the app never reads the clipboard on its own.
@@ -82,6 +96,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (isJson(text)) {
     add("json-viewer", "JSON", 90);
     add("json-typescript", "JSON", 40);
+  } else if (/^[[{(]/.test(text) && readJson(text).ok) {
+    add("json-viewer", "a data literal", 70);
   }
   if (single && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) add("uuid-generator", "a UUID", 90);
   if (single && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(text)) add("uuid-generator", "a ULID", 85);
@@ -99,6 +115,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /%[0-9a-f]{2}/i.test(text) && !/\s/.test(text)) add("url-encoder", "URL-encoded text", 60);
   if (single && isPrintableBase64(text)) add("base64", "Base64", 60);
   if (!single && /^[^\n:#]+:\s?.+\n(\s*[^\n:#]+:.*\n?)+$/.test(text) && !isJson(text)) add("yaml-json", "YAML", 50);
+  if (!single && /^\[\[?[\w.\-" ]+\]\]?[ \t]*$/m.test(text) && /^[\w.\-"]+[ \t]*=[ \t]*\S/m.test(text)) add("yaml-json", "TOML", 50);
+  if (isEnvFile(text)) add("yaml-json", ".env", 50);
 
   return found.sort((a, b) => b.score - a.score).slice(0, 3);
 }

@@ -55,9 +55,9 @@ describe("CsvToJsonConverter", () => {
     render(<CsvToJsonConverter />);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "JSON to CSV" }));
     fireEvent.change(screen.getByLabelText("JSON input"), { target: { value: '[{"n":"a,b","v":[1]}]' } });
-    await waitFor(async () => expect(await out()).toBe('n,v\n"a,b",[1]'));
+    await waitFor(async () => expect(await out()).toBe('n,v.0\n"a,b",1'));
     fireEvent.mouseDown(screen.getByRole("tab", { name: "CSV to JSON" }));
-    expect((screen.getByLabelText("CSV input") as HTMLTextAreaElement).value).toBe('n,v\n"a,b",[1]');
+    expect((screen.getByLabelText("CSV input") as HTMLTextAreaElement).value).toBe('n,v.0\n"a,b",1');
   });
   it("shows an inline error and no output for invalid JSON", async () => {
     render(<CsvToJsonConverter />);
