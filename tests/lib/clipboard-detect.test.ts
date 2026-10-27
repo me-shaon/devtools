@@ -15,6 +15,9 @@ describe("detectPastedContent", () => {
     expect(first("1761562800123456")).toBe("timestamp");
     expect(first("1761562800123456789")).toBe("timestamp");
     expect(first("*/5 * * * *")).toBe("cron-calculator");
+    expect(first("0 2 * * * /usr/bin/backup.sh --full")).toBe("cron-calculator");
+    expect(first("0 0 12 ? * MON-FRI 2030")).toBe("cron-calculator");
+    expect(first("@daily")).toBe("cron-calculator");
     expect(first("#3b82f6")).toBe("color-palette");
     expect(first("oklch(62.3% 0.188 259.8)")).toBe("color-palette");
     expect(first("0xDEADBEEF")).toBe("number-base");

@@ -38,9 +38,15 @@ const isJson = (text: string) => {
 
 const CRON_FIELD = /^(\*|\?|L|W|#|\d+|[A-Z]{3})([-/,]?(\*|\d+|[A-Z]{3}|L|W))*(#\d)?$/i;
 
+const CRON_MACRO = /^@(yearly|annually|monthly|weekly|daily|midnight|hourly)(\s|$)/i;
+
 const isCron = (text: string) => {
+  if (CRON_MACRO.test(text)) return true;
   const fields = text.split(/\s+/);
-  return (fields.length === 5 || fields.length === 6) && fields.every((field) => CRON_FIELD.test(field)) && fields.some((field) => field.includes("*") || field.includes("/"));
+  // A crontab line has a command after the 5 schedule fields.
+  const command = fields.length > 7 || (fields.length > 5 && !fields.slice(5).every((field) => CRON_FIELD.test(field)));
+  const schedule = command ? fields.slice(0, 5) : fields;
+  return schedule.length >= 5 && schedule.length <= 7 && schedule.every((field) => CRON_FIELD.test(field)) && schedule.some((field) => field.includes("*") || field.includes("/"));
 };
 
 const isPrintableBase64 = (text: string) => {
