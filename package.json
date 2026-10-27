@@ -2,7 +2,7 @@
   "name": "devtools",
   "private": true,
   "version": "2.0.0",
-  "description": "DevTools - Your Essential Developer Companion",
+  "description": "DevToolsApp - Your Essential Developer Companion",
   "author": "Ahmed Shamim",
   "license": "MIT",
   "type": "module",

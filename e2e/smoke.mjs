@@ -85,8 +85,13 @@ async function startSession() {
 }
 
 async function openTool(name) {
-  const search = await browser.$('input[placeholder="Search..."]');
-  await search.setValue(name);
+  // WebDriver setValue does not always clear the field first on WebKitGTK, so set the value
+  // through the native setter and fire the input event that React listens for.
+  await browser.execute((value) => {
+    const search = document.querySelector('input[placeholder="Search..."]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(search, value);
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  }, name);
   // The sidebar and the home page can both list the tool. Use the sidebar entry.
   const toolButton = await browser.$$(`button*=${name}`)[0];
   await toolButton.waitForClickable({ timeout: 10000 });
