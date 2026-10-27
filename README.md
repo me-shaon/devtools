@@ -94,7 +94,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Converters
 
-- **Base64** - Encode and decode text, files, and data URIs, with a URL-safe mode
+- **Base64** - Encode and decode Base64 and Base32 text, files, and data URIs, with a URL-safe mode
 - **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line
 - **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
 - **Markdown** - Live, sanitized preview and HTML export
@@ -127,7 +127,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
-- **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines
+- **Line Tools** - Filter, sort, reverse, dedupe, trim, and shuffle lines, and compare two lists
 
 ### AI Tools
 

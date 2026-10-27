@@ -62,6 +62,32 @@ describe("Base64Converter", () => {
     expect(await screen.findByDisplayValue("hi")).toBeInTheDocument();
   });
 
+  it("encodes Base32 with optional padding and the hex alphabet", async () => {
+    render(<Base64Converter />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Base32" }));
+    const box = await screen.findByPlaceholderText("Enter text to encode to Base32...");
+    fireEvent.change(box, { target: { value: "foobar" } });
+    const output = await screen.findByLabelText("Base32");
+    await waitFor(() => expect(output).toHaveValue("MZXW6YTBOI======"));
+    fireEvent.click(screen.getByRole("switch", { name: "Padding" }));
+    await waitFor(() => expect(screen.getByLabelText("Base32")).toHaveValue("MZXW6YTBOI"));
+    fireEvent.click(screen.getByRole("switch", { name: "Hex alphabet" }));
+    await waitFor(() => expect(screen.getByLabelText("Base32")).toHaveValue("CPNMUOJ1E8"));
+    expect(screen.queryByRole("switch", { name: /URL-safe/ })).toBeNull();
+  });
+
+  it("decodes a lowercase, grouped Base32 TOTP secret to hex", async () => {
+    render(<Base64Converter />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Base32" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Decode" }));
+    const box = await screen.findByPlaceholderText("Enter Base32 string to decode...");
+    fireEvent.change(box, { target: { value: "jbsw y3dp ehpk 3pxp" } });
+    const output = await screen.findByLabelText("Hex");
+    await waitFor(() => expect(output).toHaveValue("48656c6c6f21deadbeef"));
+    fireEvent.change(box, { target: { value: "JBSW1" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent('Invalid Base32 character "1" at position 5.');
+  });
+
   it("saves a decoded data URI as a file", async () => {
     render(<Base64Converter />);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Decode" }));

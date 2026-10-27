@@ -1,5 +1,6 @@
 /**
- * Line Tools utilities: sort, dedupe, trim, and shuffle the lines of a text.
+ * Line Tools utilities: filter, sort, dedupe, trim, and shuffle the lines of a
+ * text, and compare two lists of lines.
  *
  * Line endings: the input is split on LF, CRLF, and CR. The output is joined
  * with CRLF when the input has any CRLF, otherwise with LF. A trailing line
@@ -8,11 +9,20 @@
 
 export type LineSort = "none" | "asc" | "desc" | "natural" | "length" | "shuffle";
 
+export interface LineFilter {
+  /** Text to find in each line, or a regex. An empty pattern turns the filter off. */
+  pattern: string;
+  regex?: boolean;
+  /** Keep the matching lines (the default) or remove them. */
+  mode?: "keep" | "remove";
+}
+
 export interface LineToolOptions {
+  filter?: LineFilter;
   sort?: LineSort;
   reverse?: boolean;
   dedupe?: boolean;
-  /** Compare case-insensitively when deduping and sorting. */
+  /** Compare case-insensitively when filtering, deduping, and sorting. */
   ignoreCase?: boolean;
   trim?: boolean;
   removeEmpty?: boolean;
@@ -26,6 +36,8 @@ export interface LineToolResult {
   outputLines: number;
   duplicatesRemoved: number;
   emptyRemoved: number;
+  /** Lines that matched the filter. Undefined when no filter is set. */
+  filterMatched?: number;
   eol: "\n" | "\r\n";
 }
 
@@ -93,11 +105,29 @@ function sortLines(lines: string[], sort: LineSort, ignoreCase: boolean, randomI
 }
 
 /**
- * Apply the options in a fixed order: trim, remove empty lines, dedupe,
- * sort, then reverse. Each step is O(n) except the sort, which is O(n log n).
+ * Build a line test from a filter.
+ * @throws Error with the engine message when the regex is invalid
+ */
+export function lineMatcher(filter: LineFilter, ignoreCase = false): (line: string) => boolean {
+  if (filter.regex) {
+    // No g or y flag: those make test() keep state between lines.
+    const re = new RegExp(filter.pattern, ignoreCase ? "i" : "");
+    return (line) => re.test(line);
+  }
+  if (!ignoreCase) return (line) => line.includes(filter.pattern);
+  const needle = filter.pattern.toLowerCase();
+  return (line) => line.toLowerCase().includes(needle);
+}
+
+/**
+ * Apply the options in a fixed order: trim, remove empty lines, filter,
+ * dedupe, sort, then reverse. Each step is O(n) except the sort, which is
+ * O(n log n).
+ * @throws Error when the filter regex is invalid
  */
 export function processLines(text: string, options: LineToolOptions = {}): LineToolResult {
   const {
+    filter,
     sort = "none",
     reverse = false,
     dedupe = false,
@@ -116,6 +146,15 @@ export function processLines(text: string, options: LineToolOptions = {}): LineT
   if (removeEmpty) {
     const kept = lines.filter((line) => line.trim() !== "");
     emptyRemoved = lines.length - kept.length;
+    lines = kept;
+  }
+
+  let filterMatched: number | undefined;
+  if (filter?.pattern) {
+    const matches = lineMatcher(filter, ignoreCase);
+    const keep = filter.mode !== "remove";
+    const kept = lines.filter((line) => matches(line) === keep);
+    filterMatched = keep ? kept.length : lines.length - kept.length;
     lines = kept;
   }
 
@@ -145,6 +184,69 @@ export function processLines(text: string, options: LineToolOptions = {}): LineT
     outputLines: lines.length,
     duplicatesRemoved,
     emptyRemoved,
+    filterMatched,
     eol: split.eol,
+  };
+}
+
+export interface CompareOptions {
+  ignoreCase?: boolean;
+  /** Trim each line before comparing. On by default. */
+  trim?: boolean;
+  /** Skip lines that are empty or only whitespace. On by default. */
+  ignoreBlank?: boolean;
+}
+
+export interface CompareResult {
+  onlyA: string[];
+  onlyB: string[];
+  both: string[];
+  /** Every distinct item: A's items in order, then the items only in B. */
+  union: string[];
+  /** Distinct items in each list. */
+  uniqueA: number;
+  uniqueB: number;
+  eol: "\n" | "\r\n";
+}
+
+/**
+ * Compare two lists as sets of lines. Each result keeps the first spelling of
+ * an item and the order of first appearance. Runs in O(n) with hash maps.
+ */
+export function compareLists(a: string, b: string, options: CompareOptions = {}): CompareResult {
+  const { ignoreCase = false, trim = true, ignoreBlank = true } = options;
+  const toItems = (text: string) => {
+    const split = splitLines(text);
+    const items = new Map<string, string>();
+    for (const line of split.lines) {
+      const item = trim ? line.trim() : line;
+      if (ignoreBlank && item.trim() === "") continue;
+      const key = ignoreCase ? item.toLowerCase() : item;
+      if (!items.has(key)) items.set(key, item);
+    }
+    return { items, eol: split.eol };
+  };
+  const listA = toItems(a);
+  const listB = toItems(b);
+
+  const onlyA: string[] = [];
+  const both: string[] = [];
+  for (const [key, item] of listA.items) {
+    if (listB.items.has(key)) both.push(item);
+    else onlyA.push(item);
+  }
+  const onlyB: string[] = [];
+  for (const [key, item] of listB.items) {
+    if (!listA.items.has(key)) onlyB.push(item);
+  }
+
+  return {
+    onlyA,
+    onlyB,
+    both,
+    union: [...listA.items.values(), ...onlyB],
+    uniqueA: listA.items.size,
+    uniqueB: listB.items.size,
+    eol: listA.eol === "\r\n" || listB.eol === "\r\n" ? "\r\n" : "\n",
   };
 }

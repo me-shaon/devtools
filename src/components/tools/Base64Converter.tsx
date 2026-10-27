@@ -11,6 +11,8 @@ import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { saveFile } from "@/lib/desktop";
 import { formatBytes } from "@/utils/hash";
+import { bytesToHex } from "@noble/hashes/utils.js";
+import { base32ToBytes, bytesToBase32 } from "@/utils/base32";
 import {
   base64ToBytes,
   bytesToBase64,
@@ -21,6 +23,7 @@ import {
 } from "@/utils/base64";
 
 type Mode = "encode" | "decode";
+type Format = "base64" | "base32";
 
 interface EncodedFile {
   name: string;
@@ -31,10 +34,15 @@ interface EncodedFile {
 
 interface Decoded {
   text: string;
+  /** Hex of the bytes when they are not UTF-8 text. */
+  hex: string;
   bytes: number;
   binary: boolean;
   error: string;
 }
+
+// Larger binary data is too long to read as hex. Save it as a file instead.
+const MAX_HEX_BYTES = 64 * 1024;
 
 const readFileBytes = (file: File): Promise<Uint8Array> =>
   new Promise((resolve, reject) => {
@@ -67,6 +75,14 @@ const FAQ_ITEMS: ToolFaqItem[] = [
     a: "It replaces + with - and / with _, and it drops the = padding. Use it in URLs, file names, and JWTs. The decoder accepts both forms.",
   },
   {
+    q: "What is Base32 for?",
+    a: "Two-factor (TOTP) secrets use Base32, and so do some IDs. A decoded TOTP secret is binary, so the tool shows it as hex. The decoder ignores case, spaces, and missing padding.",
+  },
+  {
+    q: "What does Hex alphabet do?",
+    a: "It switches to base32hex from RFC 4648, which uses 0-9 and A-V and keeps the sort order of the data. The two alphabets share characters, so set it the same way to decode.",
+  },
+  {
     q: "Is my file uploaded?",
     a: "No. Files are read and converted on your device.",
   },
@@ -75,7 +91,10 @@ const FAQ_ITEMS: ToolFaqItem[] = [
 export function Base64Converter() {
   const [mode, setMode] = useState<Mode>("encode");
   const [textToEncode, setTextToEncode] = useState("");
+  const [format, setFormat] = useState<Format>("base64");
   const [urlSafe, setUrlSafe] = useState(false);
+  const [hexAlphabet, setHexAlphabet] = useState(false);
+  const [padding, setPadding] = useState(true);
   const [asDataUri, setAsDataUri] = useState(false);
   const [encodedFile, setEncodedFile] = useState<EncodedFile | null>(null);
   const [base64ToDecode, setBase64ToDecode] = useState("");
@@ -85,15 +104,28 @@ export function Base64Converter() {
   const pendingText = useDebouncedValue(textToEncode);
   const pendingBase64 = useDebouncedValue(base64ToDecode);
 
+  const base32 = format === "base32";
+  const formatName = base32 ? "Base32" : "Base64";
+  const variant = hexAlphabet ? "base32hex" : "base32";
+
   const encodedOutput = useMemo(() => {
+    const encode = (bytes: Uint8Array) =>
+      format === "base32" ? bytesToBase32(bytes, { variant, padding }) : bytesToBase64(bytes, { urlSafe });
     if (encodedFile) {
       // Data URIs always use standard Base64 so that browsers can read them.
-      return asDataUri
+      return asDataUri && format === "base64"
         ? bytesToDataUri(encodedFile.bytes, encodedFile.mimeType)
-        : bytesToBase64(encodedFile.bytes, { urlSafe });
+        : encode(encodedFile.bytes);
     }
-    return pendingText ? bytesToBase64(new TextEncoder().encode(pendingText), { urlSafe }) : "";
-  }, [encodedFile, asDataUri, urlSafe, pendingText]);
+    return pendingText ? encode(new TextEncoder().encode(pendingText)) : "";
+  }, [encodedFile, asDataUri, format, urlSafe, variant, padding, pendingText]);
+
+  // Base64 input may be a data URI, which also gives the MIME type.
+  const decodeInput = (input: string): { bytes: Uint8Array; mimeType: string | null } => {
+    if (base32) return { bytes: base32ToBytes(input, { variant }), mimeType: null };
+    const parsed = parseDataUri(input);
+    return { bytes: base64ToBytes(parsed ? parsed.base64 : input), mimeType: parsed?.mimeType ?? null };
+  };
 
   const imagePreview = useMemo(() => {
     if (!encodedFile || !encodedFile.mimeType.startsWith("image/")) return "";
@@ -103,17 +135,19 @@ export function Base64Converter() {
   const decoded = useMemo<Decoded | null>(() => {
     if (!pendingBase64.trim()) return null;
     try {
-      const parsed = parseDataUri(pendingBase64);
-      const bytes = base64ToBytes(parsed ? parsed.base64 : pendingBase64);
+      const { bytes } = decodeInput(pendingBase64);
       try {
-        return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), bytes: bytes.length, binary: false, error: "" };
+        return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), hex: "", bytes: bytes.length, binary: false, error: "" };
       } catch {
-        return { text: "", bytes: bytes.length, binary: true, error: "" };
+        const hex = bytes.length <= MAX_HEX_BYTES ? bytesToHex(bytes) : "";
+        return { text: "", hex, bytes: bytes.length, binary: true, error: "" };
       }
     } catch (err) {
-      return { text: "", bytes: 0, binary: false, error: (err as Error).message || "Invalid Base64 format" };
+      return { text: "", hex: "", bytes: 0, binary: false, error: (err as Error).message || `Invalid ${formatName} format` };
     }
-  }, [pendingBase64]);
+    // decodeInput depends only on the format and the alphabet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBase64, base32, variant]);
 
   const handleEncodeFile = async (file: File | undefined) => {
     if (!file) return;
@@ -132,9 +166,8 @@ export function Base64Converter() {
 
   const saveDecodedFile = async () => {
     try {
-      const parsed = parseDataUri(base64ToDecode);
-      const bytes = base64ToBytes(parsed ? parsed.base64 : base64ToDecode);
-      const mimeType = parsed?.mimeType ?? sniffMimeType(bytes) ?? "application/octet-stream";
+      const { bytes, mimeType: dataUriType } = decodeInput(base64ToDecode);
+      const mimeType = dataUriType ?? sniffMimeType(bytes) ?? "application/octet-stream";
       const fileName = saveName.trim() || `decoded.${extensionForMime(mimeType)}`;
       const blob = new Blob([bytes as BlobPart], { type: mimeType });
       if (await saveFile(blob, fileName)) {
@@ -188,13 +221,31 @@ export function Base64Converter() {
               <TabsTrigger value="decode">Decode</TabsTrigger>
             </TabsList>
           </Tabs>
-          {encoding && (
+          <Tabs value={format} onValueChange={(v) => setFormat(v as Format)}>
+            <TabsList aria-label="Encoding">
+              <TabsTrigger value="base64">Base64</TabsTrigger>
+              <TabsTrigger value="base32">Base32</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {encoding && !base32 && (
             <label className="option-switch indent-control" htmlFor="b64-urlsafe">
               URL-safe
               <Switch id="b64-urlsafe" checked={urlSafe} onCheckedChange={setUrlSafe} disabled={Boolean(encodedFile) && asDataUri} />
             </label>
           )}
-          {encoding && encodedFile && (
+          {base32 && (
+            <label className="option-switch indent-control" htmlFor="b64-base32hex">
+              Hex alphabet
+              <Switch id="b64-base32hex" checked={hexAlphabet} onCheckedChange={setHexAlphabet} />
+            </label>
+          )}
+          {encoding && base32 && (
+            <label className="option-switch" htmlFor="b64-padding">
+              Padding
+              <Switch id="b64-padding" checked={padding} onCheckedChange={setPadding} />
+            </label>
+          )}
+          {encoding && !base32 && encodedFile && (
             <label className="option-switch" htmlFor="b64-datauri">
               Data URI
               <Switch id="b64-datauri" checked={asDataUri} onCheckedChange={setAsDataUri} />
@@ -286,41 +337,43 @@ export function Base64Converter() {
                 id="b64-encode-input"
                 value={textToEncode}
                 onChange={(e) => setTextToEncode(e.target.value)}
-                placeholder="Enter text to encode to Base64..."
+                placeholder={`Enter text to encode to ${formatName}...`}
               />
             )}
           </EditorPane>
         ) : (
-          <EditorPane title="Base64" htmlFor="b64-decode-input" scroll={false}
+          <EditorPane title={formatName} htmlFor="b64-decode-input" scroll={false}
             actions={base64ToDecode ? <button type="button" className="toolbar-text-button" onClick={() => setBase64ToDecode("")}>Clear</button> : undefined}>
             <CodeTextarea
               id="b64-decode-input"
               value={base64ToDecode}
               onChange={(e) => setBase64ToDecode(e.target.value)}
-              placeholder="Enter Base64 string or data URI to decode..."
+              placeholder={base32 ? "Enter Base32 string to decode..." : "Enter Base64 string or data URI to decode..."}
             />
           </EditorPane>
         )
       }
       second={
         encoding ? (
-          <EditorPane title="Base64" htmlFor={encodedOutput ? "b64-encode-output" : undefined} scroll={false}
-            actions={<CopyButton value={encodedOutput} label="Copy Base64" />}>
+          <EditorPane title={formatName} htmlFor={encodedOutput ? "b64-encode-output" : undefined} scroll={false}
+            actions={<CopyButton value={encodedOutput} label={`Copy ${formatName}`} />}>
             {encodedOutput ? (
               <CodeTextarea id="b64-encode-output" value={encodedOutput} readOnly />
             ) : (
-              <PaneEmpty title="Base64 appears here" hint="Type text or open a file." />
+              <PaneEmpty title={`${formatName} appears here`} hint="Type text or open a file." />
             )}
           </EditorPane>
         ) : (
-          <EditorPane title="Text" htmlFor={decodedText ? "b64-decode-output" : undefined} scroll={false}
-            actions={<CopyButton value={decodedText} label="Copy text" />}>
-            {decodedText ? (
-              <CodeTextarea id="b64-decode-output" value={decodedText} readOnly />
+          <EditorPane title={decoded?.hex ? "Hex" : "Text"} htmlFor={decodedText || decoded?.hex ? "b64-decode-output" : undefined} scroll={false}
+            actions={decoded?.hex
+              ? <CopyButton value={decoded.hex} label="Copy hex" />
+              : <CopyButton value={decodedText} label="Copy text" />}>
+            {decodedText || decoded?.hex ? (
+              <CodeTextarea id="b64-decode-output" value={decodedText || decoded?.hex} readOnly />
             ) : decoded?.binary ? (
               <PaneEmpty title="Binary data" hint="The data is not UTF-8 text. Use Save as file." />
             ) : (
-              <PaneEmpty title="Decoded text appears here" hint="Paste Base64 or a data URI." />
+              <PaneEmpty title="Decoded text appears here" hint={base32 ? "Paste Base32, such as a TOTP secret." : "Paste Base64 or a data URI."} />
             )}
           </EditorPane>
         )
