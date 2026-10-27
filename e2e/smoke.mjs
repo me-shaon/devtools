@@ -188,8 +188,10 @@ try {
     for (const name of toolNames) {
       await openTool(name);
       // Each lazy-loaded tool renders its own content below the page title.
+      // innerText through execute, because WebKitGTK's WebDriver getText fails on some tool markup
+      // ("Cannot check the displayedness of a non-Element argument").
       await browser.waitUntil(
-        async () => (await (await browser.$("main")).getText()).length > name.length + 20,
+        async () => (await browser.execute(() => document.querySelector("main").innerText.length)) > name.length + 20,
         { timeout: 10000, timeoutMsg: `Tool content did not render: ${name}` },
       );
     }
