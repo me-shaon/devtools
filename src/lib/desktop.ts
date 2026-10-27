@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -32,6 +33,11 @@ export interface DesktopBridge {
   checkForUpdates: () => Promise<UpdateState>;
   downloadUpdate: () => Promise<boolean>;
   installUpdate: () => Promise<boolean>;
+  /**
+   * Sets the native window appearance. The macOS sidebar material follows it,
+   * so it must match the app theme. Pass null to follow the system.
+   */
+  setWindowTheme?: (theme: "light" | "dark" | null) => Promise<void>;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;

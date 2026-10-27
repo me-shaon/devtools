@@ -33,26 +33,26 @@
   }
 
   .dark {
-    --background: 225 8% 12%; --foreground: 220 16% 92%;
-    --card: 225 8% 14%; --card-foreground: 220 16% 92%;
-    --popover: 225 8% 14%; --popover-foreground: 220 16% 92%;
+    --background: 240 4% 11%; --foreground: 240 6% 92%;
+    --card: 240 4% 13%; --card-foreground: 240 6% 92%;
+    --popover: 240 4% 13%; --popover-foreground: 240 6% 92%;
     --primary: 213 80% 66%; --primary-foreground: 222 25% 14%;
-    --secondary: 225 8% 18%; --secondary-foreground: 220 16% 92%;
-    --muted: 225 8% 18%; --muted-foreground: 220 10% 68%;
+    --secondary: 240 4% 18%; --secondary-foreground: 240 6% 92%;
+    --muted: 240 4% 18%; --muted-foreground: 240 5% 68%;
     --accent: 215 30% 26%; --accent-foreground: 213 100% 87%;
     --destructive: 0 90% 76%; --destructive-foreground: 222 25% 10%;
     --success: 142 69% 58%; --success-foreground: 222 25% 10%;
     --warning: 48 96% 53%; --warning-foreground: 222 25% 10%;
     --info: 213 94% 72%; --info-foreground: 222 25% 10%;
-    --border: 220 8% 30%; --input: 220 8% 50%; --ring: 213 91% 72%;
-    --sidebar-background: 225 10% 16%; --sidebar-foreground: 220 16% 92%;
+    --border: 240 4% 28%; --input: 240 4% 50%; --ring: 213 91% 72%;
+    --sidebar-background: 240 4% 15%; --sidebar-foreground: 240 6% 92%;
     --sidebar-primary: 213 80% 66%; --sidebar-primary-foreground: 222 25% 14%;
     --sidebar-accent: 215 30% 26%; --sidebar-accent-foreground: 213 100% 87%;
-    --sidebar-border: 220 8% 30%; --sidebar-ring: 213 91% 72%;
-    --chrome-muted-foreground: 215 24% 84%;
-    --chrome-input-border: 218 14% 60%;
-    --surface-editor: #1b1d21; --surface-chrome: #272a30;
-    --surface-sidebar: #242831; --surface-raised: #363a42;
+    --sidebar-border: 240 4% 28%; --sidebar-ring: 213 91% 72%;
+    --chrome-muted-foreground: 240 6% 84%;
+    --chrome-input-border: 240 5% 58%;
+    --surface-editor: #1c1c1f; --surface-chrome: #2a2a2d;
+    --surface-sidebar: #26262a; --surface-raised: #38383c;
   }
 }
 
@@ -197,33 +197,6 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .dark .workspace[data-platform="darwin"] .workspace-titlebar { background: transparent; border: 0; }
 .workspace-content { border-radius: 11px; box-shadow: 0 4px 18px rgb(26 36 60 / .08), 0 1px 3px rgb(26 36 60 / .10); }
 .workspace-content.is-home { background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--background))); }
-/* One continuous glass material under both sidebar and title bar prevents seams. */
-.workspace,
-.workspace[data-platform="darwin"] {
-  --glass-base: rgb(199 217 244 / .56);
-  --glass-highlight: rgb(255 255 255 / .82);
-  --glass-reflection: rgb(246 251 255 / .62);
-  --glass-blue: rgb(145 185 240 / .30);
-  --glass-edge: rgb(255 255 255 / .8);
-  border: 0;
-  background:
-    radial-gradient(ellipse 125% 38% at 0% 4%, var(--glass-highlight), transparent 78%),
-    radial-gradient(ellipse 100% 48% at 105% 50%, var(--glass-reflection), transparent 76%),
-    linear-gradient(125deg, transparent 20%, var(--glass-blue) 47%, transparent 72%),
-    linear-gradient(165deg, var(--glass-reflection), transparent 38%, var(--glass-blue)),
-    var(--glass-base);
-  box-shadow: inset 1px 0 var(--glass-edge), inset 0 1px var(--glass-edge), inset -1px 0 var(--glass-edge);
-  backdrop-filter: blur(28px) saturate(1.35);
-  -webkit-backdrop-filter: blur(28px) saturate(1.35);
-}
-.dark .workspace,
-.dark .workspace[data-platform="darwin"] {
-  --glass-base: rgb(28 40 62 / .68);
-  --glass-highlight: rgb(143 171 212 / .19);
-  --glass-reflection: rgb(113 144 190 / .12);
-  --glass-blue: rgb(49 88 147 / .23);
-  --glass-edge: rgb(193 214 247 / .18);
-}
  .workspace-sidebar,
 .workspace[data-platform="darwin"] .workspace-sidebar {
   background: transparent; box-shadow: none; border: 0;
@@ -237,13 +210,7 @@ body:has(.workspace[data-platform="darwin"]) #root,
   border-color: hsl(var(--chrome-input-border));
   box-shadow: inset 0 1px rgb(255 255 255 / .65), 0 1px 3px rgb(43 71 112 / .04);
 }
-.dark .workspace-sidebar input { background: rgb(17 25 40 / .25); box-shadow: inset 0 1px rgb(255 255 255 / .06); }
-.workspace-sidebar nav button.bg-accent {
-  background: linear-gradient(rgb(166 207 255 / .80), rgb(143 190 250 / .68));
-  box-shadow: inset 0 1px rgb(255 255 255 / .42), 0 1px 2px rgb(55 103 167 / .06);
-  color: #173456;
-}
-.dark .workspace-sidebar nav button.bg-accent { background: linear-gradient(rgb(66 112 179 / .65), rgb(43 81 139 / .6)); color: #eaf3ff; }
+
 .sidebar-brand { border: 0; padding-left: 22px; }
 .sidebar-brand img { width: 24px; height: 24px; }
 /* Secondary text over the glass chrome uses a stronger gray than over opaque cards. */
@@ -379,3 +346,26 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .shortcut-row > kbd.shortcut-fixed { justify-self: end; font-family: var(--font-ui); font-size: 12px; padding: 4px 8px; border-radius: 5px; border: 1px solid hsl(var(--input)); background: hsl(var(--muted)); color: hsl(var(--foreground)); white-space: nowrap; }
 .result-row-value.code-textarea { flex: none; overflow: hidden; word-break: break-all; padding: 2px 0; font-size: 12px; line-height: 18px; border-radius: 3px; }
 .result-row-value.code-textarea::placeholder { font-family: var(--font-ui); }
+
+/* Window material.
+   macOS: the native NSVisualEffectView sidebar material (tauri.macos.conf.json) is the frame,
+   so the page paints nothing over it. Windows and Linux have no vibrancy and get a solid,
+   neutral frame instead of an imitation. */
+.workspace,
+.workspace[data-platform="darwin"] { background: var(--surface-chrome); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.workspace[data-platform="darwin"] { background: transparent; }
+.workspace-content, .workspace-content.is-home { background: hsl(var(--card)); }
+.workspace-content { box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .06), 0 6px 20px rgb(0 0 0 / .06); }
+.dark .workspace-content { box-shadow: 0 0 0 1px rgb(255 255 255 / .07), 0 2px 6px rgb(0 0 0 / .3), 0 10px 30px rgb(0 0 0 / .25); }
+
+/* Sidebar rows follow macOS source lists: a quiet neutral selection, accent only on the icon. */
+.workspace-sidebar nav .bg-accent,
+.workspace-sidebar nav button.bg-accent { background: hsl(var(--foreground) / .09); box-shadow: none; color: hsl(var(--foreground)); }
+.workspace-sidebar nav .bg-accent svg:first-child { color: hsl(var(--primary)); }
+.workspace-sidebar nav .bg-accent span { font-weight: 500; }
+.workspace-sidebar nav .sidebar-tool:hover:not(.bg-accent) { background-color: hsl(var(--foreground) / .05); }
+.workspace-sidebar nav .sidebar-tool button:hover { background: transparent; }
+.workspace-sidebar input,
+.dark .workspace-sidebar input { background: hsl(var(--foreground) / .045); border-color: hsl(var(--chrome-input-border)); box-shadow: none; }
+.sidebar-search-kbd { background: hsl(var(--foreground) / .06); border-color: hsl(var(--foreground) / .12); }
+.sidebar-footer { border-color: hsl(var(--foreground) / .1); }

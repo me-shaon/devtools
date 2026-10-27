@@ -177,6 +177,11 @@ const DevToolsApp = () => {
   }, [darkMode]);
 
   useEffect(() => {
+    // The native window material follows the window appearance, not the page theme.
+    void desktop?.setWindowTheme?.(themePreference === "system" ? null : themePreference);
+  }, [desktop, themePreference]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, themePreference);
     } catch (error) {
