@@ -1,5 +1,7 @@
 // Keys made with OpenSSH 10.2 (ssh-keygen -t <type> -N "" -C test@<type>), and the
 // fingerprints that ssh-keygen -l printed for them.
+// These are throwaway test keys. They protect nothing and are not used anywhere else.
+// .gitguardian.yaml excludes this file from secret scanning.
 
 export const ED25519_PRIVATE = `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW

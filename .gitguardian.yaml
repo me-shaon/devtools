@@ -1,0 +1,6 @@
+version: 2
+secret:
+  # Throwaway OpenSSH keys that ssh-keygen made for the Key Pair Generator tests.
+  # They are not used anywhere else.
+  ignored_paths:
+    - tests/tools/key-generator.fixtures.ts
