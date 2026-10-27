@@ -103,6 +103,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
 
   if (single && isJwt(text)) add("jwt-decoder", "a JWT", 100);
   if (/-----BEGIN (CERTIFICATE|CERTIFICATE REQUEST)-----/.test(text)) add("certificate-decoder", "a certificate", 100);
+  if (/-----BEGIN (OPENSSH PRIVATE KEY|PRIVATE KEY|PUBLIC KEY|RSA PRIVATE KEY|RSA PUBLIC KEY|EC PRIVATE KEY)-----/.test(text)) add("key-generator", "a key", 95);
+  if (single && /^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521)) AAAA[A-Za-z0-9+/]+=*( .*)?$/.test(text)) add("key-generator", "an SSH public key", 95);
   if (/^curl\s/i.test(text)) add("curl-to-code", "a cURL command", 95);
   if (isJson(text)) {
     if (/"\$schema"\s*:\s*"https?:\/\/json-schema\.org\//.test(text)) add("json-schema", "a JSON Schema", 95);

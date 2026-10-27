@@ -29,6 +29,9 @@ describe("detectPastedContent", () => {
     expect(first("curl -X POST https://api.example.com -d 'a=1'")).toBe("curl-to-code");
     expect(first("SELECT id, name FROM users WHERE id = 1")).toBe("code-formatter");
     expect(first("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----")).toBe("certificate-decoder");
+    expect(first("-----BEGIN PUBLIC KEY-----\nMCow\n-----END PUBLIC KEY-----")).toBe("key-generator");
+    expect(first("-----BEGIN OPENSSH PRIVATE KEY-----\nb3Bl\n-----END OPENSSH PRIVATE KEY-----")).toBe("key-generator");
+    expect(first("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBfYyoCo5kOuXXv58SdYgyMjzLnASszHpiVe7kzvD7mC me@laptop")).toBe("key-generator");
     expect(first('a:1:{s:4:"name";s:3:"bob";}')).toBe("php-tools");
     expect(first('user|s:3:"bob";')).toBe("php-tools");
     expect(first("<?php\nreturn [\n    'debug' => true,\n];")).toBe("php-tools");

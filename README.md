@@ -92,6 +92,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **QR Generator** - Make QR codes for text, Wi-Fi, contacts, email, phone, SMS, locations and events, with an optional logo, and save them as PNG or SVG
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 - **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
+- **Key Pair Generator** - Generate RSA, ECDSA, and Ed25519 key pairs as PEM, JWK, and OpenSSH keys with fingerprints, or convert a key you paste
 
 ### Converters
 
