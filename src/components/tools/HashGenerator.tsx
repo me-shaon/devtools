@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, FileUp } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 
 import {
   HASH_TYPES,
@@ -106,7 +108,7 @@ export function HashGenerator() {
     try {
       setFileBytes(await readFileBytes(selected));
     } catch {
-      toast.error("Unable to read the file.");
+      toast.error("Could not read the file. Choose it again.");
       setFile(null);
     }
   };
@@ -116,109 +118,126 @@ export function HashGenerator() {
     setFileBytes(null);
   };
 
-  const copyHash = (hash: string) => {
-    if (hash) {
-      navigator.clipboard.writeText(hash);
-      toast.success("Copied to clipboard!");
-    }
+  // Read-only result fields grow to show the whole hash at any pane width.
+  const listRef = useRef<HTMLDivElement>(null);
+  const fitHeight = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
   };
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => list.querySelectorAll("textarea").forEach(fitHeight));
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, []);
 
   const renderResult = (key: string, label: string, value: string, placeholder: string) => (
-    <div key={key} className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>{label}</Label>
-        {value && (
-          <Button onClick={() => copyHash(value)} variant="ghost" size="sm">
-            <Copy className="w-4 h-4 mr-2" />
-            Copy
-          </Button>
-        )}
-      </div>
+    <div key={key} className="result-row">
+      <label className="result-row-label" htmlFor={`hash-out-${key}`}>{label}</label>
       <textarea
+        id={`hash-out-${key}`}
+        className="result-row-value code-textarea"
         value={value}
         readOnly
+        rows={1}
+        ref={fitHeight}
         placeholder={placeholder}
-        className="w-full h-16 p-3 rounded-md border bg-muted font-mono text-sm resize-none focus:outline-none"
       />
+      <CopyButton value={value} iconOnly label={`Copy ${label}`} />
     </div>
   );
 
+  const byteCount = source === "text" ? new TextEncoder().encode(input).length : fileBytes?.length ?? 0;
+
   return (
-    <div className="space-y-6">
-      <Tabs value={source} onValueChange={(v) => setSource(v as Source)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="text">Text</TabsTrigger>
-          <TabsTrigger value="file">File</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="text">
-          <Label>Input Text</Label>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter text to generate hashes..."
-            className="w-full h-24 p-3 rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </TabsContent>
-
-        <TabsContent value="file" className="space-y-3">
-          <Label htmlFor="hash-file">File</Label>
-          <Input
-            id="hash-file"
-            type="file"
-            onChange={(e) => {
-              void handleFile(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-          {file && (
-            <div className="flex items-center justify-between rounded-md border bg-muted px-3 py-2 text-sm">
-              <span className="flex min-w-0 items-center gap-2">
-                <FileUp className="w-4 h-4 shrink-0" />
-                <span className="truncate" data-testid="hash-file-name">{file.name}</span>
-                <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
-              </span>
-              <Button onClick={clearFile} variant="ghost" size="sm">
-                Clear
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* HMAC */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Switch id="hash-hmac" checked={hmacEnabled} onCheckedChange={setHmacEnabled} />
-          <Label htmlFor="hash-hmac">HMAC</Label>
-        </div>
-        {hmacEnabled && (
-          <div>
-            <Label htmlFor="hash-secret">Secret key</Label>
+    <ToolWorkspace
+      id="hash-generator"
+      toolbar={
+        <>
+          <Tabs value={source} onValueChange={(v) => setSource(v as Source)}>
+            <TabsList aria-label="Input source">
+              <TabsTrigger value="text">Text</TabsTrigger>
+              <TabsTrigger value="file">File</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="option-switch indent-control" htmlFor="hash-hmac">
+            HMAC
+            <Switch id="hash-hmac" checked={hmacEnabled} onCheckedChange={setHmacEnabled} />
+          </label>
+        </>
+      }
+      secondaryToolbar={
+        hmacEnabled ? (
+          <>
+            <Label htmlFor="hash-secret" className="text-xs">Secret key</Label>
             <Input
               id="hash-secret"
+              className="h-7 w-64 text-xs"
               value={secretKey}
               onChange={(e) => setSecretKey(e.target.value)}
               placeholder="Enter secret key..."
               autoComplete="off"
               spellCheck={false}
             />
+          </>
+        ) : undefined
+      }
+      first={
+        source === "text" ? (
+          <EditorPane title="Input" htmlFor="hash-input" scroll={false}
+            actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}>
+            <CodeTextarea
+              id="hash-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter text to generate hashes..."
+            />
+          </EditorPane>
+        ) : (
+          <EditorPane title="File" htmlFor="hash-file">
+            <div className="space-y-3 p-4">
+              <Input
+                id="hash-file"
+                type="file"
+                onChange={(e) => {
+                  void handleFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              {file && (
+                <div className="flex items-center justify-between rounded-md border bg-muted px-3 py-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <FileUp className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate" data-testid="hash-file-name">{file.name}</span>
+                    <span className="shrink-0 text-muted-foreground">{formatBytes(file.size)}</span>
+                  </span>
+                  <Button onClick={clearFile} variant="ghost" size="sm">
+                    Clear
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">The file is read on this device. It is not uploaded.</p>
+            </div>
+          </EditorPane>
+        )
+      }
+      second={
+        <EditorPane title="Hashes">
+          <div className="result-list" ref={listRef}>
+            {HASH_TYPES.map(({ type, label }) =>
+              renderResult(type, label, hashes[type] ?? "", `${label} hash will appear here...`)
+            )}
+            {hmacEnabled &&
+              HMAC_TYPES.map(({ type, label }) =>
+                renderResult(`hmac-${type}`, label, hmacs[type] ?? "", `${label} will appear here...`)
+              )}
           </div>
-        )}
-      </div>
-
-      {/* Hash Results */}
-      <div className="space-y-4">
-        {HASH_TYPES.map(({ type, label }) =>
-          renderResult(type, label, hashes[type] ?? "", `${label} hash will appear here...`)
-        )}
-        {hmacEnabled &&
-          HMAC_TYPES.map(({ type, label }) =>
-            renderResult(`hmac-${type}`, label, hmacs[type] ?? "", `${label} will appear here...`)
-          )}
-      </div>
-
-      <ToolFaqSection items={FAQ_ITEMS} />
-    </div>
+        </EditorPane>
+      }
+      status={<span>{message === null ? "Ready" : `${formatBytes(byteCount)} hashed`}</span>}
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

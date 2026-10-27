@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 import { convertBase, parseBigIntFromBase } from "@/utils/number-base";
 
 type Base = 2 | 8 | 10 | 16;
@@ -15,7 +16,6 @@ export function NumberBaseConverter() {
   const [fromBase, setFromBase] = useState<Base>(10);
   const [toBase, setToBase] = useState<Base>(16);
   const [result, setResult] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const bases: { value: Base; label: string; example: string }[] = [
     { value: 2, label: "Binary (Base 2)", example: "1010" },
@@ -36,7 +36,6 @@ export function NumberBaseConverter() {
       return;
     }
     setResult(converted.value);
-    toast.success("Converted successfully!");
   };
 
   const swapBases = () => {
@@ -48,12 +47,6 @@ export function NumberBaseConverter() {
     }
   };
 
-  const copyResult = () => {
-    navigator.clipboard.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Result copied!");
-  };
 
   const getConversionInfo = () => {
     if (!result) return null;
@@ -139,9 +132,7 @@ export function NumberBaseConverter() {
               </Label>
               <div className="flex gap-2">
                 <Input id="result" value={result} readOnly className="font-mono" />
-                <Button onClick={copyResult} variant="outline" size="icon">
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <CopyButton value={result} label="Copy result" iconOnly />
               </div>
             </div>
           )}

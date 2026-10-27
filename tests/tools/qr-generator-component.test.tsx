@@ -47,7 +47,7 @@ describe("QrGenerator download", () => {
 
     renderAndDownload();
 
-    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith("QR code downloaded!"));
+    await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith("QR code saved."));
     expect(mocks.saveFile).toHaveBeenCalledWith(pngBlob, expect.stringMatching(/^qr-code-\d+\.png$/));
   });
 

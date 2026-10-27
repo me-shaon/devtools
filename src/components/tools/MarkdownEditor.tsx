@@ -2,8 +2,9 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Check, Eye, Code } from "lucide-react";
+import { Eye, Code } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 import { convertMarkdown, sanitizeHtml } from "@/utils/markdown";
 
 const defaultMarkdown = `# Welcome to Markdown Editor
@@ -42,23 +43,11 @@ function greet(name) {
 
 export function MarkdownEditor() {
   const [markdown, setMarkdown] = useState(defaultMarkdown);
-  const [copied, setCopied] = useState(false);
   const [view, setView] = useState<"split" | "preview" | "source">("split");
   const deferredMarkdown = useDeferredValue(markdown);
   const html = useMemo(() => sanitizeHtml(convertMarkdown(deferredMarkdown)), [deferredMarkdown]);
 
-  const copyHtml = () => {
-    const cleanHtml = html.replace(/<br>/g, "\n");
-    navigator.clipboard.writeText(cleanHtml);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("HTML copied!");
-  };
 
-  const copyMarkdown = () => {
-    navigator.clipboard.writeText(markdown);
-    toast.success("Markdown copied!");
-  };
 
   return (
     <div className="space-y-6">
@@ -100,9 +89,7 @@ export function MarkdownEditor() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">Markdown</label>
-                  <Button variant="ghost" size="sm" onClick={copyMarkdown}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
+                  <CopyButton value={markdown} label="Copy Markdown" />
                 </div>
                 <Textarea
                   value={markdown}
@@ -117,9 +104,7 @@ export function MarkdownEditor() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">HTML Preview</label>
-                  <Button variant="ghost" size="sm" onClick={copyHtml}>
-                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  </Button>
+                  <CopyButton value={html.replace(/<br>/g, "\n")} label="Copy HTML" />
                 </div>
                 <div
                   className="min-h-[500px] max-h-[500px] overflow-y-auto rounded-md border border-border bg-background p-4 text-foreground prose prose-neutral max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:text-muted-foreground"

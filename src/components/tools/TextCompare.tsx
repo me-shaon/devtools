@@ -1,25 +1,21 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useEffect, useMemo, useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GitCompare } from "lucide-react";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import {
   areTextsEqual,
   calculateSimilarity,
-  compareTexts,
   getCharDiff,
   getLineDiff,
   getTextStats,
   getUnifiedDiff,
   type DiffResult,
   type LineDiff,
-  type TextComparison,
 } from "@/utils/text-compare";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
@@ -41,422 +37,251 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
 ];
 
+type DiffView = "line" | "unified" | "character";
+
 interface CharacterDiffDetail {
   label: string;
   items: DiffResult[];
 }
 
-interface ComparisonResult {
-  comparison: TextComparison;
-  lineDiffs: LineDiff[];
-  similarity: number;
-  unifiedDiff: string[];
-  characterDetails: CharacterDiffDetail[];
-  equal: boolean;
-  originalStats: ReturnType<typeof getTextStats>;
-  modifiedStats: ReturnType<typeof getTextStats>;
-}
-
 function getCharacterDetails(lineDiffs: LineDiff[]): CharacterDiffDetail[] {
-  const details = lineDiffs
+  return lineDiffs
     .filter((diff) => diff.type !== "unchanged")
     .map((diff) => {
       if (diff.type === "modified") {
-        return {
-          label: `Character detail for line ${diff.lineNumber + 1}`,
-          items: getCharDiff(diff.oldContent ?? "", diff.content),
-        };
+        return { label: `Line ${diff.lineNumber + 1}`, items: getCharDiff(diff.oldContent ?? "", diff.content) };
       }
-
       if (diff.type === "added") {
-        return {
-          label: `Character detail for added line ${diff.lineNumber + 1}`,
-          items: getCharDiff("", diff.content),
-        };
+        return { label: `Added line ${diff.lineNumber + 1}`, items: getCharDiff("", diff.content) };
       }
-
-      return {
-        label: `Character detail for removed line ${diff.lineNumber + 1}`,
-        items: getCharDiff(diff.content, ""),
-      };
+      return { label: `Removed line ${diff.lineNumber + 1}`, items: getCharDiff(diff.content, "") };
     });
-
-  return details;
 }
+
+
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+const LINE_STYLES: Record<LineDiff["type"], { marker: string; className: string }> = {
+  added: { marker: "+", className: "bg-success/10 text-success" },
+  removed: { marker: "-", className: "bg-destructive/10 text-destructive" },
+  modified: { marker: "~", className: "bg-warning/10 text-warning" },
+  unchanged: { marker: " ", className: "text-foreground" },
+};
+
+const getCharClassName = (type: DiffResult["type"]) => {
+  switch (type) {
+    case "added":
+      return "bg-success/20 text-success";
+    case "removed":
+      return "bg-destructive/20 text-destructive line-through";
+    default:
+      return "text-foreground";
+  }
+};
+
+const getUnifiedDiffLineClass = (line: string) => {
+  if (line.startsWith("@@")) return "bg-info/10 text-info";
+  if (line.startsWith("---") || line.startsWith("+++")) return "text-muted-foreground";
+  if (line.startsWith("+")) return "bg-success/10 text-success";
+  if (line.startsWith("-")) return "bg-destructive/10 text-destructive";
+  return "text-foreground";
+};
 
 export function TextCompare() {
   const [text1, setText1] = useState("");
   const [text2, setText2] = useState("");
-  const [result, setResult] = useState<ComparisonResult | null>(null);
-  const [copied, setCopied] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const [ignoreCase, setIgnoreCase] = useState(false);
+  const [view, setView] = useState<DiffView>("line");
+  const original = useDebouncedValue(text1);
+  const modified = useDebouncedValue(text2);
 
-  const compareTextBlocks = () => {
-    if (!text1.trim() && !text2.trim()) {
-      toast.error("Please enter text to compare");
-      return;
-    }
-
+  const result = useMemo(() => {
+    if (!original && !modified) return null;
     const options = { ignoreWhitespace, ignoreCase };
-    const comparison = compareTexts(text1, text2, options);
-    const lineDiffs = getLineDiff(text1, text2, options);
-
-    setResult({
-      comparison,
+    const lineDiffs = getLineDiff(original, modified, options);
+    const count = (type: LineDiff["type"]) => lineDiffs.filter((diff) => diff.type === type).length;
+    return {
       lineDiffs,
-      similarity: calculateSimilarity(text1, text2, options),
-      unifiedDiff: getUnifiedDiff(text1, text2, 3, options),
+      added: count("added"),
+      removed: count("removed"),
+      modified: count("modified"),
+      unchanged: count("unchanged"),
+      similarity: Math.round(calculateSimilarity(original, modified, options)),
+      equal: areTextsEqual(original, modified, options),
+      unifiedDiff: getUnifiedDiff(original, modified, 3, options),
       characterDetails: getCharacterDetails(lineDiffs),
-      equal: areTextsEqual(text1, text2, options),
-      originalStats: getTextStats(text1),
-      modifiedStats: getTextStats(text2),
-    });
-    toast.success("Comparison complete!");
-  };
-
-  const copyStats = () => {
-    if (!result) {
-      return;
-    }
-
-    const modifiedCount = result.lineDiffs.filter((diff) => diff.type === "modified").length;
-    const stats = {
-      similarity: result.similarity,
-      equal: result.equal,
-      added: result.comparison.addedLines,
-      removed: result.comparison.removedLines,
-      modified: modifiedCount,
-      unchanged: result.comparison.unchangedLines,
-      original: result.originalStats,
-      modifiedText: result.modifiedStats,
     };
+  }, [original, modified, ignoreWhitespace, ignoreCase]);
 
-    navigator.clipboard.writeText(JSON.stringify(stats, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Statistics copied!");
-  };
+  const statsJson = result
+    ? JSON.stringify(
+        {
+          similarity: result.similarity,
+          equal: result.equal,
+          added: result.added,
+          removed: result.removed,
+          modified: result.modified,
+          unchanged: result.unchanged,
+          original: getTextStats(original),
+          modifiedText: getTextStats(modified),
+        },
+        null,
+        2
+      )
+    : "";
 
-  const getLineColor = (type: LineDiff["type"]) => {
-    switch (type) {
-      case "added":
-        return "border-success/30 bg-success/10";
-      case "removed":
-        return "border-destructive/30 bg-destructive/10";
-      case "modified":
-        return "border-warning/30 bg-warning/10";
-      default:
-        return "border-border bg-muted/40";
-    }
-  };
+  const inputPane = (id: string, title: string, value: string, onChange: (next: string) => void, placeholder: string) => (
+    <EditorPane
+      title={title}
+      htmlFor={id}
+      scroll={false}
+      actions={
+        value ? (
+          <>
+            <span className="text-xs font-normal text-muted-foreground">{plural(value.split("\n").length, "line")}</span>
+            <button type="button" className="toolbar-text-button" onClick={() => onChange("")}>Clear</button>
+          </>
+        ) : undefined
+      }
+    >
+      <CodeTextarea id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </EditorPane>
+  );
 
-  const getLineBadge = (type: LineDiff["type"]) => {
-    switch (type) {
-      case "added":
-        return <Badge className="bg-success text-success-foreground">Added</Badge>;
-      case "removed":
-        return <Badge className="bg-destructive text-destructive-foreground">Removed</Badge>;
-      case "modified":
-        return <Badge className="bg-warning text-warning-foreground">Modified</Badge>;
-      default:
-        return <Badge variant="outline">Unchanged</Badge>;
-    }
-  };
+  const renderLineView = (lineDiffs: LineDiff[]) => (
+    <div className="py-2 font-mono text-[13px] leading-[22px]">
+      {lineDiffs.map((diff, index) => {
+        const style = LINE_STYLES[diff.type];
+        return (
+          <div key={`${diff.lineNumber}-${index}`} className={style.className}>
+            {diff.type === "modified" && diff.oldContent !== undefined && (
+              <div className="grid grid-cols-[3rem_1.5rem_1fr] bg-destructive/10 text-destructive">
+                <span className="select-none pr-2 text-right text-foreground/75">{diff.lineNumber + 1}</span>
+                <span className="select-none" aria-hidden="true">-</span>
+                <span className="whitespace-pre-wrap break-words pr-4">{diff.oldContent}</span>
+              </div>
+            )}
+            <div className={`grid grid-cols-[3rem_1.5rem_1fr] ${diff.type === "modified" ? "bg-success/10 text-success" : ""}`}>
+              <span className="select-none pr-2 text-right text-foreground/75">{diff.lineNumber + 1}</span>
+              <span className="select-none" aria-hidden="true">{diff.type === "modified" ? "+" : style.marker}</span>
+              <span className="whitespace-pre-wrap break-words pr-4">{diff.content}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
-  const getCharClassName = (type: DiffResult["type"]) => {
-    switch (type) {
-      case "added":
-        return "bg-success/20 text-success";
-      case "removed":
-        return "bg-destructive/20 text-destructive line-through";
-      default:
-        return "text-foreground";
-    }
-  };
+  const renderUnifiedView = (lines: string[]) =>
+    lines.length > 0 ? (
+      <div className="py-2 font-mono text-[13px] leading-[22px]">
+        {lines.map((line, index) => (
+          <div key={`${line}-${index}`} className={`whitespace-pre px-4 ${getUnifiedDiffLineClass(line)}`}>
+            {line}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <PaneEmpty title="No differences" hint="The texts are identical." />
+    );
 
-  const getUnifiedDiffLineClass = (line: string) => {
-    if (line.startsWith("@@")) {
-      return "bg-sky-500/10 text-sky-700 dark:text-sky-300";
-    }
-    if (line.startsWith("---") || line.startsWith("+++")) {
-      return "bg-muted text-muted-foreground";
-    }
-    if (line.startsWith("+")) {
-      return "bg-success/10 text-success";
-    }
-    if (line.startsWith("-")) {
-      return "bg-destructive/10 text-destructive";
-    }
-    return "bg-transparent text-foreground";
-  };
-
-  const modifiedCount = result?.lineDiffs.filter((diff) => diff.type === "modified").length ?? 0;
+  const renderCharacterView = (details: CharacterDiffDetail[]) =>
+    details.length > 0 ? (
+      <div className="result-list">
+        {details.map((detail) => (
+          <div key={detail.label} className="border-b border-border/50 px-4 py-2">
+            <div className="result-row-label mb-1">{detail.label}</div>
+            <div className="whitespace-pre-wrap break-words font-mono text-[13px] leading-[22px]">
+              {detail.items.map((item, index) => (
+                <span key={`${detail.label}-${item.type}-${index}`} className={`rounded px-0.5 ${getCharClassName(item.type)}`}>
+                  {item.value || " "}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <PaneEmpty title="No differences" hint="No character-level changes were found." />
+    );
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Original Text</CardTitle>
-            <CardDescription>Enter the first text to compare</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Enter original text..."
-              value={text1}
-              onChange={(e) => setText1(e.target.value)}
-              className="min-h-[300px] font-mono"
+    <ToolWorkspace
+      id="text-compare"
+      toolbar={
+        <>
+          <Tabs value={view} onValueChange={(v) => setView(v as DiffView)}>
+            <TabsList aria-label="Diff view">
+              <TabsTrigger value="line">Line</TabsTrigger>
+              <TabsTrigger value="unified">Unified</TabsTrigger>
+              <TabsTrigger value="character">Character</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="option-switch indent-control" htmlFor="text-compare-ignore-whitespace">
+            Ignore whitespace
+            <Switch id="text-compare-ignore-whitespace" checked={ignoreWhitespace} onCheckedChange={setIgnoreWhitespace} />
+          </label>
+          <label className="option-switch indent-control" htmlFor="text-compare-ignore-case">
+            Ignore case
+            <Switch id="text-compare-ignore-case" checked={ignoreCase} onCheckedChange={setIgnoreCase} />
+          </label>
+        </>
+      }
+      first={
+        <PanelGroup direction="vertical">
+          <Panel minSize={20} defaultSize={50}>
+            {inputPane("text-compare-original", "Original", text1, setText1, "Enter original text...")}
+          </Panel>
+          <PanelResizeHandle className="editor-resize" aria-label="Resize original and modified" />
+          <Panel minSize={20} defaultSize={50}>
+            {inputPane("text-compare-modified", "Modified", text2, setText2, "Enter modified text...")}
+          </Panel>
+        </PanelGroup>
+      }
+      second={
+        <EditorPane
+          title="Differences"
+          actions={
+            result ? (
+              <>
+                {view === "unified" && <CopyButton value={result.unifiedDiff.join("\n")} label="Copy patch" />}
+                <CopyButton value={statsJson} label="Copy stats" />
+              </>
+            ) : undefined
+          }
+        >
+          {!result ? (
+            <PaneEmpty
+              icon={<GitCompare size={20} aria-hidden="true" />}
+              title="Enter two texts to compare"
+              hint="Differences appear here as you type."
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Modified Text</CardTitle>
-            <CardDescription>Enter the second text to compare</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Enter modified text..."
-              value={text2}
-              onChange={(e) => setText2(e.target.value)}
-              className="min-h-[300px] font-mono"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-6">
-        <div className="flex items-center gap-2">
-          <Switch id="text-compare-ignore-whitespace" checked={ignoreWhitespace} onCheckedChange={setIgnoreWhitespace} />
-          <Label htmlFor="text-compare-ignore-whitespace">Ignore whitespace</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch id="text-compare-ignore-case" checked={ignoreCase} onCheckedChange={setIgnoreCase} />
-          <Label htmlFor="text-compare-ignore-case">Ignore case</Label>
-        </div>
-      </div>
-
-      <div className="flex justify-center">
-        <Button onClick={compareTextBlocks} size="lg" className="gap-2">
-          <ArrowRight className="h-4 w-4" />
-          Compare Texts
-        </Button>
-      </div>
-
-      {result && (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <CardTitle>Comparison Results</CardTitle>
-                <CardDescription>Line, unified, and character-level views</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={copyStats} className="gap-2">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copy Stats
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <div className="rounded-lg bg-muted p-3 text-center">
-                <div className="text-2xl font-bold">{Math.round(result.similarity)}%</div>
-                <div className="text-sm text-muted-foreground">Similarity</div>
-              </div>
-              <div className="rounded-lg bg-muted p-3 text-center">
-                <div className="text-2xl font-bold">{result.equal ? "Yes" : "No"}</div>
-                <div className="text-sm text-muted-foreground">Exact Match</div>
-              </div>
-              <div className="rounded-lg bg-success/10 p-3 text-center">
-                <div className="text-2xl font-bold text-success">{result.comparison.addedLines}</div>
-                <div className="text-sm text-muted-foreground">Added</div>
-              </div>
-              <div className="rounded-lg bg-destructive/10 p-3 text-center">
-                <div className="text-2xl font-bold text-destructive">{result.comparison.removedLines}</div>
-                <div className="text-sm text-muted-foreground">Removed</div>
-              </div>
-              <div className="rounded-lg bg-warning/10 p-3 text-center">
-                <div className="text-2xl font-bold text-warning">{modifiedCount}</div>
-                <div className="text-sm text-muted-foreground">Modified</div>
-              </div>
-              <div className="rounded-lg bg-muted p-3 text-center">
-                <div className="text-2xl font-bold">{result.comparison.unchangedLines}</div>
-                <div className="text-sm text-muted-foreground">Unchanged</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-lg border bg-card p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-medium">Original Stats</h3>
-                  <Badge variant="outline">Left</Badge>
-                </div>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Lines</dt>
-                    <dd className="font-medium">{result.originalStats.lines}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Words</dt>
-                    <dd className="font-medium">{result.originalStats.words}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Characters</dt>
-                    <dd className="font-medium">{result.originalStats.characters}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Bytes</dt>
-                    <dd className="font-medium">{result.originalStats.bytes}</dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-medium">Modified Stats</h3>
-                  <Badge variant="outline">Right</Badge>
-                </div>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Lines</dt>
-                    <dd className="font-medium">{result.modifiedStats.lines}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Words</dt>
-                    <dd className="font-medium">{result.modifiedStats.words}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Characters</dt>
-                    <dd className="font-medium">{result.modifiedStats.characters}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Bytes</dt>
-                    <dd className="font-medium">{result.modifiedStats.bytes}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-
-            <Tabs defaultValue="line-diff" className="w-full">
-              <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted p-1">
-                <TabsTrigger value="line-diff" className="flex-1">
-                  Line Diff
-                </TabsTrigger>
-                <TabsTrigger value="unified-diff" className="flex-1">
-                  Unified Diff
-                </TabsTrigger>
-                <TabsTrigger value="character-diff" className="flex-1">
-                  Character Diff
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="line-diff" className="space-y-2">
-                <div className="max-h-[420px] space-y-2 overflow-y-auto">
-                  {result.lineDiffs.map((diff, index) => (
-                    <div key={`${diff.lineNumber}-${index}`} className={`rounded-lg border p-3 ${getLineColor(diff.type)}`}>
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Line {diff.lineNumber + 1}</span>
-                        {getLineBadge(diff.type)}
-                      </div>
-                      {diff.type === "modified" && diff.oldContent !== undefined ? (
-                        <div className="space-y-2">
-                          <div className="rounded-md border border-destructive/20 bg-destructive/5 p-2">
-                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-destructive">
-                              Before
-                            </div>
-                            <div className="whitespace-pre-wrap break-words font-mono text-sm text-destructive line-through decoration-destructive">
-                              {diff.oldContent || "(empty line)"}
-                            </div>
-                          </div>
-                          <div className="rounded-md border border-success/20 bg-success/5 p-2">
-                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-success">
-                              After
-                            </div>
-                            <div className="whitespace-pre-wrap break-words font-mono text-sm">
-                              {diff.content || "(empty line)"}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="whitespace-pre-wrap break-words font-mono text-sm">
-                          {diff.content || "(empty line)"}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="unified-diff">
-                {result.unifiedDiff.length > 0 ? (
-                  <div className="max-h-[420px] overflow-auto rounded-lg border bg-card">
-                    <div className="border-b bg-muted/40 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Unified Patch
-                    </div>
-                    <div className="p-2 font-mono text-sm">
-                      {result.unifiedDiff.map((line, index) => (
-                        <div
-                          key={`${line}-${index}`}
-                          className={`whitespace-pre px-3 py-1 ${getUnifiedDiffLineClass(line)}`}
-                        >
-                          {line}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-                    No unified diff to show because the texts are identical.
-                  </p>
-                )}
-              </TabsContent>
-
-              <TabsContent value="character-diff" className="space-y-3">
-                <div>
-                  <h3 className="font-medium">Character-Level Changes</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Character-level detail is shown for each changed line.
-                  </p>
-                </div>
-
-                {result.characterDetails.length > 0 ? (
-                  <div className="max-h-[420px] space-y-3 overflow-auto">
-                    {result.characterDetails.map((detail) => (
-                      <div key={detail.label} className="rounded-lg border bg-muted/40 p-4">
-                        <h4 className="mb-2 font-medium">{detail.label}</h4>
-                        <div className="whitespace-pre-wrap break-words font-mono text-sm leading-7">
-                          {detail.items.map((item, index) => (
-                            <span key={`${detail.label}-${item.type}-${index}`} className={`rounded px-0.5 ${getCharClassName(item.type)}`}>
-                              {item.value || " "}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-                    No character-level changes were found.
-                  </p>
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      )}
-
-      <ToolFaqSection items={FAQ_ITEMS} />
-    </div>
+          ) : view === "line" ? (
+            renderLineView(result.lineDiffs)
+          ) : view === "unified" ? (
+            renderUnifiedView(result.unifiedDiff)
+          ) : (
+            renderCharacterView(result.characterDetails)
+          )}
+        </EditorPane>
+      }
+      status={
+        result ? (
+          <>
+            <span className={result.equal ? "text-success" : undefined}>{result.equal ? "Identical" : "Different"}</span>
+            <span>{result.similarity}% similar</span>
+            <span>
+              <span className="text-success">{result.added} added</span>·
+              <span className="text-destructive">{result.removed} removed</span>·
+              <span className="text-warning">{result.modified} modified</span>
+            </span>
+          </>
+        ) : (
+          <span>Ready</span>
+        )
+      }
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

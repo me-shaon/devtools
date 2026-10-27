@@ -12,11 +12,19 @@ describe("JwtDecoder", () => {
     fireEvent.change(screen.getByPlaceholderText(/eyJhbGciOiJIUzI1Ni/), {
       target: { value: futureJwt },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Decode JWT" }));
 
-    expect(await screen.findByText("Expiration Status")).toBeInTheDocument();
-    expect(screen.getByText("Not expired")).toBeInTheDocument();
-    expect(screen.getByText("Token decoded locally. Enter a secret below to check an HMAC signature.")).toBeInTheDocument();
+    expect(await screen.findByText(/^Expires in /)).toBeInTheDocument();
+    expect(screen.getByText("Signature not checked")).toBeInTheDocument();
     expect(screen.getByText("What is a JWT?")).toBeInTheDocument();
+  });
+
+  it("shows decode errors inline", async () => {
+    render(<JwtDecoder />);
+
+    fireEvent.change(screen.getByPlaceholderText(/eyJhbGciOiJIUzI1Ni/), {
+      target: { value: "not-a-jwt" },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Invalid JWT/);
   });
 });

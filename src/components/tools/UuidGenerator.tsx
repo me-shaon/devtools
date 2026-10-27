@@ -10,8 +10,9 @@ import {
   isValidUUID,
   type UUIDVersion,
 } from "@/utils/uuid";
-import { Copy, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 const VERSION_OPTIONS: Array<{ value: UUIDVersion; label: string }> = [
   { value: "4", label: "UUID v4 (Random)" },
@@ -84,18 +85,11 @@ export function UUIDGenerator() {
       const total = isNameBased ? 1 : count;
       const uuids = generateMultipleUUIDs(total, version, { namespace, name });
       setOutput(uuids.join("\n"));
-      toast.success(`Generated ${total} ${version.toUpperCase()}${total === 1 ? "" : "s"}!`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to generate identifiers");
     }
   };
 
-  const copyToClipboard = () => {
-    if (output) {
-      navigator.clipboard.writeText(output);
-      toast.success("Copied to clipboard!");
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -189,10 +183,7 @@ export function UUIDGenerator() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="uuid-output">Output</Label>
-            <Button onClick={copyToClipboard} variant="ghost" size="sm">
-              <Copy className="w-4 h-4 mr-2" />
-              Copy All
-            </Button>
+            <CopyButton value={output} label="Copy" />
           </div>
           <textarea
             id="uuid-output"

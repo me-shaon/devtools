@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -55,6 +56,8 @@ import {
 import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
 const MAX_FAVORITES = 5;
+// Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
+const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder"]);
 const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";
@@ -477,6 +480,8 @@ const DevToolsApp = () => {
 
   const selectTool = (tool: ToolDefinition | null) => {
     setShowCommandPalette(false);
+    setSearchQuery("");
+    toast.dismiss();
 
     startTransition(() => {
       setSelectedTool(tool);
@@ -490,6 +495,24 @@ const DevToolsApp = () => {
       );
     }
   };
+
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const [tabsOverflow, setTabsOverflow] = useState(false);
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    if (!strip) return;
+    const measure = () => setTabsOverflow(strip.scrollWidth > strip.clientWidth + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [openTools.length]);
+
+  useEffect(() => {
+    // Keep the selected tab in view when the strip overflows.
+    if (selectedTool) document.getElementById(`tab-${selectedTool.id}`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [selectedTool]);
 
   const closeTool = useCallback((tool: ToolDefinition) => {
     const remaining = openTools.filter((entry) => entry.id !== tool.id);
@@ -537,33 +560,34 @@ const DevToolsApp = () => {
     const isSelected = selectedTool?.id === tool.id;
 
     return (
-      <button
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-colors group ${
-          isSelected
-            ? `${theme.active} ${theme.text}`
-            : `${theme.textDim} ${theme.hover}`
-        }`}
-        onClick={() => selectTool(tool)}
-      >
-        <tool.icon className="w-4 h-4 shrink-0" />
-        <span className="flex-1 text-left truncate">{tool.name}</span>
+      <div className={`sidebar-tool group relative flex items-center rounded-md transition-colors ${
+        isSelected ? `${theme.active} ${theme.text}` : `${theme.textDim} ${theme.hover}`
+      }`}>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px]"
+          aria-current={isSelected ? "page" : undefined}
+          onClick={() => selectTool(tool)}
+        >
+          <tool.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-left truncate">{tool.name}</span>
+        </button>
         {showFavorite && (
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(tool.id);
-            }}
-            className={`opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer ${
-              isFavorite ? "opacity-100" : ""
-            }`}
+          <button
+            type="button"
+            onClick={() => toggleFavorite(tool.id)}
+            className={`sidebar-favorite mr-1.5 rounded p-1 ${isFavorite ? "is-favorite" : ""}`}
+            aria-pressed={isFavorite}
+            aria-label={`Favorite ${tool.name}`}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star
+              aria-hidden="true"
               className={`w-3.5 h-3.5 ${isFavorite ? "fill-warning text-warning" : theme.textDim}`}
             />
-          </span>
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
@@ -622,24 +646,25 @@ const DevToolsApp = () => {
         <div className="p-3">
           <div className="space-y-2">
             <div className="relative">
-              <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} />
+              <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} aria-hidden="true" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape" && searchQuery) { e.preventDefault(); setSearchQuery(""); } }}
                 placeholder="Search..."
-                className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} rounded-md`}
+                aria-label="Filter tools"
+                className={`pl-9 pr-14 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} rounded-md`}
               />
-            </div>
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              className={`flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] ${theme.textMuted} ${theme.hover} transition-colors hover:${theme.text}`}
-            >
-              <span className="whitespace-nowrap">Command palette</span>
-              <span className={`rounded border px-1.5 py-0.5 ${theme.border} ${theme.input}`}>
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                className="sidebar-search-kbd"
+                aria-label={`Open command palette (${commandPaletteShortcutLabel})`}
+                title="Open command palette"
+              >
                 {commandPaletteShortcutLabel}
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -669,7 +694,7 @@ const DevToolsApp = () => {
                   <Star className="w-3 h-3" />
                   <span>Favorites</span>
                 </div>
-                <span className="text-[10px] opacity-60">
+                <span className="text-[11px]" aria-label={`${favoriteTools.length} of ${MAX_FAVORITES} favorites`}>
                   {favoriteTools.length}/{MAX_FAVORITES}
                 </span>
               </div>
@@ -684,6 +709,8 @@ const DevToolsApp = () => {
             CATEGORIES.map((category) => (
               <div key={category.name} className="px-2 mb-1">
                 <button
+                  type="button"
+                  aria-expanded={expandedCategories.includes(category.name)}
                   onClick={() => toggleCategory(category.name)}
                   className={`w-full flex items-center gap-1 px-2 py-1.5 text-xs font-medium ${theme.textMuted} ${theme.hover} rounded-md transition-colors`}
                 >
@@ -708,6 +735,12 @@ const DevToolsApp = () => {
               {filteredTools.map((tool) => (
                 <ToolButton key={tool.id} tool={tool} showFavorite />
               ))}
+              {filteredTools.length === 0 && (
+                <div className={`px-2 py-3 text-xs ${theme.textMuted}`} role="status">
+                  <p>No tools match “{searchQuery.trim()}”.</p>
+                  <button type="button" className="sidebar-empty-action" onClick={openCommandPalette}>Search in the command palette</button>
+                </div>
+              )}
             </div>
           )}
         </nav>
@@ -767,10 +800,10 @@ const DevToolsApp = () => {
       <main className="flex-1 min-h-0 flex flex-col min-w-0">
         <header data-tauri-drag-region className="workspace-titlebar">
           <button type="button" className="chrome-button" aria-label="Toggle sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}><PanelLeft size={16} /></button>
-          <div className="workspace-tabs" role="tablist" aria-label="Open tools">
+          <div className="workspace-tabs" role="tablist" aria-label="Open tools" ref={tabStripRef} data-overflow={tabsOverflow || undefined}>
             {openTools.length === 0 && <span className="workspace-tab-placeholder">Workspace</span>}
             {openTools.map((tool) => (
-              <div className="workspace-tab-wrap" key={tool.id}>
+              <div className="workspace-tab-wrap" role="presentation" key={tool.id}>
                 <button type="button" role="tab" id={`tab-${tool.id}`} aria-controls={`panel-${tool.id}`} aria-selected={selectedTool?.id === tool.id}
                   tabIndex={selectedTool?.id === tool.id ? 0 : -1}
                   onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeTool(tool); } }}
@@ -788,16 +821,15 @@ const DevToolsApp = () => {
                     selectTool(openTools[next]);
                     document.getElementById(`tab-${openTools[next].id}`)?.focus();
                   }}>
-                  <tool.icon size={16} /><span>{tool.name}</span>
+                  <tool.icon size={16} aria-hidden="true" /><span>{tool.name}</span>
                 </button>
-                <button type="button" className="tab-close" aria-label={`Close ${tool.name}`} onClick={() => closeTool(tool)}><X size={12} /></button>
+                <button type="button" className="tab-close" tabIndex={-1} aria-label={`Close ${tool.name}`} title="Close tab" onClick={() => closeTool(tool)}><X size={12} aria-hidden="true" /></button>
               </div>
             ))}
           </div>
-          <button type="button" className="chrome-button" aria-label="Open a tool" onClick={openCommandPalette}><Plus size={17} /></button>
+          <button type="button" className="chrome-button" aria-label="Open a tool" title="Open a tool" onClick={openCommandPalette}><Plus size={17} /></button>
           <div className="ml-auto flex shrink-0 items-center gap-1">
             {selectedTool && <button type="button" className="chrome-button" aria-label={favorites.includes(selectedTool.id) ? "Remove from favorites" : "Add to favorites"} onClick={() => toggleFavorite(selectedTool.id)}><Star size={15} className={favorites.includes(selectedTool.id) ? "fill-current text-primary" : ""} /></button>}
-            <button type="button" className="chrome-button" aria-label="Open command palette" onClick={openCommandPalette}><Search size={16} /></button>
             <button type="button" className="chrome-button" onClick={() => setThemePreference(darkMode ? "light" : "dark")} aria-label={darkMode ? "Switch to light appearance" : "Switch to dark appearance"}>
               {darkMode ? <Moon size={16} /> : <Sun size={16} />}<span className="sr-only">{darkMode ? "Dark" : "Light"}</span>
             </button>
@@ -865,7 +897,7 @@ const DevToolsApp = () => {
           ) : null}
           {openTools.map((tool) => {
             const Component = TOOL_COMPONENTS[tool.id];
-            return <section key={tool.id} id={`panel-${tool.id}`} role="tabpanel" aria-labelledby={`tab-${tool.id}`} hidden={selectedTool?.id !== tool.id} className={`tool-panel ${tool.id === "json-viewer" ? "tool-panel-editor" : "tool-panel-form"}`}>
+            return <section key={tool.id} id={`panel-${tool.id}`} role="tabpanel" aria-labelledby={`tab-${tool.id}`} hidden={selectedTool?.id !== tool.id} className={`tool-panel ${WORKSPACE_TOOL_IDS.has(tool.id) ? "tool-panel-editor" : "tool-panel-form"}`}>
 
               <Suspense fallback={<div className="p-8 text-muted-foreground">Loading {tool.name}…</div>}><Component /></Suspense>
             </section>;
@@ -917,7 +949,7 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
+              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 

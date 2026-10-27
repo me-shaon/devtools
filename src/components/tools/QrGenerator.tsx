@@ -68,7 +68,7 @@ export function QrGenerator() {
 
       try {
         if (await saveFile(blob, `qr-code-${Date.now()}.png`)) {
-          toast.success("QR code downloaded!");
+          toast.success("QR code saved.");
         }
       } catch (error) {
         console.error("Failed to save QR code:", error);

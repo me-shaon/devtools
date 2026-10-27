@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { AlignLeft, CheckCircle2, Columns2, Copy, Clipboard, Rows2, ShieldCheck } from "lucide-react";
+import { AlignLeft, CheckCircle2, Columns2, Clipboard, Rows2, ShieldCheck } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { getJsonPaths, getJsonStats, getJsonType, jsonToXml, jsonToYaml, runJsonQuery, sortJsonKeys } from "@/utils/json";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 type OutputKind = "json" | "yaml" | "xml";
 const QUERY_HINT = "Examples: $.tools[0], users[*].name, $['my key']";
@@ -76,10 +77,6 @@ export function JsonViewer() {
     try { setInput(await navigator.clipboard.readText()); setValid(false); setError(""); setOutput(""); setInfo(null); }
     catch { toast.error("Clipboard unavailable. Paste directly into the input instead."); }
   };
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(output); toast.success("Copied to clipboard."); }
-    catch { toast.error("Could not copy. Select the output and copy it manually."); }
-  };
 
   return <div className="json-workspace">
     <div className="editor-toolbar">
@@ -124,7 +121,7 @@ export function JsonViewer() {
         <PanelResizeHandle className="editor-resize" aria-label="Resize input and output" />
         <Panel minSize={20} defaultSize={50}>
           <div className="editor-pane">
-            <div className="editor-pane-header"><span id="json-output-label">Output</span><button type="button" disabled={!output} className="toolbar-text-button" onClick={copy}><Copy size={14} />Copy</button></div>
+            <div className="editor-pane-header"><span id="json-output-label">Output</span><CopyButton value={output} /></div>
             <div className="code-output" tabIndex={0} role="region" aria-labelledby="json-output-label">
               {output ? <pre>{output.split("\n").map((line, index) => <div className="code-line" key={index}><span className="output-line-number" aria-hidden="true">{index + 1}</span><code>{outputKind === "json" ? <JsonCode value={line} /> : line}</code></div>)}</pre> : <div className="editor-empty"><AlignLeft size={24} strokeWidth={1.3} /><p>Results appear here.</p><span>Paste JSON, then choose Format, Minify or a conversion.</span></div>}
             </div>

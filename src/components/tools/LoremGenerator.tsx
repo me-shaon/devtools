@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 const words = [
   "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit",
@@ -23,7 +24,6 @@ export function LoremGenerator() {
   const [type, setType] = useState<"paragraphs" | "sentences" | "words">("paragraphs");
   const [count, setCount] = useState(3);
   const [output, setOutput] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const generateWords = (numWords: number): string => {
     const result: string[] = [];
@@ -67,15 +67,8 @@ export function LoremGenerator() {
         break;
     }
     setOutput(result);
-    toast.success("Lorem ipsum generated!");
   };
 
-  const copyOutput = () => {
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied to clipboard!");
-  };
 
   const getTypeLabel = () => {
     switch (type) {
@@ -135,19 +128,7 @@ export function LoremGenerator() {
                   <p className="whitespace-pre-wrap text-sm">{output}</p>
                 </div>
               </div>
-              <Button onClick={copyOutput} variant="outline" className="w-full">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy to Clipboard
-                  </>
-                )}
-              </Button>
+              <CopyButton value={output} label="Copy text" />
             </>
           )}
         </CardContent>

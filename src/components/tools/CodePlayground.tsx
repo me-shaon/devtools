@@ -103,7 +103,6 @@ export function CodePlayground() {
         console.log = originalLog;
 
         setOutput(logs.join("\n") || (result !== undefined ? String(result) : "Code executed successfully"));
-        toast.success("Code executed!");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -124,14 +123,7 @@ export function CodePlayground() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Code2 className="h-5 w-5" />
-            Code Playground
-          </CardTitle>
-          <CardDescription>Write and run JavaScript, HTML, and CSS</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Select value={language} onValueChange={updateLanguage}>

@@ -110,11 +110,7 @@ export function UnitConverter() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Unit Converter</CardTitle>
-          <CardDescription>Convert between different units of measurement</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <Label>Category</Label>
             <Select value={category} onValueChange={setCategory}>

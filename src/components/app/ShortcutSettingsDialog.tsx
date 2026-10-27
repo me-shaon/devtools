@@ -216,6 +216,31 @@ export function ShortcutSettingsDialog({
             </div>
             <div className="shortcut-rows">{FAVORITE_ACTIONS.map((action) => renderActionRow(action.id))}</div>
           </section>
+
+          <section className="space-y-3">
+            <div>
+              <h3 className="font-medium">Tabs</h3>
+              <p className="text-sm text-muted-foreground">
+                These shortcuts are fixed. They work when a tool tab is open.
+              </p>
+            </div>
+            <div className="shortcut-rows">
+              {[
+                ["Close tab", "Close the tool you are using.", `${platform === "darwin" ? "⌘" : "Ctrl+"}W`],
+                ["Next tab", "Move to the next open tool.", "Ctrl+Tab"],
+                ["Previous tab", "Move to the previous open tool.", "Ctrl+Shift+Tab"],
+                ["Move between tabs", "Use when a tab has focus. Delete closes it.", "← → Home End"],
+              ].map(([label, description, keys]) => (
+                <div key={label} className="shortcut-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{label}</p>
+                    <p className="shortcut-description text-muted-foreground">{description}</p>
+                  </div>
+                  <kbd className="shortcut-fixed">{keys}</kbd>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
 
         <div className="modal-footer flex items-center justify-between gap-2">

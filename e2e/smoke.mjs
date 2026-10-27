@@ -99,7 +99,8 @@ async function openTool(name) {
   await browser.waitUntil(async () => {
     // App tool tabs have ids that start with "tab-". Tools can contain their own tabs.
     const selected = await browser.$('[role="tab"][aria-selected="true"][id^="tab-"]');
-    return await selected.isExisting() && (await selected.getText()) === name;
+    // textContent, because WebDriver getText depends on layout heuristics for truncated labels.
+    return await selected.isExisting() && (await selected.getProperty("textContent")) === name;
   }, { timeout: 10000, timeoutMsg: `Tool page did not open: ${name}` });
   await browser.$('section[role="tabpanel"]:not([hidden])').waitForDisplayed();
 }
@@ -210,8 +211,11 @@ try {
   await step("encodes text to Base64", async () => {
     await openTool("Base64");
     await (await browser.$('textarea[placeholder="Enter text to encode to Base64..."]')).setValue("hello");
-    await (await browser.$("button*=Encode to Base64")).click();
-    await waitForText(await browser.$("body"), "aGVsbG8=");
+    const output = await browser.$("#b64-encode-output");
+    await browser.waitUntil(async () => (await output.isExisting()) && (await output.getValue()) === "aGVsbG8=", {
+      timeout: 5000,
+      timeoutMsg: "Base64 output did not match",
+    });
   });
 
   await step("formats JSON", async () => {

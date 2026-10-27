@@ -1,30 +1,39 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, ArrowLeft, Copy, Download } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { saveFile } from "@/lib/desktop";
 import { formatBytes } from "@/utils/hash";
 import {
   base64ToBytes,
   bytesToBase64,
   bytesToDataUri,
-  decodeText,
-  encodeText,
   extensionForMime,
   parseDataUri,
   sniffMimeType,
 } from "@/utils/base64";
+
+type Mode = "encode" | "decode";
 
 interface EncodedFile {
   name: string;
   size: number;
   mimeType: string;
   bytes: Uint8Array;
+}
+
+interface Decoded {
+  text: string;
+  bytes: number;
+  binary: boolean;
+  error: string;
 }
 
 const readFileBytes = (file: File): Promise<Uint8Array> =>
@@ -34,6 +43,7 @@ const readFileBytes = (file: File): Promise<Uint8Array> =>
     reader.onerror = () => reject(reader.error ?? new Error("Unable to read the file."));
     reader.readAsArrayBuffer(file);
   });
+
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
@@ -63,53 +73,47 @@ const FAQ_ITEMS: ToolFaqItem[] = [
 ];
 
 export function Base64Converter() {
-  const [activeTab, setActiveTab] = useState<"encode" | "decode">("encode");
+  const [mode, setMode] = useState<Mode>("encode");
   const [textToEncode, setTextToEncode] = useState("");
-  const [encodedOutput, setEncodedOutput] = useState("");
   const [urlSafe, setUrlSafe] = useState(false);
   const [asDataUri, setAsDataUri] = useState(false);
   const [encodedFile, setEncodedFile] = useState<EncodedFile | null>(null);
   const [base64ToDecode, setBase64ToDecode] = useState("");
-  const [decodedOutput, setDecodedOutput] = useState("");
   const [saveName, setSaveName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fileOutput = useMemo(() => {
-    if (!encodedFile) return "";
-    // Data URIs always use standard Base64 so that browsers can read them.
-    return asDataUri
-      ? bytesToDataUri(encodedFile.bytes, encodedFile.mimeType)
-      : bytesToBase64(encodedFile.bytes, { urlSafe });
-  }, [encodedFile, asDataUri, urlSafe]);
+  const pendingText = useDebouncedValue(textToEncode);
+  const pendingBase64 = useDebouncedValue(base64ToDecode);
+
+  const encodedOutput = useMemo(() => {
+    if (encodedFile) {
+      // Data URIs always use standard Base64 so that browsers can read them.
+      return asDataUri
+        ? bytesToDataUri(encodedFile.bytes, encodedFile.mimeType)
+        : bytesToBase64(encodedFile.bytes, { urlSafe });
+    }
+    return pendingText ? bytesToBase64(new TextEncoder().encode(pendingText), { urlSafe }) : "";
+  }, [encodedFile, asDataUri, urlSafe, pendingText]);
 
   const imagePreview = useMemo(() => {
     if (!encodedFile || !encodedFile.mimeType.startsWith("image/")) return "";
     return bytesToDataUri(encodedFile.bytes, encodedFile.mimeType);
   }, [encodedFile]);
 
-  // Re-encode the text output when the URL-safe option changes
-  useEffect(() => {
-    setEncodedOutput((current) => {
-      if (!current || encodedFile) return current;
-      try {
-        return encodeText(textToEncode, { urlSafe });
-      } catch {
-        return current;
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlSafe]);
-
-  const encodeToBase64 = () => {
+  const decoded = useMemo<Decoded | null>(() => {
+    if (!pendingBase64.trim()) return null;
     try {
-      const encoded = encodeText(textToEncode, { urlSafe });
-      setEncodedFile(null);
-      setEncodedOutput(encoded);
-      toast.success("Text encoded to Base64!");
+      const parsed = parseDataUri(pendingBase64);
+      const bytes = base64ToBytes(parsed ? parsed.base64 : pendingBase64);
+      try {
+        return { text: new TextDecoder("utf-8", { fatal: true }).decode(bytes), bytes: bytes.length, binary: false, error: "" };
+      } catch {
+        return { text: "", bytes: bytes.length, binary: true, error: "" };
+      }
     } catch (err) {
-      toast.error((err as Error).message || "Error encoding text");
-      setEncodedOutput("");
+      return { text: "", bytes: 0, binary: false, error: (err as Error).message || "Invalid Base64 format" };
     }
-  };
+  }, [pendingBase64]);
 
   const handleEncodeFile = async (file: File | undefined) => {
     if (!file) return;
@@ -121,23 +125,8 @@ export function Base64Converter() {
         mimeType: file.type || sniffMimeType(bytes) || "application/octet-stream",
         bytes,
       });
-      toast.success("File encoded to Base64!");
     } catch {
-      toast.error("Unable to read the file.");
-    }
-  };
-
-  const clearEncodedFile = () => setEncodedFile(null);
-
-  const decodeFromBase64 = () => {
-    try {
-      const parsed = parseDataUri(base64ToDecode);
-      const decoded = decodeText(parsed ? parsed.base64 : base64ToDecode);
-      setDecodedOutput(decoded);
-      toast.success("Base64 decoded successfully!");
-    } catch (err) {
-      toast.error((err as Error).message || "Invalid Base64 format or corrupted data");
-      setDecodedOutput("");
+      toast.error("Could not read the file. Choose it again.");
     }
   };
 
@@ -149,78 +138,139 @@ export function Base64Converter() {
       const fileName = saveName.trim() || `decoded.${extensionForMime(mimeType)}`;
       const blob = new Blob([bytes as BlobPart], { type: mimeType });
       if (await saveFile(blob, fileName)) {
-        toast.success("File saved!");
+        toast.success(`Saved ${fileName}.`);
       }
     } catch (err) {
       toast.error((err as Error).message || "Unable to save the file.");
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
+  // Move the result into the other direction's input
+  const swap = () => {
+    if (mode === "encode") {
+      setBase64ToDecode(encodedOutput);
+      setMode("decode");
+    } else {
+      setEncodedFile(null);
+      setTextToEncode(decoded?.text ?? "");
+      setMode("encode");
+    }
   };
 
-  const shownEncoded = encodedFile ? fileOutput : encodedOutput;
+  const encoding = mode === "encode";
+  const decodedText = decoded?.text ?? "";
+  const canSwap = encoding ? Boolean(encodedOutput) : Boolean(decodedText);
+
+  const encodeStatus = () => {
+    if (!encodedOutput) return <span>Ready</span>;
+    const inBytes = encodedFile ? encodedFile.size : new TextEncoder().encode(pendingText).length;
+    return <span>{formatBytes(inBytes)} in · {formatBytes(encodedOutput.length)} out</span>;
+  };
+
+  const decodeStatus = () => {
+    if (!decoded) return <span>Ready</span>;
+    if (decoded.error) return <span className="text-destructive">Invalid input</span>;
+    return (
+      <span>
+        {formatBytes(pendingBase64.trim().length)} in · {formatBytes(decoded.bytes)} out{decoded.binary ? " (binary)" : ""}
+      </span>
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "encode" | "decode")} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="encode">Encode</TabsTrigger>
-          <TabsTrigger value="decode">Decode</TabsTrigger>
-        </TabsList>
-
-        {/* Encode Tab */}
-        <TabsContent value="encode" className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Switch id="b64-urlsafe" checked={urlSafe} onCheckedChange={setUrlSafe} />
-            <Label htmlFor="b64-urlsafe">URL-safe (- and _, no padding)</Label>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Text to Encode</label>
-            <textarea
-              value={textToEncode}
-              onChange={(e) => setTextToEncode(e.target.value)}
-              placeholder="Enter text to encode to Base64..."
-              className="w-full h-32 p-3 rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex justify-center">
-            <Button onClick={encodeToBase64} size="sm" className="gap-2">
-              Encode to Base64
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="b64-file">Or encode a file</Label>
+    <ToolWorkspace
+      id="base64"
+      toolbar={
+        <>
+          <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+            <TabsList aria-label="Direction">
+              <TabsTrigger value="encode">Encode</TabsTrigger>
+              <TabsTrigger value="decode">Decode</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {encoding && (
+            <label className="option-switch indent-control" htmlFor="b64-urlsafe">
+              URL-safe
+              <Switch id="b64-urlsafe" checked={urlSafe} onCheckedChange={setUrlSafe} disabled={Boolean(encodedFile) && asDataUri} />
+            </label>
+          )}
+          {encoding && encodedFile && (
+            <label className="option-switch" htmlFor="b64-datauri">
+              Data URI
+              <Switch id="b64-datauri" checked={asDataUri} onCheckedChange={setAsDataUri} />
+            </label>
+          )}
+          <button type="button" className="toolbar-text-button" onClick={swap} disabled={!canSwap}>
+            Swap
+          </button>
+        </>
+      }
+      secondaryToolbar={
+        encoding ? undefined : (
+          <>
+            <Label htmlFor="b64-save-name" className="text-xs">File name</Label>
             <Input
-              id="b64-file"
-              type="file"
-              onChange={(e) => {
-                void handleEncodeFile(e.target.files?.[0]);
-                e.target.value = "";
-              }}
+              id="b64-save-name"
+              className="h-7 w-48 text-xs"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="decoded.bin (optional)"
+              autoComplete="off"
+              spellCheck={false}
             />
-            {encodedFile && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-md border bg-muted px-3 py-2 text-sm">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate">{encodedFile.name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {formatBytes(encodedFile.size)}
-                    </span>
-                  </span>
-                  <Button onClick={clearEncodedFile} variant="ghost" size="sm">
+            <button type="button" className="native-button text-xs" onClick={() => void saveDecodedFile()} disabled={!base64ToDecode.trim()}>
+              <Download size={14} aria-hidden="true" />
+              Save as file
+            </button>
+          </>
+        )
+      }
+      notice={
+        !encoding && decoded?.error ? (
+          <div className="workspace-notice" data-tone="error" role="alert">{decoded.error}</div>
+        ) : undefined
+      }
+      first={
+        encoding ? (
+          <EditorPane
+            title={encodedFile ? "File" : "Text"}
+            htmlFor={encodedFile ? undefined : "b64-encode-input"}
+            scroll={Boolean(encodedFile)}
+            actions={
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onChange={(e) => {
+                    void handleEncodeFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+                <button type="button" className="toolbar-text-button" onClick={() => fileInputRef.current?.click()}>
+                  <FileUp size={14} aria-hidden="true" />
+                  Open file
+                </button>
+                {(encodedFile || textToEncode) && (
+                  <button
+                    type="button"
+                    className="toolbar-text-button"
+                    onClick={() => (encodedFile ? setEncodedFile(null) : setTextToEncode(""))}
+                  >
                     Clear
-                  </Button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch id="b64-datauri" checked={asDataUri} onCheckedChange={setAsDataUri} />
-                  <Label htmlFor="b64-datauri">Data URI</Label>
+                  </button>
+                )}
+              </>
+            }
+          >
+            {encodedFile ? (
+              <div className="space-y-3 p-4">
+                <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
+                  <FileUp className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{encodedFile.name}</span>
+                  <span className="shrink-0 text-muted-foreground">{formatBytes(encodedFile.size)}</span>
                 </div>
                 {imagePreview && (
                   <img
@@ -229,78 +279,54 @@ export function Base64Converter() {
                     className="max-h-48 rounded-md border bg-muted object-contain"
                   />
                 )}
+                <p className="text-xs text-muted-foreground">The file is read on this device. It is not uploaded.</p>
               </div>
-            )}
-          </div>
-
-          {shownEncoded && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">Encoded Output</label>
-                <Button onClick={() => copyToClipboard(shownEncoded)} variant="ghost" size="sm">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-              </div>
-              <textarea
-                value={shownEncoded}
-                readOnly
-                className="w-full h-32 p-3 rounded-md border bg-muted text-foreground resize-none focus:outline-none"
+            ) : (
+              <CodeTextarea
+                id="b64-encode-input"
+                value={textToEncode}
+                onChange={(e) => setTextToEncode(e.target.value)}
+                placeholder="Enter text to encode to Base64..."
               />
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Decode Tab */}
-        <TabsContent value="decode" className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Base64 to Decode</label>
-            <textarea
+            )}
+          </EditorPane>
+        ) : (
+          <EditorPane title="Base64" htmlFor="b64-decode-input" scroll={false}
+            actions={base64ToDecode ? <button type="button" className="toolbar-text-button" onClick={() => setBase64ToDecode("")}>Clear</button> : undefined}>
+            <CodeTextarea
+              id="b64-decode-input"
               value={base64ToDecode}
               onChange={(e) => setBase64ToDecode(e.target.value)}
               placeholder="Enter Base64 string or data URI to decode..."
-              className="w-full h-32 p-3 rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
             />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={decodeFromBase64} size="sm" className="gap-2">
-              Decode from Base64
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <Input
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              placeholder="File name (optional)"
-              aria-label="File name"
-              className="w-48"
-            />
-            <Button onClick={() => void saveDecodedFile()} size="sm" variant="outline" className="gap-2">
-              <Download className="w-4 h-4" />
-              Save as file
-            </Button>
-          </div>
-
-          {decodedOutput && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">Decoded Output</label>
-                <Button onClick={() => copyToClipboard(decodedOutput)} variant="ghost" size="sm">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-              </div>
-              <textarea
-                value={decodedOutput}
-                readOnly
-                className="w-full h-32 p-3 rounded-md border bg-muted text-foreground resize-none focus:outline-none"
-              />
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <ToolFaqSection items={FAQ_ITEMS} />
-    </div>
+          </EditorPane>
+        )
+      }
+      second={
+        encoding ? (
+          <EditorPane title="Base64" htmlFor={encodedOutput ? "b64-encode-output" : undefined} scroll={false}
+            actions={<CopyButton value={encodedOutput} label="Copy Base64" />}>
+            {encodedOutput ? (
+              <CodeTextarea id="b64-encode-output" value={encodedOutput} readOnly />
+            ) : (
+              <PaneEmpty title="Base64 appears here" hint="Type text or open a file." />
+            )}
+          </EditorPane>
+        ) : (
+          <EditorPane title="Text" htmlFor={decodedText ? "b64-decode-output" : undefined} scroll={false}
+            actions={<CopyButton value={decodedText} label="Copy text" />}>
+            {decodedText ? (
+              <CodeTextarea id="b64-decode-output" value={decodedText} readOnly />
+            ) : decoded?.binary ? (
+              <PaneEmpty title="Binary data" hint="The data is not UTF-8 text. Use Save as file." />
+            ) : (
+              <PaneEmpty title="Decoded text appears here" hint="Paste Base64 or a data URI." />
+            )}
+          </EditorPane>
+        )
+      }
+      status={encoding ? encodeStatus() : decodeStatus()}
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

@@ -1,20 +1,16 @@
-import { useEffect, useState } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { KeyRound } from "lucide-react";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import {
-  decodeJwt as decodeJwtToken,
+  decodeJwt,
   getJwtExpirationDate,
   getJwtIssuedAtDate,
   verifyJwtSignature,
-  type DecodedJwt,
   type JwtVerifyResult,
 } from "@/utils/jwt";
 
@@ -37,225 +33,173 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
 ];
 
+const PLACEHOLDER =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+
+/** A short distance such as "2 h" or "3 d" between now and a date. */
+const formatDistance = (ms: number) => {
+  const seconds = Math.round(Math.abs(ms) / 1000);
+  if (seconds < 60) return `${seconds} s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)} h`;
+  if (seconds < 86400 * 365) return `${Math.round(seconds / 86400)} d`;
+  return `${Math.round(seconds / (86400 * 365))} y`;
+};
+
+const formatTimestamp = (date: Date | null, rawValue?: number) =>
+  !date || rawValue === undefined ? "" : `${date.toLocaleString()} (${rawValue})`;
+
+const VERIFY_TONE: Record<JwtVerifyResult["status"], string> = {
+  valid: "text-success",
+  invalid: "text-destructive",
+  unsupported: "text-warning",
+  error: "text-destructive",
+};
+
 export function JwtDecoder() {
   const [input, setInput] = useState("");
-  const [decoded, setDecoded] = useState<DecodedJwt | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
   const [secret, setSecret] = useState("");
   const [secretIsBase64, setSecretIsBase64] = useState(false);
   const [verify, setVerify] = useState<JwtVerifyResult | null>(null);
+  const token = useDebouncedValue(input);
+  const debouncedSecret = useDebouncedValue(secret);
+
+  const decoded = useMemo(() => (token.trim() ? decodeJwt(token) : null), [token]);
+  const valid = decoded && !decoded.error ? decoded : null;
 
   useEffect(() => {
-    if (!decoded) {
+    if (!valid) {
       setVerify(null);
       return;
     }
-    const alg = typeof decoded.header.alg === "string" ? decoded.header.alg : "";
-    if (!secret && /^HS(256|384|512)$/.test(alg)) {
+    const alg = typeof valid.header.alg === "string" ? valid.header.alg : "";
+    if (!debouncedSecret && /^HS(256|384|512)$/.test(alg)) {
       setVerify(null);
       return;
     }
     let cancelled = false;
-    verifyJwtSignature(input, secret, { secretIsBase64 }).then((result) => {
+    verifyJwtSignature(token, debouncedSecret, { secretIsBase64 }).then((result) => {
       if (!cancelled) setVerify(result);
     });
     return () => {
       cancelled = true;
     };
-    // The token is re-checked when the user decodes again (decoded changes).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decoded, secret, secretIsBase64]);
+  }, [valid, token, debouncedSecret, secretIsBase64]);
 
-  const decodeJwt = () => {
-    const result = decodeJwtToken(input);
-
-    if (result.error) {
-      setDecoded(null);
-      toast.error(result.error);
-      return;
-    }
-
-    setDecoded(result);
-    toast.success("JWT decoded successfully!");
-  };
-
-  const copyToClipboard = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-    toast.success(`${label} copied!`);
-  };
-
-  const formatTimestamp = (date: Date | null, rawValue?: number) => {
-    if (!date || rawValue === undefined) return "N/A";
-    return `${date.toLocaleString()} (${rawValue})`;
-  };
-
-  const renderObject = (obj: Record<string, unknown>, title: string) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-          <code>{JSON.stringify(obj, null, 2)}</code>
+  const renderJson = (obj: Record<string, unknown>, title: string) => {
+    const json = JSON.stringify(obj, null, 2);
+    return (
+      <section className="border-b border-border/50" aria-label={title}>
+        <div className="flex items-center justify-between px-4 pt-2">
+          <span className="result-row-label">{title}</span>
+          <CopyButton value={json} iconOnly label={`Copy ${title.toLowerCase()}`} />
+        </div>
+        <pre className="overflow-x-auto px-4 pb-3 pt-1 font-mono text-[13px] leading-[22px]">
+          <code>{json}</code>
         </pre>
-      </CardContent>
-    </Card>
+      </section>
+    );
+  };
+
+  const renderRow = (key: string, label: string, value: string) => (
+    <div key={key} className="result-row">
+      <span className="result-row-label">{label}</span>
+      <span className="result-row-value">{value}</span>
+      <CopyButton value={value} iconOnly label={`Copy ${label}`} />
+    </div>
   );
 
-  const expirationDate = decoded ? getJwtExpirationDate(decoded) : null;
-  const issuedAtDate = decoded ? getJwtIssuedAtDate(decoded) : null;
-  const notBeforeDate = decoded?.payload.nbf ? new Date(decoded.payload.nbf * 1000) : null;
-  const expirationStatus = decoded?.isExpired
-    ? { label: "Expired", className: "bg-destructive text-destructive-foreground" }
-    : decoded?.payload.exp
-    ? { label: "Not expired", className: "bg-success text-success-foreground" }
-    : { label: "No exp claim", className: "bg-warning text-warning-foreground" };
+  const expirationDate = valid ? getJwtExpirationDate(valid) : null;
+  const issuedAtDate = valid ? getJwtIssuedAtDate(valid) : null;
+  const notBeforeDate = valid?.payload.nbf ? new Date(valid.payload.nbf * 1000) : null;
+  const hasTimestamps = Boolean(valid && (valid.payload.iat || valid.payload.exp || valid.payload.nbf));
+
+  const expiryStatus = !valid
+    ? null
+    : !expirationDate
+    ? { label: "No exp claim", className: "text-warning" }
+    : valid.isExpired
+    ? { label: `Expired ${formatDistance(Date.now() - expirationDate.getTime())} ago`, className: "text-destructive" }
+    : { label: `Expires in ${formatDistance(expirationDate.getTime() - Date.now())}`, className: "text-success" };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>JWT Token</CardTitle>
-          <CardDescription>Enter a JSON Web Token to decode</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    <ToolWorkspace
+      id="jwt-decoder"
+      toolbar={
+        <>
+          <label htmlFor="jwt-secret" className="text-xs text-muted-foreground">Secret</label>
+          <Input
+            id="jwt-secret"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="your-256-bit-secret"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            className="h-7 w-56 font-mono text-xs"
+          />
+          <label className="option-switch indent-control" htmlFor="jwt-secret-base64">
+            Base64 secret
+            <Switch id="jwt-secret-base64" checked={secretIsBase64} onCheckedChange={setSecretIsBase64} />
+          </label>
+        </>
+      }
+      notice={
+        decoded?.error ? (
+          <div className="workspace-notice" data-tone="error" role="alert">{decoded.error}</div>
+        ) : undefined
+      }
+      first={
+        <EditorPane title="Token" htmlFor="jwt-input" scroll={false}
+          actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}>
+          <CodeTextarea
+            id="jwt-input"
+            className="break-all"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="font-mono"
+            placeholder={PLACEHOLDER}
           />
-          <Button onClick={decodeJwt} className="mt-4" size="lg">
-            Decode JWT
-          </Button>
-        </CardContent>
-      </Card>
-
-      {decoded && (
-        <>
-          <div className="space-y-3">
-            <div className="flex items-center gap-4">
-              <h3 className="text-lg font-medium">Expiration Status</h3>
-              <Badge className={expirationStatus.className}>{expirationStatus.label}</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Token decoded locally. Enter a secret below to check an HMAC signature.
-            </p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Verify Signature</CardTitle>
-              <CardDescription>HS256, HS384 and HS512 only. The secret never leaves this device.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="jwt-secret">Secret</Label>
-                <Input
-                  id="jwt-secret"
-                  type="password"
-                  autoComplete="off"
-                  placeholder="your-256-bit-secret"
-                  value={secret}
-                  onChange={(e) => setSecret(e.target.value)}
-                  className="font-mono"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="jwt-secret-base64"
-                  checked={secretIsBase64}
-                  onCheckedChange={setSecretIsBase64}
-                />
-                <Label htmlFor="jwt-secret-base64">Secret is Base64-encoded</Label>
-              </div>
-              {verify && (
-                <div role="status" className="flex items-center gap-3">
-                  <Badge
-                    className={
-                      verify.status === "valid"
-                        ? "bg-success text-success-foreground"
-                        : verify.status === "invalid"
-                        ? "bg-destructive text-destructive-foreground"
-                        : "bg-warning text-warning-foreground"
-                    }
-                  >
-                    {verify.message}
-                  </Badge>
-                </div>
+        </EditorPane>
+      }
+      second={
+        <EditorPane title="Decoded">
+          {valid ? (
+            <div className="result-list">
+              {renderJson(valid.header, "Header")}
+              {renderJson(valid.payload, "Payload")}
+              {renderRow("signature", "Signature", valid.signature)}
+              {hasTimestamps && (
+                <>
+                  {renderRow("iat", "Issued at (iat)", formatTimestamp(issuedAtDate, valid.payload.iat))}
+                  {renderRow("exp", "Expires at (exp)", formatTimestamp(expirationDate, valid.payload.exp))}
+                  {renderRow("nbf", "Not before (nbf)", formatTimestamp(notBeforeDate, valid.payload.nbf))}
+                </>
               )}
-              <p className="text-sm text-muted-foreground">
-                This checks the signature only. It does not check issuer, audience, or key trust.
-              </p>
-            </CardContent>
-          </Card>
-
-          {renderObject(decoded.header, "Header")}
-
-          {renderObject(decoded.payload, "Payload")}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Signature</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-muted p-4 rounded-lg">
-                <code className="text-sm break-all">{decoded.signature}</code>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(decoded.signature, "Signature")}
-                className="mt-2"
-              >
-                {copied === "Signature" ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copy Signature
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {(decoded.payload.iat || decoded.payload.exp || decoded.payload.nbf) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Timestamp Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Issued At (iat):</span>
-                  <span className="font-mono text-right">
-                    {formatTimestamp(issuedAtDate, decoded.payload.iat)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Expires At (exp):</span>
-                  <span className="font-mono text-right">
-                    {formatTimestamp(expirationDate, decoded.payload.exp)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Not Before (nbf):</span>
-                  <span className="font-mono text-right">
-                    {formatTimestamp(notBeforeDate, decoded.payload.nbf)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
+          ) : (
+            <PaneEmpty
+              icon={<KeyRound size={20} aria-hidden="true" />}
+              title="Paste a JWT to decode it"
+              hint="The header, payload, and claims appear here as you type."
+            />
           )}
-        </>
-      )}
-
-      <ToolFaqSection items={FAQ_ITEMS} />
-    </div>
+        </EditorPane>
+      }
+      status={
+        valid && expiryStatus ? (
+          <>
+            {valid.header.alg && <span>{String(valid.header.alg)}</span>}
+            <span className={expiryStatus.className}>{expiryStatus.label}</span>
+            <span role="status" className={verify ? VERIFY_TONE[verify.status] : undefined}>
+              {verify ? verify.message : "Signature not checked"}
+            </span>
+          </>
+        ) : (
+          <span>{decoded?.error ? "Invalid token" : "Ready"}</span>
+        )
+      }
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

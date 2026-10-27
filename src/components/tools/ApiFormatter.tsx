@@ -3,13 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Check, Code2 } from "lucide-react";
+import { Code2 } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 export function ApiFormatter() {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const formatJson = () => {
     if (!input.trim()) {
@@ -20,7 +20,6 @@ export function ApiFormatter() {
     try {
       const parsed = JSON.parse(input);
       setOutput(JSON.stringify(parsed, null, 2));
-      toast.success("JSON formatted!");
     } catch (error) {
       toast.error("Invalid JSON");
     }
@@ -35,7 +34,6 @@ export function ApiFormatter() {
     try {
       const parsed = JSON.parse(input);
       setOutput(JSON.stringify(parsed));
-      toast.success("JSON minified!");
     } catch (error) {
       toast.error("Invalid JSON");
     }
@@ -54,7 +52,6 @@ export function ApiFormatter() {
         result[key] = value;
       });
       setOutput(JSON.stringify(result, null, 2));
-      toast.success("URL-encoded data parsed!");
     } catch (error) {
       toast.error("Invalid URL-encoded data");
     }
@@ -74,18 +71,11 @@ export function ApiFormatter() {
         result[key] = value;
       });
       setOutput(JSON.stringify(result, null, 2));
-      toast.success("Query string parsed!");
     } catch (error) {
       toast.error("Invalid query string");
     }
   };
 
-  const copyOutput = () => {
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Output copied!");
-  };
 
   const clearAll = () => {
     setInput("");
@@ -184,19 +174,7 @@ export function ApiFormatter() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button onClick={copyOutput} variant="outline" className="flex-1">
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Output
-                    </>
-                  )}
-                </Button>
+                <CopyButton value={output} label="Copy output" />
                 <Button onClick={clearAll} variant="outline">
                   Clear
                 </Button>

@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 import {
   getContrastRatio,
   meetsWcagAALarge,
@@ -32,10 +33,6 @@ function formatColorValues(input: string) {
   ];
 }
 
-function copyValue(value: string, label: string) {
-  navigator.clipboard.writeText(value);
-  toast.success(`${label} copied!`);
-}
 
 function ColorConverter() {
   const [input, setInput] = useState("#3b82f6");
@@ -75,14 +72,7 @@ function ColorConverter() {
                   <Label className="text-xs text-muted-foreground">{item.label}</Label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 truncate rounded bg-muted p-2 text-xs">{item.value}</code>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label={`Copy ${item.label}`}
-                      onClick={() => copyValue(item.value, item.label)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                    <CopyButton value={item.value} label={`Copy ${item.label}`} iconOnly />
                   </div>
                 </div>
               ))}
@@ -176,7 +166,6 @@ function ContrastChecker() {
 export function ColorPalette() {
   const [hexInput, setHexInput] = useState("");
   const [colors, setColors] = useState<Color[]>([]);
-  const [copied, setCopied] = useState<string | null>(null);
 
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -279,7 +268,6 @@ export function ColorPalette() {
     }
 
     setColors(newColors);
-    toast.success("Palette generated!");
   };
 
   const hslToHex = (h: number, s: number, l: number) => {
@@ -369,12 +357,6 @@ export function ColorPalette() {
     return `rgb(${toValue(r)}, ${toValue(g)}, ${toValue(b)})`;
   };
 
-  const copyToClipboard = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-    toast.success(`${label} copied!`);
-  };
 
   return (
     <div className="space-y-6">
@@ -412,18 +394,7 @@ export function ColorPalette() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">HEX</Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(color.hex, "HEX")}
-                      className="h-6 px-2"
-                    >
-                      {copied === `HEX-${index}` ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </Button>
+                    <CopyButton value={color.hex} label={`Copy ${color.hex}`} iconOnly />
                   </div>
                   <code className="text-xs block truncate">{color.hex}</code>
                 </div>

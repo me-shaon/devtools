@@ -115,7 +115,6 @@
     await step("encodes text to Base64", async () => {
       await openTool("Base64");
       setValue(document.querySelector('textarea[placeholder="Enter text to encode to Base64..."]'), "hello");
-      buttons("Encode to Base64")[0].click();
       await waitFor(() => text().includes("aGVsbG8="), "Base64 output");
     });
 

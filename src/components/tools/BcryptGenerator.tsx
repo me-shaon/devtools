@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
+import { Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import {
   hashBcrypt,
@@ -66,7 +67,6 @@ export function BcryptGenerator() {
     try {
       const result = await hashBcrypt(plainText, rounds);
       setHashOutput(result);
-      toast.success("Bcrypt hash generated!");
     } catch (err) {
       toast.error((err as Error).message || "Failed to generate hash.");
     } finally {
@@ -90,10 +90,6 @@ export function BcryptGenerator() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
 
   const roundInfo = getRoundLabel(rounds);
 
@@ -171,10 +167,7 @@ export function BcryptGenerator() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Bcrypt Hash</Label>
-                <Button onClick={() => copyToClipboard(hashOutput)} variant="ghost" size="sm">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
+                <CopyButton value={hashOutput} label="Copy" />
               </div>
               <textarea
                 value={hashOutput}

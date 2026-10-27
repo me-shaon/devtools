@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 type CaseType = "camelCase" | "PascalCase" | "snake_case" | "kebab-case" | "UPPER_SNAKE_CASE" | "Sentence case" | "lowercase" | "UPPERCASE" | "Title Case";
 
@@ -20,7 +21,6 @@ export function CaseConverter() {
     UPPERCASE: "",
     "Title Case": "",
   });
-  const [copied, setCopied] = useState<string | null>(null);
 
   const toCamelCase = (str: string) => {
     return str
@@ -92,15 +92,8 @@ export function CaseConverter() {
     };
 
     setOutputs(converted);
-    toast.success("Text converted!");
   };
 
-  const copyToClipboard = (caseType: CaseType, value: string) => {
-    navigator.clipboard.writeText(value);
-    setCopied(caseType);
-    setTimeout(() => setCopied(null), 2000);
-    toast.success(`${caseType} copied!`);
-  };
 
   const caseLabels: { key: CaseType; label: string; description: string }[] = [
     { key: "camelCase", label: "camelCase", description: "First word lowercase, subsequent words capitalized" },
@@ -144,24 +137,7 @@ export function CaseConverter() {
                     <h3 className="font-medium text-sm">{label}</h3>
                     <p className="text-xs text-muted-foreground">{description}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(key, outputs[key])}
-                    className="ml-2 shrink-0"
-                  >
-                    {copied === key ? (
-                      <>
-                        <Check className="h-4 w-4 mr-1" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-1" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
+                  <CopyButton value={outputs[key]} label="Copy" />
                 </div>
                 <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">
                   {outputs[key] || "(empty)"}

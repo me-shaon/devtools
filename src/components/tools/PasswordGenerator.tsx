@@ -5,13 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 export function PasswordGenerator() {
   const [length, setLength] = useState(16);
   const [password, setPassword] = useState("");
-  const [copied, setCopied] = useState(false);
   const [options, setOptions] = useState({
     uppercase: true,
     lowercase: true,
@@ -51,12 +51,6 @@ export function PasswordGenerator() {
     generatePassword();
   }, [length, options]);
 
-  const copyPassword = () => {
-    navigator.clipboard.writeText(password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Password copied!");
-  };
 
   const getStrength = () => {
     let strength = 0;
@@ -77,11 +71,7 @@ export function PasswordGenerator() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Password Generator</CardTitle>
-          <CardDescription>Generate secure random passwords</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <Label>Password Length: {length}</Label>
             <Slider
@@ -136,10 +126,8 @@ export function PasswordGenerator() {
             <Label>Generated Password</Label>
             <div className="flex gap-2">
               <Input value={password} readOnly className="font-mono" />
-              <Button onClick={copyPassword} variant="outline" size="icon">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-              <Button onClick={generatePassword} variant="outline" size="icon">
+              <CopyButton value={password} label="Copy password" iconOnly />
+              <Button onClick={generatePassword} variant="outline" size="icon" aria-label="Generate new password" title="Generate new password">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>

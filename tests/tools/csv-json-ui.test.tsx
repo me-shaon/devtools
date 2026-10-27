@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { CsvToJsonConverter } from "@/components/tools/CsvToJsonConverter";
 import { csvToObjects, detectDelimiter, jsonToCsv, parseCSV } from "@/utils/csv";
@@ -43,27 +43,28 @@ describe("CSV parsing and writing", () => {
 });
 
 describe("CsvToJsonConverter", () => {
-  const out = () => (screen.getByLabelText(/Output$/) as HTMLTextAreaElement).value;
-  it("auto-detects a semicolon delimiter", () => {
+  const out = async () => ((await screen.findByLabelText(/output$/)) as HTMLTextAreaElement).value;
+  it("auto-detects a semicolon delimiter and converts as the user types", async () => {
     render(<CsvToJsonConverter />);
-    fireEvent.change(screen.getByLabelText("CSV Input"), { target: { value: "a;b\n1;2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Convert to JSON" }));
-    expect(JSON.parse(out())).toEqual([{ a: "1", b: "2" }]);
+    fireEvent.change(screen.getByLabelText("CSV input"), { target: { value: "a;b\n1;2" } });
+    expect(JSON.parse(await out())).toEqual([{ a: "1", b: "2" }]);
+    expect(screen.getByText("1 row · 2 columns")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Convert to/ })).toBeNull();
   });
-  it("converts JSON to CSV and uses the result when switching back", () => {
+  it("converts JSON to CSV and uses the result when switching back", async () => {
     render(<CsvToJsonConverter />);
-    fireEvent.click(screen.getByRole("button", { name: "JSON to CSV" }));
-    fireEvent.change(screen.getByLabelText("JSON Input"), { target: { value: '[{"n":"a,b","v":[1]}]' } });
-    fireEvent.click(screen.getByRole("button", { name: "Convert to CSV" }));
-    expect(out()).toBe('n,v\n"a,b",[1]');
-    fireEvent.click(screen.getByRole("button", { name: "CSV to JSON" }));
-    expect((screen.getByLabelText("CSV Input") as HTMLTextAreaElement).value).toBe('n,v\n"a,b",[1]');
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "JSON to CSV" }));
+    fireEvent.change(screen.getByLabelText("JSON input"), { target: { value: '[{"n":"a,b","v":[1]}]' } });
+    await waitFor(async () => expect(await out()).toBe('n,v\n"a,b",[1]'));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "CSV to JSON" }));
+    expect((screen.getByLabelText("CSV input") as HTMLTextAreaElement).value).toBe('n,v\n"a,b",[1]');
   });
-  it("shows no output for invalid JSON", () => {
+  it("shows an inline error and no output for invalid JSON", async () => {
     render(<CsvToJsonConverter />);
-    fireEvent.click(screen.getByRole("button", { name: "JSON to CSV" }));
-    fireEvent.change(screen.getByLabelText("JSON Input"), { target: { value: "{bad" } });
-    fireEvent.click(screen.getByRole("button", { name: "Convert to CSV" }));
-    expect(screen.queryByLabelText("CSV Output")).toBeNull();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "JSON to CSV" }));
+    fireEvent.change(screen.getByLabelText("JSON input"), { target: { value: "{bad" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Invalid JSON/);
+    expect(screen.queryByLabelText("CSV output")).toBeNull();
+    expect(screen.getByText("Invalid input")).toBeInTheDocument();
   });
 });
