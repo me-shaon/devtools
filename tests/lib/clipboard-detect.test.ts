@@ -35,6 +35,14 @@ describe("detectPastedContent", () => {
     expect(first("array('a' => 1)")).toBe("php-tools");
   });
 
+  it("recognises compressed data in Base64", () => {
+    expect(detectPastedContent("H4sIAAAAAAAAE6tWykvMTVWyUipKzUlNLE5V0lEqSy0qzszPU7IyrAUAtwLMOh4AAAA=", ids)[0]).toMatchObject({ toolId: "compression", label: "GZIP data" });
+    expect(first("H4sIAAAAAAAAE6tWykvMTVWyUipKzUlNLE5V0lEq\nSy0qzszPU7IyrAUAtwLMOh4AAAA=")).toBe("compression");
+    expect(first("SDRzSUFBQUFBQUFBRTZ0V3lrdk1UVld5VWlwS3pVbE5MRTVWMGxFcVN5MHF6c3pQVTdJeXJBVUF0d0xNT2g0QUFBQT0=")).toBe("compression");
+    expect(detectPastedContent("eJzLSM3JyVfIQCcBaAMIsQ==", ids)[0]).toMatchObject({ toolId: "compression", label: "zlib data" });
+    expect(first("eJustSomeWordsThatLookLikeBase64")).not.toBe("compression");
+  });
+
   it("ignores plain text, hex digests, and numbers that are not timestamps", () => {
     expect(first("hello world")).toBeUndefined();
     expect(first("d41d8cd98f00b204e9800998ecf8427e")).toBeUndefined();

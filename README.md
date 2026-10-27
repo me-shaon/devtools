@@ -105,6 +105,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
 - **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
+- **Compression** - Decompress GZIP, zlib, and raw deflate from Base64, hex, or a .gz file, and compress text back, with format detection
 - **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
 
 ### Time & Date

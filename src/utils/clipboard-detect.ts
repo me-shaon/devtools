@@ -64,6 +64,17 @@ const isPrintableBase64 = (text: string) => {
   return printable / Math.max(decoded.length, 1) > 0.9;
 };
 
+/** GZIP in Base64 starts with "H4sI" (1f 8b 08), or "SDRzS" under a second layer of Base64. */
+const compressedBase64 = (text: string): "GZIP data" | "zlib data" | null => {
+  const compact = text.replace(/\s+/g, "");
+  if (compact.length < 20 || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(compact)) return null;
+  if (/^(H4sI|SDRzS)/.test(compact)) return "GZIP data";
+  // zlib starts with 0x78, and its two header bytes are a multiple of 31.
+  const header = decodeBase64Url(compact.slice(0, 4));
+  if (header && header.charCodeAt(0) === 0x78 && ((0x78 << 8) | header.charCodeAt(1)) % 31 === 0) return "zlib data";
+  return null;
+};
+
 const isTimestamp = (text: string) => {
   // Seconds, milliseconds, microseconds, or nanoseconds.
   if (!/^\d{10}(\d{3}|\d{6}|\d{9})?$/.test(text)) return false;
@@ -113,6 +124,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
     add(text.toLowerCase().includes("<svg") ? "svg-to-css" : "code-formatter", text.toLowerCase().includes("<svg") ? "SVG" : "HTML", 70);
   }
   if (single && /%[0-9a-f]{2}/i.test(text) && !/\s/.test(text)) add("url-encoder", "URL-encoded text", 60);
+  const compressed = compressedBase64(text);
+  if (compressed) add("compression", compressed, compressed === "GZIP data" ? 95 : 75);
   if (single && isPrintableBase64(text)) add("base64", "Base64", 60);
   if (!single && /^[^\n:#]+:\s?.+\n(\s*[^\n:#]+:.*\n?)+$/.test(text) && !isJson(text)) add("yaml-json", "YAML", 50);
   if (!single && /^\[\[?[\w.\-" ]+\]\]?[ \t]*$/m.test(text) && /^[\w.\-"]+[ \t]*=[ \t]*\S/m.test(text)) add("yaml-json", "TOML", 50);
