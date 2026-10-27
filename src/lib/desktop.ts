@@ -1,9 +1,12 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import type { ToolManifest } from "@/utils/tool-manifest";
 
 export type UpdateStatus =
   | "idle"
@@ -37,6 +40,20 @@ export interface DesktopBridge {
    * so it must match the app theme. Pass null to follow the system.
    */
   setWindowTheme?: (theme: "light" | "dark" | null) => Promise<void>;
+  /**
+   * Calls back with each devtoolsapp:// link: the one that launched the app, then any that
+   * arrive while it runs. Returns a function that stops listening.
+   */
+  onDeepLink?: (callback: (url: string) => void) => () => void;
+  /** Writes the tool list that launchers such as Raycast read. */
+  writeToolManifest?: (manifest: ToolManifest) => Promise<void>;
+  /**
+   * Registers the system-wide shortcut (an accelerator such as "Command+Shift+Space"), or turns
+   * it off with null. Resolves to an error message when the system refuses it, otherwise null.
+   */
+  setGlobalShortcut?: (accelerator: string | null) => Promise<string | null>;
+  /** Calls back when the tray menu or the global shortcut asks for the command palette. */
+  onOpenCommandPalette?: (callback: () => void) => () => void;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
@@ -124,8 +141,65 @@ function createTauriBridge(): DesktopBridge {
     }
   };
 
+  const onDeepLink = (callback: (url: string) => void) => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    const deliver = (urls: string[] | null) => {
+      if (active) urls?.forEach(callback);
+    };
+    getCurrentDeepLinks().then(deliver).catch(() => {});
+    onOpenUrl(deliver)
+      .then((stop) => {
+        if (active) unlisten = stop;
+        else stop();
+      })
+      .catch((error) => console.error("Failed to listen for links:", error));
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  };
+
+  const writeToolManifest = async (manifest: ToolManifest) => {
+    try {
+      await invoke("write_tool_manifest", { manifest });
+    } catch (error) {
+      console.error("Failed to write the tool list for launchers:", error);
+    }
+  };
+
+  const setGlobalShortcut = async (accelerator: string | null) => {
+    try {
+      await invoke("set_global_shortcut", { accelerator });
+      return null;
+    } catch (error) {
+      return String(error);
+    }
+  };
+
+  const onOpenCommandPalette = (callback: () => void) => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    listen("open-command-palette", () => {
+      if (active) callback();
+    })
+      .then((stop) => {
+        if (active) unlisten = stop;
+        else stop();
+      })
+      .catch((error) => console.error("Failed to listen for the command palette event:", error));
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  };
+
   return {
     setWindowTheme,
+    setGlobalShortcut,
+    onOpenCommandPalette,
+    writeToolManifest,
+    onDeepLink,
     platform: toNodePlatform(getOsPlatform()),
     getVersion,
     getUpdateState: async () => {

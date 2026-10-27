@@ -37,6 +37,11 @@ import {
   type ToolId,
 } from "@/app/toolRegistry";
 import { getReleaseNotes } from "@/data/releaseNotes";
+import { parseDeepLink } from "@/utils/deep-link";
+import { buildToolManifest } from "@/utils/tool-manifest";
+import { detectPastedContent, type PasteSuggestion } from "@/utils/clipboard-detect";
+import { PasteSuggestions } from "@/components/app/PasteSuggestions";
+import { loadGlobalShortcut, saveGlobalShortcut, toAccelerator, type GlobalShortcut } from "@/utils/global-shortcut";
 import { convertMarkdown } from "@/utils/markdown";
 import {
   formatShortcutBinding,
@@ -55,9 +60,10 @@ import {
 } from "@/utils/theme";
 import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
+const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
-const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader"]);
+const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "secret-redactor", "token-counter", "ai-text-cleaner", "json-typescript", "certificate-decoder", "html-preview", "html-to-jsx", "svg-to-css", "curl-to-code"]);
 const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";
@@ -305,10 +311,13 @@ const DevToolsApp = () => {
   const releaseDialogRef = useDialogFocus(showWhatsNew, closeWhatsNew);
 
 
-  const openCommandPalette = () => {
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const openCommandPaletteWith = (query: string) => {
     setShowShortcutSettings(false);
+    setPaletteQuery(query);
     setShowCommandPalette(true);
   };
+  const openCommandPalette = () => openCommandPaletteWith("");
 
   const closeCommandPalette = () => {
     setShowCommandPalette(false);
@@ -407,11 +416,12 @@ const DevToolsApp = () => {
   // Filter tools based on search query
   const filteredTools = useMemo(() => {
     if (!searchQuery.trim()) return ALL_TOOLS;
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     return ALL_TOOLS.filter(
       (tool) =>
         tool.name.toLowerCase().includes(query) ||
-        tool.category.toLowerCase().includes(query)
+        tool.category.toLowerCase().includes(query) ||
+        tool.keywords.some((keyword) => keyword.startsWith(query))
     );
   }, [searchQuery]);
 
@@ -500,6 +510,98 @@ const DevToolsApp = () => {
       );
     }
   };
+
+  // devtoolsapp:// links from Raycast, Alfred, scripts, or a browser. The ref keeps the
+  // listener on the latest handlers without subscribing again on every render.
+  const deepLinkHandlerRef = useRef<(url: string) => void>(() => {});
+  deepLinkHandlerRef.current = (url: string) => {
+    const action = parseDeepLink(url, TOOL_IDS);
+    if (!action) return;
+    setShowWhatsNew(false);
+    setShowShortcutSettings(false);
+    if (action.type === "tool") selectTool(TOOL_BY_ID.get(action.toolId as ToolId) ?? null);
+    else if (action.type === "search") openCommandPaletteWith(action.query);
+    else selectTool(null);
+  };
+  useEffect(() => desktop?.onDeepLink?.((url) => deepLinkHandlerRef.current(url)), [desktop]);
+
+  // Keep the tool list for launchers (the Raycast extension) in step with this version.
+  useEffect(() => {
+    if (appVersion) void desktop?.writeToolManifest?.(buildToolManifest(ALL_TOOLS, appVersion));
+  }, [desktop, appVersion]);
+
+  // System-wide "Show DevTools" shortcut. Paused while the Shortcuts dialog is open, so recording
+  // a new combination cannot trigger the old one.
+  const [globalShortcut, setGlobalShortcut] = useState<GlobalShortcut>(() =>
+    loadGlobalShortcut(typeof window !== "undefined" ? window.localStorage : undefined, platform),
+  );
+  const [globalShortcutError, setGlobalShortcutError] = useState<string | null>(null);
+  const changeGlobalShortcut = useCallback((next: GlobalShortcut) => {
+    setGlobalShortcut(next);
+    saveGlobalShortcut(window.localStorage, next);
+  }, []);
+  useEffect(() => {
+    if (!desktop?.setGlobalShortcut) return;
+    const accelerator = showShortcutSettings ? null : toAccelerator(globalShortcut, platform);
+    let current = true;
+    void desktop.setGlobalShortcut(accelerator).then((error) => {
+      if (current && !showShortcutSettings) setGlobalShortcutError(error);
+    });
+    return () => {
+      current = false;
+    };
+  }, [desktop, globalShortcut, platform, showShortcutSettings]);
+
+  const openPaletteRef = useRef(() => {});
+  openPaletteRef.current = () => {
+    setShowWhatsNew(false);
+    openCommandPalette();
+  };
+  useEffect(() => desktop?.onOpenCommandPalette?.(() => openPaletteRef.current()), [desktop]);
+
+  // Paste outside a text field: suggest the tool that fits the text, then open it with the text
+  // filled in. The app only sees what the user pastes; it never reads the clipboard on its own.
+  const [pasted, setPasted] = useState<{ text: string; suggestions: PasteSuggestion[] } | null>(null);
+  const pasteBlocked = showCommandPalette || showShortcutSettings || showWhatsNew;
+  useEffect(() => {
+    if (pasteBlocked) return;
+    const handlePaste = (event: ClipboardEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+      const suggestions = detectPastedContent(text, TOOL_IDS);
+      if (suggestions.length === 0) return;
+      event.preventDefault();
+      setPasted({ text: text.trim(), suggestions });
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [pasteBlocked]);
+
+  const dismissPasted = useCallback(() => setPasted(null), []);
+  const openPastedIn = useCallback((toolId: string) => {
+    const tool = TOOL_BY_ID.get(toolId as ToolId);
+    const text = pasted?.text ?? "";
+    setPasted(null);
+    if (!tool) return;
+    selectTool(tool);
+    // Tools load lazily. Wait for the panel's main input, then fill it the way typing would.
+    const started = Date.now();
+    const fill = () => {
+      const field = document.querySelector<HTMLTextAreaElement | HTMLInputElement>(
+        `#panel-${tool.id} textarea:not([readonly]), #panel-${tool.id} input[type="text"]:not([readonly])`,
+      );
+      if (!field) {
+        if (Date.now() - started < 3000) window.setTimeout(fill, 50);
+        return;
+      }
+      const prototype = field instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, text);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.focus();
+    };
+    window.setTimeout(fill, 0);
+  }, [pasted]);
 
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabsOverflow, setTabsOverflow] = useState(false);
@@ -860,6 +962,9 @@ const DevToolsApp = () => {
                 <span>Find a tool…</span>
                 <kbd>{commandPaletteShortcutLabel}</kbd>
               </button>
+              <p className="home-paste-hint">
+                Or paste a JWT, JSON, a URL, a timestamp, or other text here with {platform === "darwin" ? "⌘V" : "Ctrl+V"} to find the right tool.
+              </p>
               <div className="home-sections space-y-8">
                 {recentTools.length > 0 && (
                   <div>
@@ -910,6 +1015,14 @@ const DevToolsApp = () => {
         </div>
       </main>
 
+      {pasted && (
+        <PasteSuggestions
+          suggestions={pasted.suggestions}
+          toolName={(toolId) => TOOL_BY_ID.get(toolId as ToolId)?.name ?? toolId}
+          onOpen={openPastedIn}
+          onDismiss={dismissPasted}
+        />
+      )}
       <CommandPalette
         open={showCommandPalette}
         tools={[...ALL_TOOLS]}
@@ -917,6 +1030,7 @@ const DevToolsApp = () => {
         recents={recentToolIds}
         onClose={closeCommandPalette}
         onSelectTool={selectTool}
+        initialQuery={paletteQuery}
       />
 
       <ShortcutSettingsDialog
@@ -926,6 +1040,9 @@ const DevToolsApp = () => {
         onClose={closeShortcutSettings}
         onUpdateBinding={updateShortcutBinding}
         onResetDefaults={resetShortcutBindings}
+        globalShortcut={desktop?.setGlobalShortcut ? globalShortcut : undefined}
+        globalShortcutError={globalShortcutError}
+        onChangeGlobalShortcut={changeGlobalShortcut}
       />
 
       {showWhatsNew && releaseNotes && (

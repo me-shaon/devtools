@@ -116,6 +116,8 @@ it.each(["darwin", "win32"])("uses desktop tab shortcuts on %s without intercept
   const input = await screen.findByRole("textbox", { name: "JSON Input" });
   fireEvent.change(input, { target: { value: '{"saved":true}' } });
   fireEvent.click(screen.getByRole("button", { name: "Home", exact: true }));
+  // Open the tool from the sidebar search, so the test does not depend on the Quick Access order.
+  fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "Hash" } });
   fireEvent.click(screen.getByRole("button", { name: "Hash Generator", exact: true }));
   await screen.findByPlaceholderText("Enter text to generate hashes...", {}, { timeout: 5000 });
   fireEvent.keyDown(window, { key: "Tab", ctrlKey: true, shiftKey: true });

@@ -160,7 +160,8 @@
 
     await step("toggles the theme", async () => {
       const before = document.documentElement.classList.contains("dark");
-      buttons(before ? "Dark" : "Light")[0].click();
+      // The app's theme toggle, by its label: tools such as HTML Preview have their own Light buttons.
+      document.querySelector(`button[aria-label="${before ? "Switch to light appearance" : "Switch to dark appearance"}"]`).click();
       await waitFor(() => document.documentElement.classList.contains("dark") !== before, "theme change");
     });
 

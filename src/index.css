@@ -396,3 +396,8 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .editor-pane-header { position: relative; }
 .editor-pane:focus-within > .editor-pane-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: hsl(var(--ring)); }
 .result-row-value.code-textarea:focus-visible { outline-offset: 2px; }
+/* Suggestion bar for pasted content. */
+.paste-suggestions { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; max-width: min(720px, calc(100vw - 32px)); padding: 8px 10px 8px 14px; border-radius: 10px; background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); box-shadow: 0 0 0 1px hsl(var(--foreground) / .1), 0 10px 30px rgb(0 0 0 / .18); }
+.paste-suggestions p { white-space: nowrap; }
+.paste-suggestions kbd { margin-left: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.home-paste-hint { margin: -22px 0 28px; font-size: 12px; color: hsl(var(--muted-foreground)); }

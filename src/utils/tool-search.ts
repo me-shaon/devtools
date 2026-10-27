@@ -2,6 +2,19 @@ export interface SearchableTool {
   id: string;
   name: string;
   category: string;
+  keywords?: readonly string[];
+}
+
+/** Keywords match exactly, as a prefix, or as a substring, never fuzzily, so short terms stay precise. */
+function scoreKeywords(keywords: readonly string[] | undefined, query: string): number {
+  let best = Number.NEGATIVE_INFINITY;
+  for (const keyword of keywords ?? []) {
+    const normalized = keyword.toLowerCase();
+    if (normalized === query) best = Math.max(best, 650);
+    else if (normalized.startsWith(query)) best = Math.max(best, 500 - (normalized.length - query.length));
+    else if (query.length >= 3 && normalized.includes(query)) best = Math.max(best, 300);
+  }
+  return best;
 }
 
 function scoreTextMatch(text: string, query: string): number {
@@ -61,7 +74,7 @@ export function searchTools<T extends SearchableTool>(tools: T[], query: string)
     .map((tool) => {
       const nameScore = scoreTextMatch(tool.name, normalizedQuery);
       const categoryScore = scoreTextMatch(tool.category, normalizedQuery) * 0.6;
-      const combinedScore = Math.max(nameScore, categoryScore);
+      const combinedScore = Math.max(nameScore, categoryScore, scoreKeywords(tool.keywords, normalizedQuery));
 
       return { tool, combinedScore, nameScore };
     })

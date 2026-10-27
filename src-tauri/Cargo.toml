@@ -1,6 +1,6 @@
 [package]
 name = "devtoolsapp"
-version = "2.0.1"
+version = "2.1.0"
 description = "DevToolsApp - Your Essential Developer Companion"
 authors = ["Ahmed Shamim"]
 license = "MIT"
@@ -12,11 +12,14 @@ rust-version = "1.77.2"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-deep-link = "=2.6.1"
 tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "=2.4.1"
 tauri-plugin-opener = "2"
 tauri-plugin-os = "2"
 tauri-plugin-process = "2"
+tauri-plugin-single-instance = { version = "=2.5.2", features = ["deep-link"] }
 tauri-plugin-updater = "2"
 percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }

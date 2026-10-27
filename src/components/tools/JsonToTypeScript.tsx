@@ -1,186 +1,147 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Check } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { CODE_LANGUAGES, jsonToCode, type CodeLanguage, type CodeOptions } from "@/utils/json-to-code";
 
-interface TypeDefinition {
-  name: string;
-  type: string;
-  optional: boolean;
-  isArray: boolean;
-  children?: Record<string, TypeDefinition>;
+interface Result {
+  output: string;
+  typeCount: number;
+  error: string;
 }
 
+const EMPTY: Result = { output: "", typeCount: 0, error: "" };
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "Is my JSON uploaded?",
+    a: "No. The types are generated on this device. Nothing is sent over the network.",
+  },
+  {
+    q: "How are arrays of objects handled?",
+    a: "The tool merges every object in the array into one type. A field that is missing from some objects becomes optional. A field that holds both integers and decimals becomes a float type.",
+  },
+  {
+    q: "Why does a field have an unknown or any type?",
+    a: "The sample did not show the type. This happens for empty arrays and for values that are always null. A comment marks each such field. Add a real value to the sample to get a precise type.",
+  },
+  {
+    q: "What happens to keys that are not valid names?",
+    a: "Each language gets its usual naming style, for example snake_case in Rust and Python and camelCase in Swift and Kotlin. Reserved words are escaped. When a name differs from the JSON key, the output maps it back with a rename attribute, a tag, or CodingKeys.",
+  },
+];
+
+const LABELS = Object.fromEntries(CODE_LANGUAGES.map((l) => [l.id, l.label])) as Record<CodeLanguage, string>;
+
 export function JsonToTypeScript() {
-  const [jsonInput, setJsonInput] = useState("");
-  const [tsOutput, setTsOutput] = useState("");
-  const [options, setOptions] = useState({
-    rootName: "RootObject",
-    readonly: false,
-    strictNullChecks: true,
-  });
+  const [input, setInput] = useState("");
+  const [language, setLanguage] = useState<CodeLanguage>("typescript");
+  const [rootName, setRootName] = useState("Root");
+  const [tsStyle, setTsStyle] = useState<NonNullable<CodeOptions["tsStyle"]>>("interface");
+  const [tsReadonly, setTsReadonly] = useState(false);
+  const [pythonStyle, setPythonStyle] = useState<NonNullable<CodeOptions["pythonStyle"]>>("dataclass");
 
-  const getType = (value: any): string => {
-    if (value === null) return options.strictNullChecks ? "null" : "any";
-    if (value === undefined) return "undefined";
+  const pendingInput = useDebouncedValue(input);
+  const pendingRoot = useDebouncedValue(rootName);
 
-    const type = typeof value;
-    if (type === "boolean") return "boolean";
-    if (type === "number") return "number";
-    if (type === "string") return "string";
-    if (Array.isArray(value)) return "array";
-    if (type === "object") return "object";
-    return "any";
-  };
-
-  const generateInterface = (obj: any, name: string): string => {
-    if (obj === null || typeof obj !== "object") {
-      return `export type ${name} = ${getType(obj)};\n`;
-    }
-
-    if (Array.isArray(obj)) {
-      if (obj.length === 0) {
-        return `export type ${name} = any[];\n`;
-      }
-
-      // Infer array type from first element
-      const elementType = generateTypeDefinition(obj[0], "Item");
-      return `export type ${name} = ${elementType}[];\n`;
-    }
-
-    const lines: string[] = [];
-    lines.push(`export interface ${name} {`);
-
-    for (const [key, value] of Object.entries(obj)) {
-      const typeDef = generateTypeDefinition(value, key);
-      const readonly = options.readonly ? "readonly " : "";
-      const optional = typeDef.optional ? "?" : "";
-
-      if (typeDef.children) {
-        // Nested object - generate inline interface
-        const nestedName = toPascalCase(key);
-        const nestedInterface = generateInterface(value, nestedName);
-        lines.push(`  ${readonly}${key}${optional}: ${nestedName};`);
-      } else {
-        lines.push(`  ${readonly}${key}${optional}: ${typeDef.type};`);
-      }
-    }
-
-    lines.push("}");
-    return lines.join("\n");
-  };
-
-  const generateTypeDefinition = (value: any, key: string): Omit<TypeDefinition, "name"> => {
-    const type = getType(value);
-
-    if (type === "array") {
-      if (value.length === 0) {
-        return { type: "any[]", optional: false, isArray: true };
-      }
-      const itemType = generateTypeDefinition(value[0], key);
-      return {
-        type: `${itemType.type}[]`,
-        optional: false,
-        isArray: true,
-        children: itemType.children,
-      };
-    }
-
-    if (type === "object") {
-      return {
-        type: toPascalCase(key),
-        optional: false,
-        isArray: false,
-        children: value,
-      };
-    }
-
-    return { type, optional: false, isArray: false };
-  };
-
-  const toPascalCase = (str: string): string => {
-    return str
-      .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""))
-      .replace(/^(.)/, (c) => c.toUpperCase())
-      .replace(/[^a-zA-Z0-9]/g, "");
-  };
-
-  const convert = () => {
-    if (!jsonInput.trim()) {
-      toast.error("Please enter JSON to convert");
-      return;
-    }
-
+  const result = useMemo<Result>(() => {
+    if (!pendingInput.trim()) return EMPTY;
     try {
-      const parsed = JSON.parse(jsonInput);
-      const result = generateInterface(parsed, options.rootName);
-      setTsOutput(result);
+      return { ...jsonToCode(pendingInput, language, { rootName: pendingRoot, tsStyle, tsReadonly, pythonStyle }), error: "" };
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Invalid JSON");
+      return { ...EMPTY, error: error instanceof Error ? error.message : "Could not read the JSON." };
     }
-  };
+  }, [pendingInput, pendingRoot, language, tsStyle, tsReadonly, pythonStyle]);
 
+  const current = input.trim() ? result : EMPTY;
+  const label = LABELS[language];
+
+  const status = () => {
+    if (current.error) return <span className="text-destructive">Invalid JSON</span>;
+    if (!current.output) return <span>Ready</span>;
+    return <span>{current.typeCount} {current.typeCount === 1 ? "type" : "types"} · {label}</span>;
+  };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="root-name">Root Interface Name</Label>
-            <Input
-              id="root-name"
-              value={options.rootName}
-              onChange={(e) => setOptions({ ...options, rootName: e.target.value })}
-              placeholder="RootObject"
+    <ToolWorkspace
+      id="json-typescript"
+      toolbar={
+        <Tabs value={language} onValueChange={(v) => setLanguage(v as CodeLanguage)}>
+          <TabsList aria-label="Language">
+            {CODE_LANGUAGES.map((l) => (
+              <TabsTrigger key={l.id} value={l.id}>{l.label}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      }
+      secondaryToolbar={
+        <>
+          <label className="indent-control !border-l-0 !pl-0">
+            Root name
+            <input
+              className="w-32 rounded-[5px] border border-input bg-transparent px-1.5 py-[3px] font-mono text-xs text-foreground"
+              value={rootName}
+              onChange={(e) => setRootName(e.target.value)}
+              placeholder="Root"
+              spellCheck={false}
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="readonly">Use readonly properties</Label>
-            <Switch
-              id="readonly"
-              checked={options.readonly}
-              onCheckedChange={(checked) => setOptions({ ...options, readonly: checked })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="json-input">JSON Input</Label>
-            <Textarea
-              id="json-input"
-              placeholder='{"name": "John", "age": 30}'
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              className="min-h-[150px] font-mono"
-            />
-          </div>
-
-          <Button onClick={convert} size="lg">
-            Convert to TypeScript
-          </Button>
-
-          {tsOutput && (
+          </label>
+          {language === "typescript" && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="ts-output">TypeScript Output</Label>
-                <Textarea
-                  id="ts-output"
-                  value={tsOutput}
-                  readOnly
-                  className="min-h-[200px] font-mono text-sm"
-                />
-              </div>
-              <CopyButton value={tsOutput} label="Copy TypeScript" />
+              <label className="indent-control">
+                Style
+                <select aria-label="TypeScript style" value={tsStyle} onChange={(e) => setTsStyle(e.target.value as typeof tsStyle)}>
+                  <option value="interface">Interfaces</option>
+                  <option value="type">Type aliases</option>
+                </select>
+              </label>
+              <label className="indent-control">
+                <input type="checkbox" checked={tsReadonly} onChange={(e) => setTsReadonly(e.target.checked)} />
+                Readonly
+              </label>
             </>
           )}
-        </CardContent>
-      </Card>
-    </div>
+          {language === "python" && (
+            <label className="indent-control">
+              Style
+              <select aria-label="Python style" value={pythonStyle} onChange={(e) => setPythonStyle(e.target.value as typeof pythonStyle)}>
+                <option value="dataclass">Dataclasses</option>
+                <option value="pydantic">Pydantic models</option>
+              </select>
+            </label>
+          )}
+        </>
+      }
+      notice={
+        current.error ? (
+          <div className="workspace-notice" data-tone="error" role="alert">{current.error}</div>
+        ) : undefined
+      }
+      first={
+        <EditorPane title="JSON input" htmlFor="json-code-input" scroll={false}
+          actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}>
+          <CodeTextarea
+            id="json-code-input"
+            placeholder={'{"id": 1, "name": "Ada", "tags": ["admin"]}'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+        </EditorPane>
+      }
+      second={
+        <EditorPane title={`${label} output`} htmlFor={current.output ? "json-code-output" : undefined} scroll={false}
+          actions={<CopyButton value={current.output} label={`Copy ${label}`} />}>
+          {current.output ? (
+            <CodeTextarea id="json-code-output" value={current.output} readOnly />
+          ) : (
+            <PaneEmpty title={`${label} types appear here`} hint="Type or paste JSON on the left." />
+          )}
+        </EditorPane>
+      }
+      status={status()}
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

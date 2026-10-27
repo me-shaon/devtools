@@ -13,7 +13,9 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **JSON Viewer** - Format, validate, minify, and sort JSON, run JSONPath queries, and convert to YAML or XML
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 - **Regex Generator** - Interactive regex construction with live testing
-- **JSON to TypeScript** - Generate TypeScript interfaces from JSON
+- **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
+- **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
+- **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 
 ### Generators
@@ -36,6 +38,9 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
 - **YAML to JSON** - Convert YAML to JSON and back, including multi-document YAML
 - **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
+- **HTML to JSX** - Convert HTML markup into React JSX
+- **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
+- **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
 
 ### Time & Date
 
@@ -56,6 +61,13 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
 - **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines
+
+### AI Tools
+
+- **Image Metadata Cleaner** - Remove AI prompts, Content Credentials (C2PA), AI-generated labels, GPS, and camera data from JPEG, PNG, and WebP images. Keep the original pixels, or save a clean copy as JPG, PNG, WebP, or AVIF
+- **Secret & PII Redactor** - Mask API keys, tokens, passwords, emails, and other personal data before you paste text into an AI chat, and restore the values in the reply
+- **Token Counter** - Count GPT tokens exactly, estimate Claude, Gemini, and Llama tokens, check the context window, and estimate cost from your own price table
+- **AI Text Cleaner** - Remove hidden characters, citation markers, and Markdown from AI-written text, and straighten quotes and dashes
 
 ### Utilities
 
@@ -84,6 +96,24 @@ Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron 
 - On Linux, the new `.deb` and `.rpm` packages replace the old `devtools` package. An AppImage is replaced in place.
 
 Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after the update.
+
+## Work Faster
+
+- **Paste to find a tool.** Paste text outside a text field, and DevTools suggests the tool that fits: a JWT, JSON, a URL, a UUID, a timestamp, a cron expression, a certificate, a cURL command, and more. Press Enter to open the tool with the text filled in. DevTools only reads what you paste. It never reads the clipboard on its own.
+- **Menu bar and tray.** The DevTools icon in the macOS menu bar, or the Windows and Linux tray, opens the app or its tool search.
+- **Global shortcut.** Press Ctrl+Shift+Space in any app to open DevTools with its tool search. Press it again to hide DevTools. Change or turn off the shortcut in Shortcuts.
+
+## Open a Tool from Other Apps
+
+DevTools registers the `devtoolsapp://` link scheme, so Raycast, Alfred, Shortcuts, a terminal, or a browser can open a tool directly. A link reuses the running window.
+
+| Link | Result |
+|---|---|
+| `devtoolsapp://open/<tool-id>` | Opens a tool, for example `devtoolsapp://open/json-viewer`. The tool IDs are in `src/app/toolRegistry.ts`. |
+| `devtoolsapp://search?q=<text>` | Opens the command palette with the text. |
+| `devtoolsapp://home` | Shows the home page. |
+
+From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Linux, run `xdg-open` with the same link. On Windows, run `start` with the link.
 
 ## Quick Start
 
@@ -119,7 +149,7 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librs
 ```
 src/
 ├── components/
-│   └── tools/       # Tool implementations (32 React components)
+│   └── tools/       # Tool implementations (41 React components)
 ├── app/
 │   └── DevToolsApp.tsx   # Main app with sidebar navigation
 └── main.tsx         # React entry point

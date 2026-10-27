@@ -11,6 +11,8 @@ interface CommandPaletteProps {
   recents: string[];
   onClose: () => void;
   onSelectTool: (tool: ToolDefinition) => void;
+  /** Text to put in the search field when the palette opens, for example from a link. */
+  initialQuery?: string;
 }
 
 const MAX_RESULTS = 10;
@@ -48,6 +50,7 @@ export function CommandPalette({
   recents,
   onClose,
   onSelectTool,
+  initialQuery = "",
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -68,6 +71,7 @@ export function CommandPalette({
       setActiveIndex(0);
       return;
     }
+    setQuery(initialQuery);
 
     const previousFocus = document.activeElement as HTMLElement | null;
     const frameId = window.requestAnimationFrame(() => {
@@ -79,7 +83,7 @@ export function CommandPalette({
       window.cancelAnimationFrame(frameId);
       previousFocus?.focus();
     };
-  }, [open]);
+  }, [open, initialQuery]);
 
   useEffect(() => {
     setActiveIndex(0);
