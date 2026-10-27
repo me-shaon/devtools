@@ -5,6 +5,7 @@ import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import type { ToolManifest } from "@/utils/tool-manifest";
 
 export type UpdateStatus =
   | "idle"
@@ -43,6 +44,8 @@ export interface DesktopBridge {
    * arrive while it runs. Returns a function that stops listening.
    */
   onDeepLink?: (callback: (url: string) => void) => () => void;
+  /** Writes the tool list that launchers such as Raycast read. */
+  writeToolManifest?: (manifest: ToolManifest) => Promise<void>;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
@@ -149,8 +152,17 @@ function createTauriBridge(): DesktopBridge {
     };
   };
 
+  const writeToolManifest = async (manifest: ToolManifest) => {
+    try {
+      await invoke("write_tool_manifest", { manifest });
+    } catch (error) {
+      console.error("Failed to write the tool list for launchers:", error);
+    }
+  };
+
   return {
     setWindowTheme,
+    writeToolManifest,
     onDeepLink,
     platform: toNodePlatform(getOsPlatform()),
     getVersion,

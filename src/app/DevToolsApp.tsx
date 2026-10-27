@@ -38,6 +38,7 @@ import {
 } from "@/app/toolRegistry";
 import { getReleaseNotes } from "@/data/releaseNotes";
 import { parseDeepLink } from "@/utils/deep-link";
+import { buildToolManifest } from "@/utils/tool-manifest";
 import { convertMarkdown } from "@/utils/markdown";
 import {
   formatShortcutBinding,
@@ -412,11 +413,12 @@ const DevToolsApp = () => {
   // Filter tools based on search query
   const filteredTools = useMemo(() => {
     if (!searchQuery.trim()) return ALL_TOOLS;
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     return ALL_TOOLS.filter(
       (tool) =>
         tool.name.toLowerCase().includes(query) ||
-        tool.category.toLowerCase().includes(query)
+        tool.category.toLowerCase().includes(query) ||
+        tool.keywords.some((keyword) => keyword.startsWith(query))
     );
   }, [searchQuery]);
 
@@ -519,6 +521,11 @@ const DevToolsApp = () => {
     else selectTool(null);
   };
   useEffect(() => desktop?.onDeepLink?.((url) => deepLinkHandlerRef.current(url)), [desktop]);
+
+  // Keep the tool list for launchers (the Raycast extension) in step with this version.
+  useEffect(() => {
+    if (appVersion) void desktop?.writeToolManifest?.(buildToolManifest(ALL_TOOLS, appVersion));
+  }, [desktop, appVersion]);
 
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabsOverflow, setTabsOverflow] = useState(false);

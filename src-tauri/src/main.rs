@@ -45,6 +45,61 @@ fn choose_save_path(app: &AppHandle, file_name: &str) -> Result<Option<PathBuf>,
 /// Returns the saved path, or `None` when the user cancels the dialog.
 /// Sets the native window appearance. On macOS the sidebar material follows it,
 /// so it must match the app theme. `None` follows the system.
+/// The tool list that launchers such as Raycast read, written to the app data folder.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ToolManifest {
+    version: u32,
+    app_version: String,
+    scheme: String,
+    tools: Vec<ManifestTool>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+struct ManifestTool {
+    id: String,
+    name: String,
+    category: String,
+    #[serde(default)]
+    keywords: Vec<String>,
+}
+
+const MANIFEST_FILE: &str = "tools.json";
+const MAX_MANIFEST_TOOLS: usize = 500;
+
+/// Rejects a manifest that is not a plain list of tools, so the command cannot write arbitrary data.
+fn validate_manifest(manifest: &ToolManifest) -> Result<(), String> {
+    let short = |text: &str, max: usize| !text.trim().is_empty() && text.len() <= max;
+    if manifest.tools.is_empty() || manifest.tools.len() > MAX_MANIFEST_TOOLS {
+        return Err("The tool list is empty or too long.".into());
+    }
+    if !short(&manifest.app_version, 32) || !short(&manifest.scheme, 32) {
+        return Err("The manifest version or scheme is invalid.".into());
+    }
+    for tool in &manifest.tools {
+        let id_ok = short(&tool.id, 64)
+            && tool.id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+        let keywords_ok = tool.keywords.len() <= 32 && tool.keywords.iter().all(|k| short(k, 64));
+        if !id_ok || !short(&tool.name, 100) || !short(&tool.category, 100) || !keywords_ok {
+            return Err(format!("Invalid tool entry: {}", tool.id));
+        }
+    }
+    Ok(())
+}
+
+/// Writes the tool list to <app data>/tools.json, through a temporary file so readers never see half a file.
+#[tauri::command]
+fn write_tool_manifest(app: AppHandle, manifest: ToolManifest) -> Result<(), String> {
+    use tauri::Manager;
+    validate_manifest(&manifest)?;
+    let dir = app.path().app_data_dir().map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    let json = serde_json::to_vec_pretty(&manifest).map_err(|error| error.to_string())?;
+    let temp = dir.join(format!("{MANIFEST_FILE}.tmp"));
+    std::fs::write(&temp, json).map_err(|error| error.to_string())?;
+    std::fs::rename(&temp, dir.join(MANIFEST_FILE)).map_err(|error| error.to_string())
+}
+
 /// Brings the main window to the front, including after the window was closed or the app hidden.
 fn show_main_window(app: &tauri::AppHandle) {
     use tauri::Manager;
@@ -94,13 +149,14 @@ fn main() {
     let builder = tauri::Builder::default();
 
     #[cfg(not(feature = "e2e"))]
-    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme]);
+    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme, write_tool_manifest]);
 
     #[cfg(feature = "e2e")]
     let builder = builder
         .invoke_handler(tauri::generate_handler![
             save_file,
             set_window_theme,
+            write_tool_manifest,
             e2e::e2e_report,
             e2e::e2e_saved_files,
             e2e::e2e_tool_names
@@ -156,7 +212,35 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::file_name_from_header;
+    use super::{file_name_from_header, validate_manifest, ManifestTool, ToolManifest};
+
+    fn manifest(id: &str) -> ToolManifest {
+        ToolManifest {
+            version: 1,
+            app_version: "2.1.0".into(),
+            scheme: "devtoolsapp".into(),
+            tools: vec![ManifestTool {
+                id: id.into(),
+                name: "JSON Viewer".into(),
+                category: "Development Tools".into(),
+                keywords: vec!["json".into()],
+            }],
+        }
+    }
+
+    #[test]
+    fn accepts_a_valid_manifest() {
+        assert!(validate_manifest(&manifest("json-viewer")).is_ok());
+    }
+
+    #[test]
+    fn rejects_unsafe_tool_ids_and_empty_lists() {
+        assert!(validate_manifest(&manifest("../escape")).is_err());
+        assert!(validate_manifest(&manifest("")).is_err());
+        let mut empty = manifest("json-viewer");
+        empty.tools.clear();
+        assert!(validate_manifest(&empty).is_err());
+    }
 
     #[test]
     fn decodes_percent_encoded_names() {
