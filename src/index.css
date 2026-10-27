@@ -401,3 +401,9 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .paste-suggestions p { white-space: nowrap; }
 .paste-suggestions kbd { margin-left: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); }
 .home-paste-hint { margin: -22px 0 28px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+/* Command palette search: the field is the dialog's purpose and always has focus while the palette
+   is open, so it blends into the header like Spotlight. The caret shows where typing goes; a focus
+   box around it would only repeat that. */
+.command-surface .modal-header { border-bottom: 1px solid hsl(var(--border)); }
+.command-surface .modal-header input,
+.command-surface .modal-header input:focus-visible { outline: none; box-shadow: none; border: 0; font-size: 15px; }
