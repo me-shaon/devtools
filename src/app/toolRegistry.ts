@@ -41,6 +41,7 @@ import {
   ShieldAlert,
   ShieldOff,
   Sparkles,
+  Tags,
   Terminal,
   Type,
 } from "lucide-react";
@@ -61,6 +62,7 @@ export const ALL_TOOLS = [
   { icon: FileBadge, name: "X.509 Certificate Decoder", id: "certificate-decoder", category: "Development Tools", keywords: ["x509", "certificate", "pem", "der", "ssl", "tls", "csr", "fingerprint", "chain", "san"] },
   { icon: MonitorPlay, name: "HTML Preview", id: "html-preview", category: "Development Tools", keywords: ["html", "preview", "render", "live", "sandbox", "iframe", "responsive", "viewport"] },
   { icon: Braces, name: "Code Formatter", id: "code-formatter", category: "Development Tools", keywords: ["beautify", "prettify", "minify", "html", "css", "js", "xml", "sql"] },
+  { icon: Tags, name: "Semver Calculator", id: "semver", category: "Development Tools", keywords: ["semver", "version range", "caret", "tilde", "npm version", "cargo version", "pep 440", "composer", "satisfies", "compare versions"] },
   { icon: Hash, name: "Hash Generator", id: "hash-generator", category: "Generators", keywords: ["md5", "sha", "sha1", "sha256", "sha512", "hmac", "checksum", "keccak"] },
   { icon: Key, name: "UUID Generator", id: "uuid-generator", category: "Generators", keywords: ["uuid", "guid", "ulid", "v4", "v7"] },
   { icon: Lock, name: "Password Generator", id: "password-generator", category: "Generators", keywords: ["password", "passphrase", "secure"] },
@@ -125,6 +127,7 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   "token-counter": lazyNamed(() => import("@/components/tools/TokenCounter"), "TokenCounter"),
   "ai-text-cleaner": lazyNamed(() => import("@/components/tools/AiTextCleaner"), "AiTextCleaner"),
   "code-formatter": lazyNamed(() => import("@/components/tools/CodeFormatter"), "CodeFormatter"),
+  semver: lazyNamed(() => import("@/components/tools/SemverCalculator"), "SemverCalculator"),
   "random-string": lazyNamed(() => import("@/components/tools/RandomString"), "RandomString"),
   "key-generator": lazyNamed(() => import("@/components/tools/KeyGenerator"), "KeyGenerator"),
   "yaml-json": lazyNamed(() => import("@/components/tools/YamlJson"), "YamlJson"),
