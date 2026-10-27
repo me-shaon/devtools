@@ -11,7 +11,112 @@ import {
   getQrCapacity,
   calculateQrVersion,
   getRecommendedQrSize,
+  encodeQr,
+  getLogoBox,
+  buildQrSvg,
 } from '@/utils/qr';
+import { decodeQrPixels } from '@/utils/qr-reader';
+
+describe('encodeQr', () => {
+  it('uses level M by default', () => {
+    const result = encodeQr('https://example.com', 'auto', false);
+    expect(result.level).toBe('M');
+    expect(result.matrix.length).toBe(result.version * 4 + 17);
+  });
+
+  it('uses level H when the code has a logo', () => {
+    expect(encodeQr('https://example.com', 'auto', true).level).toBe('H');
+  });
+
+  it('drops to a lower level when the content does not fit at the default', () => {
+    // 2500 bytes fit at level L (2953) but not at M (2331).
+    expect(encodeQr('a'.repeat(2500), 'auto', false).level).toBe('L');
+    // 1500 bytes fit at level Q (1663) but not at H (1273).
+    expect(encodeQr('a'.repeat(1500), 'auto', true).level).toBe('Q');
+  });
+
+  it('uses the level the user chose', () => {
+    expect(encodeQr('hello', 'Q', false).level).toBe('Q');
+    expect(encodeQr('hello', 'L', true).level).toBe('L');
+  });
+
+  it('throws when the content does not fit', () => {
+    expect(() => encodeQr('a'.repeat(3000), 'auto', false)).toThrow();
+    expect(() => encodeQr('a'.repeat(2500), 'H', false)).toThrow();
+  });
+});
+
+describe('getLogoBox', () => {
+  it('covers a centered, odd-sized square of about a fifth of the width', () => {
+    expect(getLogoBox(21)).toEqual({ start: 8, size: 5 });
+    expect(getLogoBox(25)).toEqual({ start: 10, size: 5 });
+    const box = getLogoBox(57);
+    expect(box.size % 2).toBe(1);
+    expect(box.start * 2 + box.size).toBe(57);
+    expect(box.size / 57).toBeLessThanOrEqual(0.23);
+  });
+});
+
+describe('logo scannability', () => {
+  // Renders the code at 4 px a module and fills the logo box the way a logo would.
+  const render = (matrix: boolean[][], fillLogo: (x: number, y: number) => boolean) => {
+    const scale = 4;
+    const total = matrix.length + 8;
+    const width = total * scale;
+    const data = new Uint8ClampedArray(width * width * 4).fill(255);
+    const box = getLogoBox(matrix.length);
+    const inBox = (v: number) => v >= box.start && v < box.start + box.size;
+    for (let py = 0; py < width; py++) {
+      for (let px = 0; px < width; px++) {
+        const x = Math.floor(px / scale) - 4;
+        const y = Math.floor(py / scale) - 4;
+        const inside = x >= 0 && y >= 0 && x < matrix.length && y < matrix.length;
+        const dark = inside && (inBox(x) && inBox(y) ? fillLogo(px, py) : matrix[y][x]);
+        if (dark) data.fill(0, (py * width + px) * 4, (py * width + px) * 4 + 3);
+      }
+    }
+    return { data, width, height: width };
+  };
+
+  const payloads = [
+    'https://example.com',
+    'WIFI:T:WPA;S:Office Guest;P:correct horse battery staple;;',
+    'BEGIN:VCARD\r\nVERSION:3.0\r\nN:Lovelace;Ada;;;\r\nFN:Ada Lovelace\r\nORG:Analytical Engines\r\nTEL;TYPE=CELL:+44 20 7946 0000\r\nEMAIL:ada@example.com\r\nURL:https://example.com/ada\r\nEND:VCARD',
+  ];
+
+  it.each(payloads)('decodes at level H with a noisy logo: %s', (payload) => {
+    const { matrix } = encodeQr(payload, 'auto', true);
+    // A dense, high-contrast pattern is the worst case for a logo.
+    const pixels = render(matrix, (x, y) => ((x * 7 + y * 13) % 5) < 2);
+    expect(decodeQrPixels(pixels)?.text).toBe(payload);
+  });
+});
+
+describe('buildQrSvg', () => {
+  const matrix = encodeQr('hello', 'auto', false).matrix;
+
+  it('draws the modules as one path in module units, with a quiet zone', () => {
+    const svg = buildQrSvg(matrix, { size: 400 });
+    const total = matrix.length + 8;
+    expect(svg).toContain(`viewBox="0 0 ${total} ${total}"`);
+    expect(svg).toContain('width="400"');
+    expect(svg).toContain('shape-rendering="crispEdges"');
+    expect(svg.match(/<path/g)).toHaveLength(1);
+    expect(svg).not.toContain('<image');
+  });
+
+  it('clears the center and embeds the logo', () => {
+    const svg = buildQrSvg(matrix, { size: 400, logo: 'data:image/png;base64,AAAA' });
+    const { start, size } = getLogoBox(matrix.length);
+    expect(svg).toContain(`<rect x="${start + 4}" y="${start + 4}" width="${size}" height="${size}" fill="#ffffff"/>`);
+    expect(svg).toContain('href="data:image/png;base64,AAAA"');
+  });
+
+  it('escapes the logo URL', () => {
+    const svg = buildQrSvg(matrix, { size: 400, logo: 'data:image/svg+xml,<svg a="1">&' });
+    expect(svg).toContain('href="data:image/svg+xml,&lt;svg a=&quot;1&quot;&gt;&amp;"');
+  });
+});
 
 describe('QR Utils', () => {
   describe('generateQrCode', () => {

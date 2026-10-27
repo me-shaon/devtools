@@ -60,7 +60,7 @@ export const ALL_TOOLS = [
   { icon: Key, name: "UUID Generator", id: "uuid-generator", category: "Generators", keywords: ["uuid", "guid", "ulid", "v4", "v7"] },
   { icon: Lock, name: "Password Generator", id: "password-generator", category: "Generators", keywords: ["password", "passphrase", "secure"] },
   { icon: Quote, name: "Lorem Ipsum", id: "lorem-generator", category: "Generators", keywords: ["lorem", "placeholder", "dummy text", "fake data", "name", "email", "url"] },
-  { icon: Barcode, name: "QR Generator", id: "qr-generator", category: "Generators", keywords: ["qr", "qrcode", "barcode"] },
+  { icon: Barcode, name: "QR Generator", id: "qr-generator", category: "Generators", keywords: ["qr", "qrcode", "barcode", "wifi", "vcard"] },
   { icon: KeyRound, name: "Bcrypt Generator", id: "bcrypt-generator", category: "Generators", keywords: ["bcrypt", "hash", "password"] },
   { icon: Dices, name: "Random String", id: "random-string", category: "Generators", keywords: ["nanoid", "nano id", "token", "random", "id"] },
   { icon: RefreshCw, name: "Base64", id: "base64", category: "Converters", keywords: ["b64", "encode", "decode", "data uri"] },

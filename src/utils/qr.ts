@@ -27,6 +27,75 @@ export function getQrMatrix(data: string, errorCorrectionLevel: QrErrorCorrectio
   );
 }
 
+export type QrErrorCorrectionChoice = 'auto' | QrErrorCorrectionLevel;
+
+export interface EncodedQr {
+  matrix: boolean[][];
+  level: QrErrorCorrectionLevel;
+  version: number;
+}
+
+/** The quiet zone, in modules, that scanners need around the code. */
+export const QR_QUIET_ZONE = 4;
+
+/**
+ * Encodes data at the chosen error correction level. "auto" uses M, or H when a logo covers
+ * the center. When the data does not fit, "auto" drops one level (to L, or Q with a logo).
+ * Throws when the data does not fit at any allowed level.
+ */
+export function encodeQr(data: string, choice: QrErrorCorrectionChoice, hasLogo: boolean): EncodedQr {
+  const levels: QrErrorCorrectionLevel[] = choice !== 'auto' ? [choice] : hasLogo ? ['H', 'Q'] : ['M', 'L'];
+  let lastError: unknown;
+  for (const level of levels) {
+    try {
+      const { version } = QRCode.create(data, { errorCorrectionLevel: level });
+      return { matrix: getQrMatrix(data, level), level, version };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * The centered square, in modules, that a logo covers. It is odd-sized so it stays centered
+ * on the grid, and about a fifth of the width, which hides about 5% of the modules.
+ */
+export function getLogoBox(moduleCount: number): { start: number; size: number } {
+  let size = Math.round(moduleCount * 0.22);
+  if (size % 2 === 0) size -= 1;
+  return { start: (moduleCount - size) / 2, size };
+}
+
+const escapeXmlAttribute = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Builds a black-on-white SVG of the code. It uses module units and one path, so it stays
+ * sharp at any print size. A logo clears the center box and sits inside it.
+ */
+export function buildQrSvg(matrix: boolean[][], { size, logo }: { size: number; logo?: string }): string {
+  const count = matrix.length;
+  const total = count + QR_QUIET_ZONE * 2;
+  let path = '';
+  matrix.forEach((row, y) =>
+    row.forEach((dark, x) => {
+      if (dark) path += `M${x + QR_QUIET_ZONE} ${y + QR_QUIET_ZONE}h1v1h-1z`;
+    }),
+  );
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${total} ${total}" shape-rendering="crispEdges">`;
+  svg += `<rect width="${total}" height="${total}" fill="#ffffff"/>`;
+  svg += `<path d="${path}" fill="#000000"/>`;
+  if (logo) {
+    const box = getLogoBox(count);
+    const offset = box.start + QR_QUIET_ZONE;
+    svg += `<rect x="${offset}" y="${offset}" width="${box.size}" height="${box.size}" fill="#ffffff"/>`;
+    svg += `<image x="${offset + 0.5}" y="${offset + 0.5}" width="${box.size - 1}" height="${box.size - 1}" preserveAspectRatio="xMidYMid meet" href="${escapeXmlAttribute(logo)}"/>`;
+  }
+  return `${svg}</svg>`;
+}
+
 /**
  * Generate QR code as an SVG data URL
  */

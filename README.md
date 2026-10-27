@@ -88,7 +88,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **UUID Generator** - Generate v1/v3/v4/v5/v6/v7 UUIDs and ULIDs, and inspect existing IDs
 - **Password Generator** - Generate secure passwords and passphrases with strength analysis
 - **Lorem Ipsum** - Generate placeholder text and fake names, emails, URLs, and titles as text or a JSON array
-- **QR Generator** - Generate scannable QR codes and save them as PNG files
+- **QR Generator** - Make QR codes for text, Wi-Fi, contacts, email, phone, SMS, locations and events, with an optional logo, and save them as PNG or SVG
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 - **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
 
