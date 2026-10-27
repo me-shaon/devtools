@@ -150,8 +150,8 @@ export function CronCalculator() {
           {/* Cron Parts */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {cronParts.map((part, index) => (
-              <div key={part.type} className="space-y-2 rounded-lg border bg-card p-3">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div key={part.type} className="space-y-2 rounded-lg bg-muted/50 p-3">
+                <Label className="text-xs font-semibold text-muted-foreground">
                   {getPartLabel(part.type)}
                 </Label>
                 <Select

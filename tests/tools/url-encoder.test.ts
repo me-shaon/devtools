@@ -10,6 +10,10 @@ import {
   parseQueryString,
   parseUrl,
   buildUrl,
+  parseQueryPairs,
+  buildQueryString,
+  parseUrlDetails,
+  buildUrlFromDetails,
 } from '@/utils/url';
 
 describe('URL Utils', () => {
@@ -234,5 +238,73 @@ describe('URL Utils', () => {
       const decoded = decodeUrl(encoded, { form: true });
       expect(decoded).toBe(original);
     });
+  });
+});
+
+describe('URL parser helpers', () => {
+  it('keeps repeated keys and decodes values', () => {
+    expect(parseQueryPairs('?a=1&a=2&q=hello%20world&s=a+b&flag')).toEqual([
+      { key: 'a', value: '1' },
+      { key: 'a', value: '2' },
+      { key: 'q', value: 'hello world' },
+      { key: 's', value: 'a b' },
+      { key: 'flag', value: '' },
+    ]);
+  });
+
+  it('does not throw on malformed percent encoding', () => {
+    expect(parseQueryPairs('a=%E0%A4%A')).toEqual([{ key: 'a', value: '%E0%A4%A' }]);
+    expect(parseQueryString('a=%zz')).toEqual({ a: '%zz' });
+  });
+
+  it('builds a query string and skips empty keys', () => {
+    expect(
+      buildQueryString([
+        { key: 'a b', value: 'x&y' },
+        { key: '', value: 'skip' },
+        { key: 'a b', value: '2' },
+      ])
+    ).toBe('a%20b=x%26y&a%20b=2');
+  });
+
+  it('parses all parts of a URL', () => {
+    const result = parseUrlDetails('https://user:p%40ss@example.com:8080/a/b?x=1&x=2#top');
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        protocol: 'https',
+        username: 'user',
+        password: 'p@ss',
+        hostname: 'example.com',
+        port: '8080',
+        pathname: '/a/b',
+        hash: 'top',
+        params: [
+          { key: 'x', value: '1' },
+          { key: 'x', value: '2' },
+        ],
+      },
+    });
+  });
+
+  it('returns errors for empty and invalid URLs', () => {
+    expect(parseUrlDetails('   ')).toMatchObject({ ok: false });
+    expect(parseUrlDetails('not a url')).toMatchObject({ ok: false });
+  });
+
+  it('rebuilds a URL after the parameters change', () => {
+    const result = parseUrlDetails('https://user:pw@example.com:8080/a?x=1#top');
+    if (!result.ok) throw new Error('parse failed');
+    result.value.params.push({ key: 'y z', value: 'ä' });
+    expect(buildUrlFromDetails(result.value)).toBe(
+      'https://user:pw@example.com:8080/a?x=1&y%20z=%C3%A4#top'
+    );
+  });
+
+  it('rebuilds a URL with no parameters', () => {
+    const result = parseUrlDetails('https://example.com/a?x=1');
+    if (!result.ok) throw new Error('parse failed');
+    result.value.params = [];
+    expect(buildUrlFromDetails(result.value)).toBe('https://example.com/a');
   });
 });

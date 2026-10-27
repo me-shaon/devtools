@@ -2,6 +2,8 @@
  * UUID and ULID generator utility functions
  */
 
+import { md5, sha1 } from "@noble/hashes/legacy.js";
+
 export type UUIDVersion = "1" | "3" | "4" | "5" | "6" | "7" | "ulid";
 
 /**
@@ -145,66 +147,151 @@ export function generateULID(): string {
   return timestampEncoded + randomEncoded;
 }
 
-/**
- * Simple hash function for UUID v3/v5
- */
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+export const UUID_NAMESPACES = {
+  DNS: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  URL: "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+  OID: "6ba7b812-9dad-11d1-80b4-00c04fd430c8",
+  X500: "6ba7b814-9dad-11d1-80b4-00c04fd430c8",
+} as const;
+
+export interface NameBasedOptions {
+  namespace?: string;
+  name?: string;
+}
+
+function uuidToBytes(uuid: string): Uint8Array {
+  const hex = uuid.replace(/-/g, "");
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
   }
-  return Math.abs(hash).toString(16).padStart(32, "0");
+  return bytes;
+}
+
+function bytesToUUID(bytes: Uint8Array): string {
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}`;
 }
 
 /**
- * Format hash as UUID
+ * RFC 4122 name-based UUID: hash(namespace bytes + name bytes), then set version and variant.
  */
-function formatUUIDFromHash(hash: string, ver: string): string {
-  const hex = hash.substring(0, 32);
-  const timeLow = hex.substring(0, 8);
-  const timeMid = hex.substring(8, 12);
-  const timeHiVer = ver + hex.substring(13, 16);
-  const clockSeq = "8" + hex.substring(17, 20);
-  const node = hex.substring(20, 32);
+function generateNameBasedUUID(
+  version: 3 | 5,
+  namespace: string,
+  name: string
+): string {
+  if (!isValidUUID(namespace)) {
+    throw new Error("Namespace must be a valid UUID");
+  }
+  const nameBytes = new TextEncoder().encode(name);
+  const input = new Uint8Array(16 + nameBytes.length);
+  input.set(uuidToBytes(namespace), 0);
+  input.set(nameBytes, 16);
 
-  return `${timeLow}-${timeMid}-${timeHiVer}-${clockSeq}-${node}`;
+  const digest = version === 3 ? md5(input) : sha1(input);
+  const bytes = digest.slice(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | (version << 4);
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  return bytesToUUID(bytes);
 }
 
 /**
- * Generate UUID v3 (MD5-based, simplified)
+ * Generate UUID v3 (MD5, RFC 4122)
  */
-export function generateUUIDv3(): string {
-  const namespace = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
-  const name = "example.com";
-  const hash = simpleHash(namespace + name);
-  return formatUUIDFromHash(hash, "3");
+export function generateUUIDv3(
+  namespace: string = UUID_NAMESPACES.DNS,
+  name: string = "example.com"
+): string {
+  return generateNameBasedUUID(3, namespace, name);
 }
 
 /**
- * Generate UUID v5 (SHA-1-based, simplified)
+ * Generate UUID v5 (SHA-1, RFC 4122)
  */
-export function generateUUIDv5(): string {
-  const namespace = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
-  const name = "example.com";
-  const hash = simpleHash(namespace + name);
-  return formatUUIDFromHash(hash, "5");
+export function generateUUIDv5(
+  namespace: string = UUID_NAMESPACES.DNS,
+  name: string = "example.com"
+): string {
+  return generateNameBasedUUID(5, namespace, name);
+}
+
+export interface UUIDInspection {
+  valid: boolean;
+  kind?: "uuid" | "ulid";
+  version?: number;
+  variant?: string;
+  /** Embedded timestamp, when the identifier carries one */
+  date?: Date;
+  error?: string;
+}
+
+const GREGORIAN_OFFSET_MS = 12219292800000n;
+const ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/**
+ * Inspect a UUID or ULID: validate it and read version, variant and timestamp.
+ */
+export function inspectIdentifier(input: string): UUIDInspection {
+  const value = input.trim();
+  if (!value) return { valid: false, error: "Enter a UUID or ULID" };
+
+  if (isValidUUID(value)) {
+    const hex = value.replace(/-/g, "").toLowerCase();
+    const version = parseInt(hex[12], 16);
+    const variantNibble = parseInt(hex[16], 16);
+    let variant: string;
+    if (hex === "0".repeat(32)) variant = "Nil UUID";
+    else if (hex === "f".repeat(32)) variant = "Max UUID";
+    else if ((variantNibble & 0x8) === 0) variant = "NCS (reserved)";
+    else if ((variantNibble & 0xc) === 0x8) variant = "RFC 4122 / RFC 9562";
+    else if ((variantNibble & 0xe) === 0xc) variant = "Microsoft (reserved)";
+    else variant = "Reserved (future)";
+
+    let date: Date | undefined;
+    if (version === 1 || version === 6) {
+      const timeHex =
+        version === 1
+          ? hex.substring(13, 16) + hex.substring(8, 12) + hex.substring(0, 8)
+          : hex.substring(0, 12) + hex.substring(13, 16);
+      const ticks = BigInt("0x" + timeHex);
+      const ms = Number(ticks / 10000n - GREGORIAN_OFFSET_MS);
+      date = new Date(ms);
+    } else if (version === 7) {
+      date = new Date(parseInt(hex.substring(0, 12), 16));
+    }
+    if (date && Number.isNaN(date.getTime())) date = undefined;
+
+    return { valid: true, kind: "uuid", version, variant, date };
+  }
+
+  if (isValidULID(value.toUpperCase())) {
+    let ms = 0;
+    for (const ch of value.toUpperCase().substring(0, 10)) {
+      ms = ms * 32 + ULID_ALPHABET.indexOf(ch);
+    }
+    return { valid: true, kind: "ulid", date: new Date(ms) };
+  }
+
+  return { valid: false, error: "Not a valid UUID or ULID" };
 }
 
 /**
  * Generate UUID by version
  */
-export function generateUUID(version: UUIDVersion = "4"): string {
+export function generateUUID(
+  version: UUIDVersion = "4",
+  nameBased?: NameBasedOptions
+): string {
   switch (version) {
     case "1":
       return generateUUIDv1();
     case "3":
-      return generateUUIDv3();
+      return generateUUIDv3(nameBased?.namespace, nameBased?.name);
     case "4":
       return generateUUIDv4();
     case "5":
-      return generateUUIDv5();
+      return generateUUIDv5(nameBased?.namespace, nameBased?.name);
     case "6":
       return generateUUIDv6();
     case "7":
@@ -217,14 +304,18 @@ export function generateUUID(version: UUIDVersion = "4"): string {
 /**
  * Generate multiple UUIDs
  */
-export function generateMultipleUUIDs(count: number, version: UUIDVersion = "4"): string[] {
+export function generateMultipleUUIDs(
+  count: number,
+  version: UUIDVersion = "4",
+  nameBased?: NameBasedOptions
+): string[] {
   if (count < 1 || count > 1000) {
     throw new Error("Count must be between 1 and 1000");
   }
 
   const uuids: string[] = [];
   for (let i = 0; i < count; i++) {
-    uuids.push(generateUUID(version));
+    uuids.push(generateUUID(version, nameBased));
   }
   return uuids;
 }

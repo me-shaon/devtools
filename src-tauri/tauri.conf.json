@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DevToolsApp",
+  "mainBinaryName": "DevToolsApp",
+  "version": "../package.json",
+  "identifier": "com.meshaon.devtoolsapp",
+  "build": {
+    "beforeDevCommand": "npm run dev:web",
+    "devUrl": "http://localhost:8080",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "DevTools",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 720,
+        "minHeight": 480,
+        "center": true,
+        "backgroundColor": "#191919",
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "appimage", "deb", "rpm"],
+    "createUpdaterArtifacts": false,
+    "publisher": "Ahmed Shamim",
+    "copyright": "Copyright (c) Ahmed Shamim",
+    "license": "MIT",
+    "category": "DeveloperTool",
+    "shortDescription": "Offline-first developer utilities",
+    "longDescription": "DevToolsApp is a collection of offline-first developer utilities for macOS, Windows, and Linux.",
+    "homepage": "https://github.com/me-shaon/devtools",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerHooks": "windows/installer-hooks.nsh"
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "devel",
+        "conflicts": ["devtools"],
+        "replaces": ["devtools"]
+      },
+      "rpm": {
+        "obsoletes": ["devtools"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY4RTJFRUIwMzJENjc0QkQKUldTOWROWXlzTzdpYUhody80MnQ0NTVVUi9wSzFRRFUraDR1RHZVWEQzUklVdjZQVUZoODJVbDQK",
+      "endpoints": [
+        "https://github.com/me-shaon/devtools/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

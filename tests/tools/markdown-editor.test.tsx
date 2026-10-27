@@ -42,3 +42,14 @@ describe("MarkdownEditor", () => {
     expect(screen.getByText("Second item").tagName).toBe("LI");
   });
 });
+
+describe("MarkdownEditor sanitizing", () => {
+  it("does not render script handlers in the preview", async () => {
+    const { container } = render(<MarkdownEditor />);
+    fireEvent.change(screen.getByPlaceholderText("Write your markdown here..."), {
+      target: { value: "# Safe\n\n<img src=x onerror=alert(1)>" },
+    });
+    await waitFor(() => expect(screen.getByText("Safe")).toBeInTheDocument());
+    expect(container.querySelector("[onerror]")).toBeNull();
+  });
+});

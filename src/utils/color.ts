@@ -38,7 +38,7 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } | nul
  */
 export function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [r, g, b].map((x) => {
-    const hex = x.toString(16);
+    const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
     return hex.length === 1 ? '0' + hex : hex;
   }).join('');
 }
@@ -145,20 +145,45 @@ export function rgbToHsv(r: number, g: number, b: number): { h: number; s: numbe
 /**
  * Parse color string to Color object
  */
-export function parseColor(color: string): Color | null {
+export function parseColor(input: string): Color | null {
+  const color = input.trim();
   let hex = color;
   let rgb: { r: number; g: number; b: number } | null = null;
 
-  // Handle hex
-  if (color.startsWith('#')) {
-    rgb = hexToRgb(color);
+  // Handle hex (#rgb, #rrggbb, with or without #)
+  const hexMatch = /^#?([a-f\d]{3}|[a-f\d]{6})$/i.exec(color);
+  if (hexMatch && (color.startsWith('#') || hexMatch[1].length === 6)) {
+    const digits =
+      hexMatch[1].length === 3
+        ? hexMatch[1].split('').map((c) => c + c).join('')
+        : hexMatch[1];
+    hex = '#' + digits;
+    rgb = hexToRgb(hex);
   }
   // Handle rgb()
-  else if (color.startsWith('rgb')) {
-    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  else if (/^rgba?\(/i.test(color)) {
+    const match = color.match(/^rgba?\(\s*(\d+)\s*[,\s]\s*(\d+)\s*[,\s]\s*(\d+)\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i);
     if (match) {
-      rgb = { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
-      hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+      const r = parseInt(match[1]);
+      const g = parseInt(match[2]);
+      const b = parseInt(match[3]);
+      if (r <= 255 && g <= 255 && b <= 255) {
+        rgb = { r, g, b };
+        hex = rgbToHex(r, g, b);
+      }
+    }
+  }
+  // Handle hsl()
+  else if (/^hsla?\(/i.test(color)) {
+    const match = color.match(/^hsla?\(\s*(-?[\d.]+)(?:deg)?\s*[,\s]\s*([\d.]+)%\s*[,\s]\s*([\d.]+)%\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/i);
+    if (match) {
+      const h = ((parseFloat(match[1]) % 360) + 360) % 360;
+      const s = parseFloat(match[2]);
+      const l = parseFloat(match[3]);
+      if (s <= 100 && l <= 100) {
+        rgb = hslToRgb(h, s, l);
+        hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+      }
     }
   }
 
@@ -315,12 +340,26 @@ export function getContrastRatio(color1: Color, color2: Color): number {
 }
 
 /**
- * Check if color combination meets WCAG AA standard
+ * WCAG 2.x thresholds. AA: 4.5 normal, 3 large. AAA: 7 normal, 4.5 large.
  */
-export function meetsWCAAALarge(color1: Color, color2: Color): boolean {
+export function meetsWcagAANormal(color1: Color, color2: Color): boolean {
+  return getContrastRatio(color1, color2) >= 4.5;
+}
+
+export function meetsWcagAALarge(color1: Color, color2: Color): boolean {
   return getContrastRatio(color1, color2) >= 3;
 }
 
-export function meetsWCAAANormal(color1: Color, color2: Color): boolean {
+export function meetsWcagAAANormal(color1: Color, color2: Color): boolean {
+  return getContrastRatio(color1, color2) >= 7;
+}
+
+export function meetsWcagAAALarge(color1: Color, color2: Color): boolean {
   return getContrastRatio(color1, color2) >= 4.5;
 }
+
+/** @deprecated misspelled alias: this checks the AA large text threshold. */
+export const meetsWCAAALarge = meetsWcagAALarge;
+
+/** @deprecated misspelled alias: this checks the AA normal text threshold. */
+export const meetsWCAAANormal = meetsWcagAANormal;

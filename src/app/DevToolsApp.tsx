@@ -1,22 +1,22 @@
+import { useDialogFocus } from "@/components/app/useDialogFocus";
 import {
   Suspense,
   startTransition,
   useEffect,
+  useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
-  Terminal,
+  Plus,
+  PanelLeft,
   RefreshCw,
   Search,
   ChevronRight,
   ChevronDown,
   Home,
-  Zap,
-  Shield,
-  Wifi,
   Star,
-  Menu,
   X,
   Moon,
   Sun,
@@ -53,25 +53,11 @@ import {
   resolveDarkMode,
   syncDarkClass,
 } from "@/utils/theme";
-type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error"
-  | "unsupported";
-
-interface RendererUpdateState {
-  status: UpdateStatus;
-  currentVersion?: string;
-  version?: string;
-  progress?: number;
-  message?: string;
-}
+import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
 const MAX_FAVORITES = 5;
+// Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
+const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader"]);
 const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";
@@ -79,8 +65,9 @@ const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
 const WHATS_NEW_SEEN_STORAGE_KEY = "devtools-whats-new-seen-version";
 
 const DevToolsApp = () => {
-  const platform = typeof window !== "undefined" ? window.electronAPI?.platform : undefined;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const desktop = getDesktopBridge();
+  const platform = desktop?.platform;
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 640);
   const [themePreference, setThemePreference] = useState(() =>
     getStoredThemePreference(typeof window !== "undefined" ? window.localStorage : undefined)
   );
@@ -89,18 +76,22 @@ const DevToolsApp = () => {
   );
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<ToolDefinition | null>(null);
+  const [openTools, setOpenTools] = useState<ToolDefinition[]>([]);
+  useEffect(() => {
+    if (selectedTool) document.getElementById(`tab-${selectedTool.id}`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [selectedTool]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentToolIds, setRecentToolIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [appVersion, setAppVersion] = useState<string>("");
-  const [updateState, setUpdateState] = useState<RendererUpdateState>({ status: "idle" });
+  const [updateState, setUpdateState] = useState<UpdateState>({ status: "idle" });
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [seenWhatsNewVersion, setSeenWhatsNewVersion] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showShortcutSettings, setShowShortcutSettings] = useState(false);
   const [shortcutBindings, setShortcutBindings] = useState<ShortcutBindings>(() =>
     loadStoredShortcutBindings(
-      typeof window !== "undefined" ? window.electronAPI?.platform : undefined,
+      platform,
       typeof window !== "undefined" ? window.localStorage : undefined,
     ),
   );
@@ -186,6 +177,11 @@ const DevToolsApp = () => {
   }, [darkMode]);
 
   useEffect(() => {
+    // The native window material follows the window appearance, not the page theme.
+    void desktop?.setWindowTheme?.(themePreference === "system" ? null : themePreference);
+  }, [desktop, themePreference]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, themePreference);
     } catch (error) {
@@ -215,7 +211,7 @@ const DevToolsApp = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.electronAPI) {
+    if (!desktop) {
       return undefined;
     }
 
@@ -224,14 +220,14 @@ const DevToolsApp = () => {
     const loadAppMeta = async () => {
       try {
         const [version, currentUpdateState] = await Promise.all([
-          window.electronAPI.invoke("app-version"),
-          window.electronAPI.invoke("update-status"),
+          desktop.getVersion(),
+          desktop.getUpdateState(),
         ]);
 
         if (!cancelled) {
           setAppVersion(typeof version === "string" ? version : "");
           if (currentUpdateState && typeof currentUpdateState === "object") {
-            setUpdateState(currentUpdateState as RendererUpdateState);
+            setUpdateState(currentUpdateState as UpdateState);
           }
         }
       } catch (error) {
@@ -241,9 +237,9 @@ const DevToolsApp = () => {
 
     loadAppMeta();
 
-    const unsubscribe = window.electronAPI.on("update-status", (nextState) => {
+    const unsubscribe = desktop.onUpdateState((nextState) => {
       if (!cancelled && nextState && typeof nextState === "object") {
-        setUpdateState(nextState as RendererUpdateState);
+        setUpdateState(nextState as UpdateState);
       }
     });
 
@@ -251,7 +247,7 @@ const DevToolsApp = () => {
       cancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [desktop]);
 
   useEffect(() => {
     if (!releaseNotes) {
@@ -264,22 +260,22 @@ const DevToolsApp = () => {
   }, [seenWhatsNewVersion, releaseNotes]);
 
   const handleUpdateAction = async () => {
-    if (!window.electronAPI) {
+    if (!desktop) {
       return;
     }
 
     try {
       if (updateState.status === "available") {
-        await window.electronAPI.invoke("download-update");
+        await desktop.downloadUpdate();
         return;
       }
 
       if (updateState.status === "downloaded") {
-        await window.electronAPI.invoke("install-update");
+        await desktop.installUpdate();
         return;
       }
 
-      await window.electronAPI.invoke("check-for-updates");
+      await desktop.checkForUpdates();
     } catch (error) {
       console.error("Failed to run update action:", error);
       toast.error("Unable to complete the update action.");
@@ -306,6 +302,8 @@ const DevToolsApp = () => {
 
     setShowWhatsNew(false);
   };
+  const releaseDialogRef = useDialogFocus(showWhatsNew, closeWhatsNew);
+
 
   const openCommandPalette = () => {
     setShowShortcutSettings(false);
@@ -375,7 +373,7 @@ const DevToolsApp = () => {
       case "checking":
         return "Checking for updates...";
       case "error":
-        return updateState.message || "Update check failed.";
+        return "The update did not complete. Check your connection and try again.";
       case "unsupported":
         return "Updates are disabled in development builds.";
       default:
@@ -487,79 +485,79 @@ const DevToolsApp = () => {
 
   const selectTool = (tool: ToolDefinition | null) => {
     setShowCommandPalette(false);
+    setSearchQuery("");
+    toast.dismiss();
 
     startTransition(() => {
       setSelectedTool(tool);
     });
 
     if (tool) {
+      if (window.innerWidth < 640) setSidebarOpen(false);
+      setOpenTools((previous) => previous.some((entry) => entry.id === tool.id) ? previous : [...previous, tool]);
       setRecentToolIds((prev) =>
         [tool.id, ...prev.filter((id) => id !== tool.id)].slice(0, MAX_RECENT_TOOLS)
       );
     }
   };
 
-  // Render tool component based on selected tool
-  const renderTool = () => {
-    if (!selectedTool) return null;
+  const tabStripRef = useRef<HTMLDivElement>(null);
+  const [tabsOverflow, setTabsOverflow] = useState(false);
+  useEffect(() => {
+    const strip = tabStripRef.current;
+    if (!strip) return;
+    const measure = () => setTabsOverflow(strip.scrollWidth > strip.clientWidth + 1);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [openTools.length]);
 
-    const SelectedToolComponent = TOOL_COMPONENTS[selectedTool.id];
+  useEffect(() => {
+    // Keep the selected tab in view when the strip overflows.
+    if (selectedTool) document.getElementById(`tab-${selectedTool.id}`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [selectedTool]);
 
-    if (!SelectedToolComponent) {
-      return (
-        <div className="text-center py-12">
-          <Terminal className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-          <p className="text-muted-foreground">
-            The {selectedTool.name} is currently being implemented.
-          </p>
-        </div>
-      );
+  const closeTool = useCallback((tool: ToolDefinition) => {
+    const remaining = openTools.filter((entry) => entry.id !== tool.id);
+    setOpenTools(remaining);
+    if (selectedTool?.id === tool.id) {
+      const index = openTools.findIndex((entry) => entry.id === tool.id);
+      const next = remaining[Math.min(index, remaining.length - 1)] ?? null;
+      setSelectedTool(next);
+      requestAnimationFrame(() => document.getElementById(next ? `tab-${next.id}` : "workspace-home")?.focus());
     }
+  }, [openTools, selectedTool]);
 
-    return (
-      <Suspense
-        fallback={
-          <div className="py-12 text-center">
-            <RefreshCw className="w-8 h-8 mx-auto mb-4 animate-spin text-[#EB5757]" />
-            <h3 className="text-lg font-medium mb-2">Loading {selectedTool.name}</h3>
-            <p className="text-muted-foreground">Preparing the tool interface...</p>
-          </div>
-        }
-      >
-        <SelectedToolComponent />
-      </Suspense>
-    );
-  };
+  useEffect(() => {
+    // Browser previews retain the browser's own tab/window shortcuts.
+    if (!desktop || showCommandPalette || showShortcutSettings || showWhatsNew) return;
+    const handleWorkspaceKeys = (event: KeyboardEvent) => {
+      if (event.altKey || event.defaultPrevented || event.isComposing) return;
+      const command = platform === "darwin" ? event.metaKey : event.ctrlKey;
+      if (command && !event.shiftKey && event.key.toLowerCase() === "w" && selectedTool) {
+        event.preventDefault();
+        closeTool(selectedTool);
+      } else if (event.ctrlKey && !event.metaKey && event.key === "Tab" && openTools.length) {
+        event.preventDefault();
+        const index = openTools.findIndex((tool) => tool.id === selectedTool?.id);
+        const next = openTools[(index + (event.shiftKey ? -1 : 1) + openTools.length) % openTools.length];
+        setSelectedTool(next);
+        document.getElementById(`tab-${next.id}`)?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleWorkspaceKeys);
+    return () => window.removeEventListener("keydown", handleWorkspaceKeys);
+  }, [desktop, platform, selectedTool, openTools, closeTool, showCommandPalette, showShortcutSettings, showWhatsNew]);
 
   // Theme colors
-  const theme = darkMode
-    ? {
-        bg: "bg-[#191919]",
-        sidebar: "bg-[#202020]",
-        border: "border-[#2F2F2F]",
-        text: "text-[#E8E8E8]",
-        textMuted: "text-[#9B9A97]",
-        textDim: "text-[#6B6B6B]",
-        hover: "hover:bg-[#2F2F2F]",
-        active: "bg-[#2F2F2F]",
-        card: "bg-[#252525]",
-        input: "bg-[#2F2F2F]",
-        accent: "#EB5757",
-      }
-    : {
-        bg: "bg-[#FAFAFA]",
-        sidebar: "bg-[#F7F6F3]",
-        border: "border-[#E8E5E0]",
-        text: "text-[#37352F]",
-        textMuted: "text-[#9B9A97]",
-        textDim: "text-[#6B6B6B]",
-        hover: "hover:bg-[#EEEDE9]",
-        active: "bg-[#EEEDE9]",
-        card: "bg-white",
-        input: "bg-white",
-        accent: "#EB5757",
-      };
+  const theme = {
+    bg: "bg-background", sidebar: "workspace-sidebar", border: "border-border",
+    text: "text-foreground", textMuted: "text-muted-foreground", textDim: "text-muted-foreground",
+    hover: "hover:bg-accent", active: "bg-accent text-accent-foreground", card: "bg-card",
+    input: "bg-background", accent: "#2878df",
+  };
 
   // Tool button component
   const ToolButton = ({ tool, showFavorite = false }: { tool: ToolDefinition; showFavorite?: boolean }) => {
@@ -567,79 +565,82 @@ const DevToolsApp = () => {
     const isSelected = selectedTool?.id === tool.id;
 
     return (
-      <button
-        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors group ${
-          isSelected
-            ? `${theme.active} ${theme.text}`
-            : `${theme.textDim} ${theme.hover}`
-        }`}
-        onClick={() => selectTool(tool)}
-      >
-        <tool.icon className="w-4 h-4 shrink-0" />
-        <span className="flex-1 text-left truncate">{tool.name}</span>
+      <div className={`sidebar-tool group relative flex items-center rounded-md transition-colors ${
+        isSelected ? `${theme.active} ${theme.text}` : `${theme.textDim} ${theme.hover}`
+      }`}>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-sm"
+          aria-current={isSelected ? "page" : undefined}
+          onClick={() => selectTool(tool)}
+        >
+          <tool.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1 text-left truncate">{tool.name}</span>
+        </button>
         {showFavorite && (
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(tool.id);
-            }}
-            className={`opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity cursor-pointer ${
-              isFavorite ? "opacity-100" : ""
-            }`}
+          <button
+            type="button"
+            onClick={() => toggleFavorite(tool.id)}
+            className={`sidebar-favorite mr-1.5 rounded p-1 ${isFavorite ? "is-favorite" : ""}`}
+            aria-pressed={isFavorite}
+            aria-label={`Favorite ${tool.name}`}
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star
-              className={`w-3.5 h-3.5 ${isFavorite ? "fill-yellow-400 text-yellow-400" : theme.textDim}`}
+              aria-hidden="true"
+              className={`w-3.5 h-3.5 ${isFavorite ? "fill-warning text-warning" : theme.textDim}`}
             />
-          </span>
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
   const HomeToolCard = ({ tool }: { tool: ToolDefinition }) => (
     <button
       onClick={() => selectTool(tool)}
-      className={`flex items-center gap-3 p-3 md:p-4 ${theme.card} rounded-lg border ${theme.border} text-left hover:border-[#EB5757]/50 transition-all`}
+      className="home-tool-row" aria-label={tool.name} data-tool={tool.id}
     >
       <div
-        className={`w-8 h-8 md:w-9 md:h-9 rounded-md ${
-          darkMode ? "bg-[#2F2F2F]" : "bg-[#F7F6F3]"
-        } flex items-center justify-center shrink-0`}
+        className="home-tool-icon"
       >
-        <tool.icon className="w-4 h-4 text-[#EB5757]" />
+        <tool.icon className="w-4 h-4 text-primary" />
       </div>
-      <span className={`font-medium ${theme.text} text-sm md:text-base`}>
+      <span className={`font-medium ${theme.text} text-sm`}>
         {tool.name}
       </span>
+      <ChevronRight size={14} className="home-tool-arrow" aria-hidden="true" />
     </button>
   );
 
   return (
-    <div className={`h-screen overflow-hidden ${theme.bg} flex`}>
+    <div data-platform={desktop?.platform} data-sidebar-open={sidebarOpen} className={`workspace h-screen overflow-hidden ${theme.bg} flex`}>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 sm:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
+        aria-hidden={!sidebarOpen}
+        style={!sidebarOpen ? { visibility: "hidden" } : undefined}
         className={`${
-          sidebarOpen ? "w-60 translate-x-0" : "w-0 -translate-x-full md:translate-x-0"
-        } h-full md:h-screen ${theme.sidebar} ${theme.border} border-r flex flex-col transition-all duration-200 overflow-hidden
-        fixed md:relative inset-y-0 left-0 z-50 md:z-auto`}
+          sidebarOpen ? "w-56 translate-x-0" : "w-0 -translate-x-full sm:translate-x-0"
+        } h-full sm:h-screen ${theme.sidebar} ${theme.border} border-r flex flex-col transition-all duration-200 overflow-hidden
+        fixed sm:relative inset-y-0 left-0 z-50 sm:z-auto`}
       >
         {/* Logo */}
-        <div className={`h-12 flex items-center justify-between px-4 ${theme.border} border-b`}>
+        <div data-tauri-drag-region className={`sidebar-brand h-14 flex items-center justify-between px-4 ${theme.border} border-b`}>
           <div className="flex items-center">
-            <img src="./app-icon.png" alt="DevTools" className="w-5 h-5" />
+            <img src="./brand/mark.svg" alt="" aria-hidden="true" className="w-5 h-5" />
             <span className={`ml-2.5 font-semibold ${theme.text}`}>DevTools</span>
           </div>
           <button
-            className={`md:hidden p-1 rounded ${theme.hover}`}
+            aria-label="Close sidebar"
+            className={`sm:hidden p-1 rounded ${theme.hover}`}
             onClick={() => setSidebarOpen(false)}
           >
             <X className={`w-4 h-4 ${theme.textDim}`} />
@@ -650,24 +651,25 @@ const DevToolsApp = () => {
         <div className="p-3">
           <div className="space-y-2">
             <div className="relative">
-              <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} />
+              <Search className={`absolute left-2.5 top-2 w-4 h-4 ${theme.textMuted}`} aria-hidden="true" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape" && searchQuery) { e.preventDefault(); setSearchQuery(""); } }}
                 placeholder="Search..."
-                className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} focus:border-[#EB5757] focus:ring-0 rounded-md`}
+                aria-label="Filter tools"
+                className={`pl-9 pr-14 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} rounded-md`}
               />
-            </div>
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              className={`flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] ${theme.textMuted} ${theme.hover} transition-colors hover:${theme.text}`}
-            >
-              <span>Open Command Palette</span>
-              <span className={`rounded border px-1.5 py-0.5 ${theme.border} ${theme.input}`}>
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                className="sidebar-search-kbd"
+                aria-label={`Open command palette (${commandPaletteShortcutLabel})`}
+                title="Open command palette"
+              >
                 {commandPaletteShortcutLabel}
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -681,6 +683,7 @@ const DevToolsApp = () => {
                   ? `${theme.active} ${theme.text}`
                   : `${theme.textDim} ${theme.hover}`
               }`}
+              id="workspace-home"
               onClick={() => selectTool(null)}
             >
               <Home className="w-4 h-4" />
@@ -691,12 +694,12 @@ const DevToolsApp = () => {
           {/* Favorites */}
           {favoriteTools.length > 0 && (
             <div className="px-2 mb-3">
-              <div className={`flex items-center justify-between px-2 py-1.5 text-xs font-medium ${theme.textMuted} uppercase tracking-wide`}>
+              <div className={`flex items-center justify-between px-2 py-1.5 text-xs font-medium ${theme.textMuted}`}>
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3" />
                   <span>Favorites</span>
                 </div>
-                <span className="text-[10px] opacity-60">
+                <span className="text-2xs" aria-label={`${favoriteTools.length} of ${MAX_FAVORITES} favorites`}>
                   {favoriteTools.length}/{MAX_FAVORITES}
                 </span>
               </div>
@@ -711,8 +714,10 @@ const DevToolsApp = () => {
             CATEGORIES.map((category) => (
               <div key={category.name} className="px-2 mb-1">
                 <button
+                  type="button"
+                  aria-expanded={expandedCategories.includes(category.name)}
                   onClick={() => toggleCategory(category.name)}
-                  className={`w-full flex items-center gap-1 px-2 py-1.5 text-xs font-medium ${theme.textMuted} uppercase tracking-wide ${theme.hover} rounded-md transition-colors`}
+                  className={`w-full flex items-center gap-1 px-2 py-1.5 text-xs font-medium ${theme.textMuted} ${theme.hover} rounded-md transition-colors`}
                 >
                   {expandedCategories.includes(category.name) ? (
                     <ChevronDown className="w-3 h-3" />
@@ -735,19 +740,25 @@ const DevToolsApp = () => {
               {filteredTools.map((tool) => (
                 <ToolButton key={tool.id} tool={tool} showFavorite />
               ))}
+              {filteredTools.length === 0 && (
+                <div className={`px-2 py-3 text-xs ${theme.textMuted}`} role="status">
+                  <p>No tools match “{searchQuery.trim()}”.</p>
+                  <button type="button" className="sidebar-empty-action" onClick={openCommandPalette}>Search in the command palette</button>
+                </div>
+              )}
             </div>
           )}
         </nav>
 
-        <div className={`px-3 py-2.5 ${theme.border} border-t`}>
+        <div className={`sidebar-footer px-3 py-2.5 ${theme.border} border-t`}>
           <div className="space-y-1">
             <p className={`text-center text-xs ${theme.textMuted}`}>
-              Version {appVersion ? `v${appVersion}` : "Loading..."}
+              {desktop ? `Version ${appVersion ? `v${appVersion}` : "Loading…"}` : "Browser preview"}
             </p>
-            {updateStatusLabel && (
-              <p className={`text-center text-[11px] leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
+            {updateStatusLabel && updateState.status !== "unsupported" && (
+              <p className={`text-center text-2xs leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
             )}
-            <div className="flex flex-col items-center gap-1.5 pt-0.5">
+            <div className="sidebar-footer-actions">
               <Button
                 type="button"
                 variant="ghost"
@@ -769,18 +780,18 @@ const DevToolsApp = () => {
                 <button
                   type="button"
                   onClick={openWhatsNew}
-                  className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                  className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
                 >
                   <span>What's New</span>
                   {hasUnreadWhatsNew && (
-                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#EB5757]" aria-hidden="true" />
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
                   )}
                 </button>
               )}
               <button
                 type="button"
                 onClick={openShortcutSettings}
-                className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
               >
                 <Command className="h-3.5 w-3.5" />
                 <span>Shortcuts</span>
@@ -792,99 +803,70 @@ const DevToolsApp = () => {
 
       {/* Main Content */}
       <main className="flex-1 min-h-0 flex flex-col min-w-0">
-        {/* Header */}
-        <header
-          className={`h-12 ${theme.border} border-b flex items-center justify-between px-3 md:px-4 ${theme.card}`}
-        >
-          <div className="flex items-center gap-2 md:gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 ${theme.textDim} ${theme.hover}`}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
-            <nav className={`flex items-center text-sm ${theme.textMuted}`}>
-              <span className="hidden sm:inline">Home</span>
-              {selectedTool && (
-                <>
-                  <ChevronRight className="w-3 h-3 mx-1 sm:mx-1.5" />
-                  <span className={`${theme.text} truncate max-w-[120px] sm:max-w-none`}>
-                    {selectedTool.name}
-                  </span>
-                </>
-              )}
-            </nav>
+        <header data-tauri-drag-region className="workspace-titlebar">
+          <button type="button" className="chrome-button" aria-label="Toggle sidebar" onClick={() => setSidebarOpen(!sidebarOpen)}><PanelLeft size={16} /></button>
+          <div className="workspace-tabs" role="tablist" aria-label="Open tools" ref={tabStripRef} data-overflow={tabsOverflow || undefined}>
+            {openTools.length === 0 && <span className="workspace-tab-placeholder">Workspace</span>}
+            {openTools.map((tool) => (
+              <div className="workspace-tab-wrap" role="presentation" key={tool.id}>
+                <button type="button" role="tab" id={`tab-${tool.id}`} aria-controls={`panel-${tool.id}`} aria-selected={selectedTool?.id === tool.id}
+                  tabIndex={selectedTool?.id === tool.id ? 0 : -1}
+                  onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeTool(tool); } }}
+                  className="workspace-tab" onClick={() => selectTool(tool)}
+                  onKeyDown={(event) => {
+                    const index = openTools.findIndex((entry) => entry.id === tool.id);
+                    let next = index;
+                    if (event.key === "ArrowRight") next = (index + 1) % openTools.length;
+                    else if (event.key === "ArrowLeft") next = (index - 1 + openTools.length) % openTools.length;
+                    else if (event.key === "Home") next = 0;
+                    else if (event.key === "End") next = openTools.length - 1;
+                    else if (event.key === "Delete") { closeTool(tool); return; }
+                    else return;
+                    event.preventDefault();
+                    selectTool(openTools[next]);
+                    document.getElementById(`tab-${openTools[next].id}`)?.focus();
+                  }}>
+                  <tool.icon size={16} aria-hidden="true" /><span>{tool.name}</span>
+                </button>
+                <button type="button" className="tab-close" tabIndex={-1} aria-label={`Close ${tool.name}`} title="Close tab" onClick={() => closeTool(tool)}><X size={12} aria-hidden="true" /></button>
+              </div>
+            ))}
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              className={`hidden sm:inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} transition-colors hover:${theme.text}`}
-            >
-              <Search className="h-3.5 w-3.5" />
-              <span>Palette</span>
-              <span className={`rounded border px-1.5 py-0.5 ${theme.border}`}>
-                {commandPaletteShortcutLabel}
-              </span>
-            </button>
-
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() =>
-                setThemePreference(resolveDarkMode(themePreference, systemDarkMode) ? "light" : "dark")
-              }
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm ${theme.hover} transition-colors`}
-            >
-              {darkMode ? (
-                <Moon className="w-4 h-4 text-[#EB5757]" />
-              ) : (
-                <Sun className="w-4 h-4 text-[#F2994A]" />
-              )}
-              <span className={`${theme.textDim} hidden sm:inline`}>{darkMode ? "Dark" : "Light"}</span>
+          <button type="button" className="chrome-button" aria-label="Open a tool" title="Open a tool" onClick={openCommandPalette}><Plus size={17} /></button>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {selectedTool && <button type="button" className="chrome-button" aria-label={favorites.includes(selectedTool.id) ? "Remove from favorites" : "Add to favorites"} onClick={() => toggleFavorite(selectedTool.id)}><Star size={15} className={favorites.includes(selectedTool.id) ? "fill-current text-primary" : ""} /></button>}
+            <button type="button" className="chrome-button" onClick={() => setThemePreference(darkMode ? "light" : "dark")} aria-label={darkMode ? "Switch to light appearance" : "Switch to dark appearance"}>
+              {darkMode ? <Moon size={16} /> : <Sun size={16} />}<span className="sr-only">{darkMode ? "Dark" : "Light"}</span>
             </button>
           </div>
         </header>
 
         {/* Content */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+        <div className={`workspace-content ${!selectedTool ? "is-home" : ""}`}>
           {!selectedTool ? (
-            <div className="max-w-3xl mx-auto">
+            <div className="workspace-home max-w-3xl mx-auto">
               {/* Welcome */}
               <div className="mb-6 md:mb-8">
                 <h1 className={`text-xl md:text-2xl font-bold ${theme.text} mb-2`}>
-                  Welcome to DevTools
+                  Your workspace
                 </h1>
                 <p className={`${theme.textDim} text-sm md:text-base`}>
-                  Your essential developer companion. Pick a tool to get started.
+                  Open a tool, or search with the command palette.
                 </p>
               </div>
 
-              {/* Feature badges */}
-              <div className="flex flex-wrap gap-3 md:gap-6 mb-6 md:mb-8">
-                <div className={`flex items-center gap-2 text-xs md:text-sm ${theme.textDim}`}>
-                  <Shield className="w-4 h-4 text-[#EB5757]" />
-                  <span>100% Private</span>
-                </div>
-                <div className={`flex items-center gap-2 text-xs md:text-sm ${theme.textDim}`}>
-                  <Zap className="w-4 h-4 text-[#F2994A]" />
-                  <span>Blazing Fast</span>
-                </div>
-                <div className={`flex items-center gap-2 text-xs md:text-sm ${theme.textDim}`}>
-                  <Wifi className="w-4 h-4 text-[#27AE60]" />
-                  <span>Works Offline</span>
-                </div>
-              </div>
-
-              <div className="space-y-8">
+              <button type="button" className="home-search" onClick={openCommandPalette}>
+                <Search size={17} aria-hidden="true" />
+                <span>Find a tool…</span>
+                <kbd>{commandPaletteShortcutLabel}</kbd>
+              </button>
+              <div className="home-sections space-y-8">
                 {recentTools.length > 0 && (
                   <div>
                     <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
                       Recently Used
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="home-tool-list grid grid-cols-1 sm:grid-cols-2">
                       {recentTools.map((tool) => (
                         <HomeToolCard key={tool.id} tool={tool} />
                       ))}
@@ -897,7 +879,7 @@ const DevToolsApp = () => {
                     <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
                       Favorites
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="home-tool-list grid grid-cols-1 sm:grid-cols-2">
                       {favoriteTools.map((tool) => (
                         <HomeToolCard key={tool.id} tool={tool} />
                       ))}
@@ -909,7 +891,7 @@ const DevToolsApp = () => {
                   <h2 className={`text-sm font-medium ${theme.textMuted} uppercase tracking-wide mb-3`}>
                     Quick Access
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="home-tool-list grid grid-cols-1 sm:grid-cols-2">
                     {quickAccessTools.map((tool) => (
                       <HomeToolCard key={tool.id} tool={tool} />
                     ))}
@@ -917,46 +899,20 @@ const DevToolsApp = () => {
                 </div>
               </div>
             </div>
-          ) : (
-            /* Tool View */
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
-                <h1 className={`text-xl md:text-2xl font-bold ${theme.text}`}>
-                  {selectedTool.name}
-                </h1>
-                <button
-                  onClick={() => toggleFavorite(selectedTool.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    favorites.includes(selectedTool.id)
-                      ? "bg-yellow-400/10 text-yellow-400 hover:bg-yellow-400/20"
-                      : `${theme.hover} ${theme.textDim}`
-                  }`}
-                  title={
-                    favorites.includes(selectedTool.id)
-                      ? "Remove from favorites"
-                      : `Add to favorites (${favorites.length}/${MAX_FAVORITES})`
-                  }
-                >
-                  <Star
-                    className={`w-4 h-4 ${favorites.includes(selectedTool.id) ? "fill-current" : ""}`}
-                  />
-                  <span className="hidden sm:inline">
-                    {favorites.includes(selectedTool.id) ? "Favorited" : "Favorite"}
-                  </span>
-                </button>
-              </div>
+          ) : null}
+          {openTools.map((tool) => {
+            const Component = TOOL_COMPONENTS[tool.id];
+            return <section key={tool.id} id={`panel-${tool.id}`} role="tabpanel" aria-labelledby={`tab-${tool.id}`} hidden={selectedTool?.id !== tool.id} className={`tool-panel ${WORKSPACE_TOOL_IDS.has(tool.id) ? "tool-panel-editor" : "tool-panel-form"}`}>
 
-              <div className={`${theme.card} rounded-lg border ${theme.border} p-4 md:p-5`}>
-                {renderTool()}
-              </div>
-            </div>
-          )}
+              <Suspense fallback={<div className="p-8 text-muted-foreground">Loading {tool.name}…</div>}><Component /></Suspense>
+            </section>;
+          })}
         </div>
       </main>
 
       <CommandPalette
         open={showCommandPalette}
-        tools={ALL_TOOLS}
+        tools={[...ALL_TOOLS]}
         favorites={favorites}
         recents={recentToolIds}
         onClose={closeCommandPalette}
@@ -973,18 +929,16 @@ const DevToolsApp = () => {
       />
 
       {showWhatsNew && releaseNotes && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+        <div className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
+            ref={releaseDialogRef}
             aria-labelledby="whats-new-title"
-            className={`w-full max-w-xl rounded-xl border ${theme.border} ${theme.card} p-5 shadow-2xl`}
+            className="modal-surface release-dialog w-full max-w-xl"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="modal-header flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#EB5757]">
-                  What's New
-                </p>
                 <h2 id="whats-new-title" className={`text-xl font-semibold ${theme.text}`}>
                   {releaseNotes.title}
                 </h2>
@@ -1000,11 +954,11 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`max-h-[60vh] overflow-y-auto rounded-lg border ${theme.border} p-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-[#EB5757] ${theme.textMuted}`}
+              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-sm [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-sm [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
-            <div className="mt-5 flex justify-end">
+            <div className="modal-footer flex justify-end">
               <Button type="button" onClick={closeWhatsNew}>
                 Got it
               </Button>

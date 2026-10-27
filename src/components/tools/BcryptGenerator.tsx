@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
+import { Lock, ShieldCheck, ShieldX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import {
   hashBcrypt,
@@ -18,10 +19,10 @@ import {
 
 // Moved outside component — pure function, no need to recreate on every render
 const getRoundLabel = (r: number) => {
-  if (r <= 6) return { label: "Very Fast (less secure)", color: "text-red-500" };
-  if (r <= 9) return { label: "Fast", color: "text-yellow-500" };
-  if (r <= 12) return { label: "Balanced (recommended)", color: "text-green-500" };
-  return { label: "Slow (high security)", color: "text-blue-500" };
+  if (r <= 6) return { label: "Very Fast (less secure)", color: "text-destructive" };
+  if (r <= 9) return { label: "Fast", color: "text-warning" };
+  if (r <= 12) return { label: "Balanced (recommended)", color: "text-success" };
+  return { label: "Slow (high security)", color: "text-info" };
 };
 
 // Moved outside component — static data, no need to recreate on every render
@@ -66,7 +67,6 @@ export function BcryptGenerator() {
     try {
       const result = await hashBcrypt(plainText, rounds);
       setHashOutput(result);
-      toast.success("Bcrypt hash generated!");
     } catch (err) {
       toast.error((err as Error).message || "Failed to generate hash.");
     } finally {
@@ -90,10 +90,6 @@ export function BcryptGenerator() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
 
   const roundInfo = getRoundLabel(rounds);
 
@@ -152,7 +148,7 @@ export function BcryptGenerator() {
           </div>
 
           {/* Hash button */}
-          <Button onClick={handleHash} disabled={hashing || !plainText} className="w-full gap-2">
+          <Button onClick={handleHash} disabled={hashing || !plainText} className="gap-2">
             {hashing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -171,10 +167,7 @@ export function BcryptGenerator() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Bcrypt Hash</Label>
-                <Button onClick={() => copyToClipboard(hashOutput)} variant="ghost" size="sm">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
+                <CopyButton value={hashOutput} label="Copy" />
               </div>
               <textarea
                 value={hashOutput}
@@ -208,7 +201,7 @@ export function BcryptGenerator() {
               className="w-full h-20 p-3 rounded-md border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
             />
             {verifyHash && !isValidBcryptHash(verifyHash) && (
-              <p className="text-xs text-red-500">
+              <p className="text-xs text-destructive">
                 This doesn't look like a valid bcrypt hash. It should start with $2a$, $2b$, or $2y$ and be 60 characters long.
               </p>
             )}
@@ -218,7 +211,7 @@ export function BcryptGenerator() {
           <Button
             onClick={handleVerify}
             disabled={verifying || !verifyPlainText || !verifyHash}
-            className="w-full gap-2"
+            className="gap-2"
           >
             {verifying ? (
               <>
@@ -238,8 +231,8 @@ export function BcryptGenerator() {
             <div
               className={`flex items-center gap-3 p-4 rounded-md border ${
                 verifyResult
-                  ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400"
-                  : "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400"
+                  ? "bg-success/10 border-success/30 text-success"
+                  : "bg-destructive/10 border-destructive/30 text-destructive"
               }`}
             >
               {verifyResult ? (

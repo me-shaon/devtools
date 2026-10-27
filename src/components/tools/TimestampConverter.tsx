@@ -4,14 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Check, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 export function TimestampConverter() {
   const [timestamp, setTimestamp] = useState("");
   const [dateString, setDateString] = useState("");
   const [currentTimestamp, setCurrentTimestamp] = useState(Math.floor(Date.now() / 1000));
-  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -35,7 +35,6 @@ export function TimestampConverter() {
 
     const date = new Date(ts * 1000);
     setDateString(formatDate(date));
-    toast.success("Converted to date!");
   };
 
   const dateToTimestamp = () => {
@@ -52,7 +51,6 @@ export function TimestampConverter() {
 
     const ts = Math.floor(date.getTime() / 1000);
     setTimestamp(ts.toString());
-    toast.success("Converted to timestamp!");
   };
 
   const formatDate = (date: Date) => {
@@ -74,12 +72,6 @@ export function TimestampConverter() {
     setDateString(formatDate(date));
   };
 
-  const copyToClipboard = (value: string, label: string) => {
-    navigator.clipboard.writeText(value);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-    toast.success(`${label} copied!`);
-  };
 
   return (
     <div className="space-y-6">
@@ -138,17 +130,7 @@ export function TimestampConverter() {
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-lg">{dateString}</span>
-                      <Button
-                        onClick={() => copyToClipboard(dateString, "Date")}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        {copied === "Date" ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <CopyButton value={dateString} label="Copy date" iconOnly />
                     </div>
                   </div>
                 </div>
@@ -189,17 +171,7 @@ export function TimestampConverter() {
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-lg">{timestamp}</span>
-                      <Button
-                        onClick={() => copyToClipboard(timestamp, "Timestamp")}
-                        variant="ghost"
-                        size="sm"
-                      >
-                        {copied === "Timestamp" ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <CopyButton value={timestamp} label="Copy timestamp" iconOnly />
                     </div>
                   </div>
                 </div>

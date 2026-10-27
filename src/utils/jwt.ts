@@ -165,3 +165,89 @@ export function isValidJwtFormat(token: string): boolean {
   const parts = token.split(".");
   return parts.length === 3 && parts.every((part) => part.length > 0);
 }
+
+export type JwtVerifyStatus = "valid" | "invalid" | "unsupported" | "error";
+
+export interface JwtVerifyResult {
+  status: JwtVerifyStatus;
+  message: string;
+}
+
+const HMAC_HASHES: Record<string, string> = {
+  HS256: "SHA-256",
+  HS384: "SHA-384",
+  HS512: "SHA-512",
+};
+
+function base64ToBytes(value: string): Uint8Array {
+  const base64 = value.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/**
+ * Verify the signature of an HS256, HS384 or HS512 token with Web Crypto.
+ * This does not check exp, nbf, issuer, audience or key trust.
+ */
+export async function verifyJwtSignature(
+  token: string,
+  secret: string,
+  options: { secretIsBase64?: boolean } = {}
+): Promise<JwtVerifyResult> {
+  const trimmed = token.trim();
+  const decoded = decodeJwt(trimmed);
+  if (decoded.error) {
+    return { status: "error", message: decoded.error };
+  }
+
+  const alg = typeof decoded.header.alg === "string" ? decoded.header.alg : "";
+  const hash = HMAC_HASHES[alg];
+  if (!hash) {
+    return { status: "unsupported", message: "Algorithm not supported for verification" };
+  }
+
+  if (!secret) {
+    return { status: "error", message: "Enter a secret to verify the signature." };
+  }
+
+  let keyBytes: Uint8Array;
+  try {
+    keyBytes = options.secretIsBase64
+      ? base64ToBytes(secret)
+      : new TextEncoder().encode(secret);
+  } catch {
+    return { status: "error", message: "The secret is not valid Base64." };
+  }
+
+  let signatureBytes: Uint8Array;
+  try {
+    signatureBytes = base64ToBytes(decoded.signature);
+  } catch {
+    return { status: "invalid", message: "Signature invalid" };
+  }
+
+  try {
+    const [headerB64, payloadB64] = trimmed.split(".");
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyBytes as BufferSource,
+      { name: "HMAC", hash },
+      false,
+      ["verify"]
+    );
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      signatureBytes as BufferSource,
+      new TextEncoder().encode(`${headerB64}.${payloadB64}`)
+    );
+    return ok
+      ? { status: "valid", message: "Signature valid" }
+      : { status: "invalid", message: "Signature invalid" };
+  } catch (error) {
+    return { status: "error", message: "Verification failed: " + (error as Error).message };
+  }
+}

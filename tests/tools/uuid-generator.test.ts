@@ -178,3 +178,69 @@ describe('UUID Utils', () => {
     });
   });
 });
+
+import {
+  UUID_NAMESPACES,
+  generateUUIDv3 as v3,
+  generateUUIDv5 as v5,
+  inspectIdentifier,
+  generateUUIDv7 as v7,
+  generateULID as ulid,
+} from '@/utils/uuid';
+
+describe('RFC 4122 name-based UUIDs', () => {
+  it('v5 matches the known vector', () => {
+    expect(v5(UUID_NAMESPACES.DNS, 'www.example.com')).toBe('2ed6657d-e927-568b-95e1-2665a8aea6a2');
+  });
+  it('v3 matches the known vector', () => {
+    expect(v3(UUID_NAMESPACES.DNS, 'www.example.com')).toBe('5df41881-3aed-3515-88a7-2f4a814cf09e');
+  });
+  it('different namespaces and names differ', () => {
+    expect(v5(UUID_NAMESPACES.URL, 'a')).not.toBe(v5(UUID_NAMESPACES.DNS, 'a'));
+    expect(v5(UUID_NAMESPACES.DNS, 'a')).not.toBe(v5(UUID_NAMESPACES.DNS, 'b'));
+  });
+  it('handles non-ASCII names as UTF-8', () => {
+    expect(v5(UUID_NAMESPACES.DNS, 'héllo')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab]/);
+  });
+  it('rejects an invalid namespace', () => {
+    expect(() => v5('nope', 'x')).toThrow();
+  });
+});
+
+describe('inspectIdentifier', () => {
+  it('reads v5 version and variant without a date', () => {
+    const r = inspectIdentifier('2ed6657d-e927-568b-95e1-2665a8aea6a2');
+    expect(r).toMatchObject({ valid: true, kind: 'uuid', version: 5, variant: 'RFC 4122 / RFC 9562' });
+    expect(r.date).toBeUndefined();
+  });
+  it('reads the v1 timestamp', () => {
+    // RFC 4122 example style: 2022-02-22T19:22:22Z
+    const r = inspectIdentifier('c232ab00-9414-11ec-b3c8-9f6bdeced846');
+    expect(r.version).toBe(1);
+    expect(r.date!.toISOString()).toBe('2022-02-22T19:22:22.000Z');
+  });
+  it('reads the v6 timestamp', () => {
+    const r = inspectIdentifier('1ec9414c-232a-6b00-b3c8-9f6bdeced846');
+    expect(r.version).toBe(6);
+    expect(r.date!.toISOString()).toBe('2022-02-22T19:22:22.000Z');
+  });
+  it('reads the v7 timestamp', () => {
+    const r = inspectIdentifier('017f22e2-79b0-7cc3-98c4-dc0c0c07398f');
+    expect(r.version).toBe(7);
+    expect(r.date!.toISOString()).toBe('2022-02-22T19:22:22.000Z');
+  });
+  it('reads a ULID timestamp', () => {
+    const r = inspectIdentifier('01ARZ3NDEKTSV4RRFFQ69G5FAV');
+    expect(r.kind).toBe('ulid');
+    expect(r.date!.getTime()).toBe(1469922850259);
+  });
+  it('round-trips generated v7 and ULID', () => {
+    const now = Date.now();
+    expect(Math.abs(inspectIdentifier(v7()).date!.getTime() - now)).toBeLessThan(2000);
+    expect(Math.abs(inspectIdentifier(ulid()).date!.getTime() - now)).toBeLessThan(2000);
+  });
+  it('rejects invalid input', () => {
+    expect(inspectIdentifier('nope').valid).toBe(false);
+    expect(inspectIdentifier('').valid).toBe(false);
+  });
+});

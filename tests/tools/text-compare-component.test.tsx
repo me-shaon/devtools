@@ -13,17 +13,31 @@ describe("TextCompare", () => {
       target: { value: "Line 1\nLine 3" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Compare Texts" }));
-
-    expect(await screen.findByText("Comparison Results")).toBeInTheDocument();
-    expect(screen.getByText("50%")).toBeInTheDocument();
-    expect(screen.getByText("Exact Match")).toBeInTheDocument();
-    expect(screen.getByText("No")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Line Diff" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Unified Diff" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Character Diff" })).toBeInTheDocument();
+    expect(await screen.findByText("50% similar")).toBeInTheDocument();
+    expect(screen.getByText("Different")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Line" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Unified" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Character" })).toBeInTheDocument();
     expect(screen.getAllByText("Line 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Line 3").length).toBeGreaterThan(0);
   });
 
+});
+
+describe("TextCompare options", () => {
+  it("ignores case and whitespace when the options are on", async () => {
+    render(<TextCompare />);
+    fireEvent.change(screen.getByPlaceholderText("Enter original text..."), {
+      target: { value: "Hello   World" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter modified text..."), {
+      target: { value: " hello world" },
+    });
+    expect(await screen.findByText("0% similar")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("switch", { name: "Ignore whitespace" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Ignore case" }));
+    expect(await screen.findByText("100% similar")).toBeInTheDocument();
+    expect(screen.getByText("Identical")).toBeInTheDocument();
+  });
 });

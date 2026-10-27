@@ -33,11 +33,32 @@ function updateJsonVersion(filePath, version, updateRootPackage = false) {
   fs.writeFileSync(filePath, `${JSON.stringify(json, null, 2)}\n`);
 }
 
+function updateCargoVersion(cargoTomlPath, cargoLockPath, version) {
+  const cargoToml = fs.readFileSync(cargoTomlPath, "utf8");
+  fs.writeFileSync(
+    cargoTomlPath,
+    cargoToml.replace(/^(\[package\][\s\S]*?^version = )"[^"]*"/m, `$1"${version}"`),
+  );
+
+  if (fs.existsSync(cargoLockPath)) {
+    const cargoLock = fs.readFileSync(cargoLockPath, "utf8");
+    fs.writeFileSync(
+      cargoLockPath,
+      cargoLock.replace(/(name = "devtoolsapp"\nversion = )"[^"]*"/, `$1"${version}"`),
+    );
+  }
+}
+
 const version = normalizeVersion(process.argv[2]);
 const tag = `v${version}`;
 
 updateJsonVersion(path.join(cwd, "package.json"), version);
 updateJsonVersion(path.join(cwd, "package-lock.json"), version, true);
+updateCargoVersion(
+  path.join(cwd, "src-tauri", "Cargo.toml"),
+  path.join(cwd, "src-tauri", "Cargo.lock"),
+  version,
+);
 
 const releaseNotesDir = path.join(cwd, "release-notes");
 const releaseNotesPath = path.join(releaseNotesDir, `${tag}.md`);
@@ -45,7 +66,7 @@ const releaseNotesPath = path.join(releaseNotesDir, `${tag}.md`);
 fs.mkdirSync(releaseNotesDir, { recursive: true });
 
 if (!fs.existsSync(releaseNotesPath)) {
-  const template = `# DevToolsApp ${tag}
+  const template = `# DevTools ${tag}
 
 ## Highlights
 
@@ -65,7 +86,7 @@ if (!fs.existsSync(releaseNotesPath)) {
 console.log(`Prepared release ${tag}`);
 console.log("");
 console.log("Next steps:");
-console.log(`1. Review package.json and package-lock.json version ${version}.`);
+console.log(`1. Review the version ${version} in package.json, package-lock.json, and src-tauri/Cargo.toml.`);
 console.log(`2. Edit release-notes/${tag}.md with human-readable release notes.`);
 console.log(`3. Run: npm run release:check -- ${tag}`);
 console.log(`4. Commit, tag ${tag}, and push.`);

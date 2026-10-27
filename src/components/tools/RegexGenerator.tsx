@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 interface Preset {
   name: string;
@@ -52,7 +53,6 @@ export function RegexGenerator() {
   const [testString, setTestString] = useState("");
   const [matches, setMatches] = useState<RegExpMatchArray[]>([]);
   const [flags, setFlags] = useState("g");
-  const [copied, setCopied] = useState(false);
 
   const testRegex = () => {
     if (!pattern) {
@@ -75,7 +75,6 @@ export function RegexGenerator() {
       }
 
       setMatches(found);
-      toast.success(`Found ${found.length} match${found.length !== 1 ? "es" : ""}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Invalid regex pattern");
       setMatches([]);
@@ -85,15 +84,8 @@ export function RegexGenerator() {
   const applyPreset = (preset: Preset) => {
     setPattern(preset.pattern);
     setMatches([]);
-    toast.success(`Applied ${preset.name} pattern`);
   };
 
-  const copyPattern = () => {
-    navigator.clipboard.writeText(`/${pattern}/${flags}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Pattern copied!");
-  };
 
   const toggleFlag = (flag: string) => {
     if (flags.includes(flag)) {
@@ -129,9 +121,7 @@ export function RegexGenerator() {
                 placeholder="flags"
                 className="font-mono w-20 text-center"
               />
-              <Button onClick={copyPattern} variant="outline" size="icon">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
+              <CopyButton value={`/${pattern}/${flags}`} label="Copy pattern" iconOnly />
             </div>
           </div>
 
@@ -169,7 +159,7 @@ export function RegexGenerator() {
             />
           </div>
 
-          <Button onClick={testRegex} className="w-full">
+          <Button onClick={testRegex}>
             Test Pattern
           </Button>
         </CardContent>
@@ -183,9 +173,9 @@ export function RegexGenerator() {
           <CardContent>
             <div className="space-y-2">
               {matches.map((match, index) => (
-                <div key={index} className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <div key={index} className="p-3 bg-success/10 border border-success/30 rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">Match {index + 1}</div>
-                  <code className="text-green-400">{match[0]}</code>
+                  <code className="text-success">{match[0]}</code>
                   {match.index !== undefined && (
                     <div className="text-xs text-muted-foreground mt-1">
                       Position: {match.index}

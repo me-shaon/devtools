@@ -1,169 +1,168 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useEffect, useMemo, useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { csvToObjects, detectDelimiter, jsonToCsv, parseCSV } from "@/utils/csv";
+
+type Direction = "csv-to-json" | "json-to-csv";
+
+const DELIMITERS: Record<string, { label: string; value: string }> = {
+  comma: { label: "Comma (,)", value: "," },
+  semicolon: { label: "Semicolon (;)", value: ";" },
+  tab: { label: "Tab", value: "\t" },
+  pipe: { label: "Pipe (|)", value: "|" },
+};
+
+const delimiterName = (value: string) =>
+  Object.entries(DELIMITERS).find(([, d]) => d.value === value)?.[0] ?? "comma";
+
+interface Result {
+  output: string;
+  error: string;
+  rows: number;
+  columns: number;
+}
+
+const EMPTY: Result = { output: "", error: "", rows: 0, columns: 0 };
+
 
 export function CsvToJsonConverter() {
-  const [csvInput, setCsvInput] = useState("");
-  const [jsonOutput, setJsonOutput] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [options, setOptions] = useState({
-    hasHeader: true,
-    pretty: true,
-  });
+  const [direction, setDirection] = useState<Direction>("csv-to-json");
+  const [input, setInput] = useState("");
+  const [delimiterChoice, setDelimiterChoice] = useState("auto");
+  const [options, setOptions] = useState({ hasHeader: true, pretty: true, typed: false });
 
-  const convertToJson = () => {
-    if (!csvInput.trim()) {
-      toast.error("Please enter CSV data");
-      return;
-    }
+  // Debounce input and direction together so a direction change never runs on stale text
+  const job = useMemo(() => ({ input, direction }), [input, direction]);
+  const pending = useDebouncedValue(job);
+  const toJson = direction === "csv-to-json";
+  const detected = delimiterName(detectDelimiter(pending.input));
 
+  const result = useMemo<Result>(() => {
+    const text = pending.input;
+    if (!text.trim()) return EMPTY;
+    const parsesCsv = pending.direction === "csv-to-json";
+    const delimiter =
+      delimiterChoice === "auto" ? (parsesCsv ? detectDelimiter(text) : ",") : DELIMITERS[delimiterChoice].value;
     try {
-      const lines = csvInput.trim().split("\n");
-      if (lines.length < 1) {
-        throw new Error("No data to convert");
+      if (parsesCsv) {
+        const rows = csvToObjects(text, { delimiter, hasHeader: options.hasHeader, typed: options.typed });
+        return {
+          output: options.pretty ? JSON.stringify(rows, null, 2) : JSON.stringify(rows),
+          error: "",
+          rows: rows.length,
+          columns: Object.keys(rows[0] ?? {}).length,
+        };
       }
-
-      const parseLine = (line: string) => {
-        const result: string[] = [];
-        let current = "";
-        let inQuotes = false;
-
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          const nextChar = line[i + 1];
-
-          if (char === '"') {
-            if (inQuotes && nextChar === '"') {
-              current += '"';
-              i++;
-            } else {
-              inQuotes = !inQuotes;
-            }
-          } else if (char === "," && !inQuotes) {
-            result.push(current.trim());
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        result.push(current.trim());
-        return result;
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch (error) {
+        throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : "check the syntax."}`);
+      }
+      const csv = jsonToCsv(data, { delimiter, hasHeader: options.hasHeader });
+      const table = parseCSV(csv, { delimiter });
+      return {
+        output: csv,
+        error: "",
+        rows: Math.max(0, table.length - (options.hasHeader ? 1 : 0)),
+        columns: table[0]?.length ?? 0,
       };
-
-      const headers = parseLine(lines[0]);
-      const dataStart = options.hasHeader ? 1 : 0;
-
-      const result = lines.slice(dataStart).map((line) => {
-        const values = parseLine(line);
-        const obj: Record<string, string> = {};
-
-        headers.forEach((header, index) => {
-          const key = options.hasHeader ? header : `column${index + 1}`;
-          obj[key] = values[index] || "";
-        });
-
-        return obj;
-      });
-
-      const json = options.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result);
-      setJsonOutput(json);
-      toast.success("CSV converted to JSON!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to convert CSV");
+      return { ...EMPTY, error: error instanceof Error ? error.message : "Could not convert the data." };
     }
+  }, [pending, delimiterChoice, options]);
+
+  // A result for the previous direction is stale until the debounce catches up
+  const current = pending.direction === direction ? result : EMPTY;
+
+  const changeDirection = (next: Direction) => {
+    if (next === direction) return;
+    // Use the last result as the next input.
+    if (current.output) setInput(current.output);
+    setDirection(next);
   };
 
-  const copyOutput = () => {
-    navigator.clipboard.writeText(jsonOutput);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("JSON copied!");
-  };
-
-  const clearAll = () => {
-    setCsvInput("");
-    setJsonOutput("");
-  };
+  const inputName = toJson ? "CSV" : "JSON";
+  const outputName = toJson ? "JSON" : "CSV";
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>CSV to JSON Converter</CardTitle>
-          <CardDescription>Convert CSV data to JSON format</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="has-header">First row is header</Label>
-            <Switch
-              id="has-header"
-              checked={options.hasHeader}
-              onCheckedChange={(checked) => setOptions({ ...options, hasHeader: checked })}
-            />
+    <ToolWorkspace
+      id="csv-json"
+      toolbar={
+        <>
+          <Tabs value={direction} onValueChange={(v) => changeDirection(v as Direction)}>
+            <TabsList aria-label="Direction">
+              <TabsTrigger value="csv-to-json">CSV to JSON</TabsTrigger>
+              <TabsTrigger value="json-to-csv">JSON to CSV</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="indent-control">
+            Delimiter
+            <select aria-label="Delimiter" value={delimiterChoice} onChange={(e) => setDelimiterChoice(e.target.value)}>
+              <option value="auto">{toJson ? `Auto (${DELIMITERS[detected].label})` : "Auto (comma)"}</option>
+              {Object.entries(DELIMITERS).map(([key, d]) => (
+                <option key={key} value={key}>{d.label}</option>
+              ))}
+            </select>
+          </label>
+        </>
+      }
+      notice={
+        current.error ? (
+          <div className="workspace-notice" data-tone="error" role="alert">{current.error}</div>
+        ) : undefined
+      }
+      first={
+        <EditorPane title={`${inputName} input`} htmlFor="csv-input" scroll={false}
+          actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}>
+          <div className="pane-options">
+            <label className="option-switch" htmlFor="csv-has-header">
+              {toJson ? "First row is header" : "Write header row"}
+              <Switch id="csv-has-header" checked={options.hasHeader} onCheckedChange={(checked) => setOptions({ ...options, hasHeader: checked })} />
+            </label>
+            {toJson && (
+              <>
+                <label className="option-switch" htmlFor="csv-typed">
+                  Convert numbers
+                  <Switch id="csv-typed" checked={options.typed} onCheckedChange={(checked) => setOptions({ ...options, typed: checked })} />
+                </label>
+                <label className="option-switch" htmlFor="csv-pretty">
+                  Pretty print
+                  <Switch id="csv-pretty" checked={options.pretty} onCheckedChange={(checked) => setOptions({ ...options, pretty: checked })} />
+                </label>
+              </>
+            )}
           </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="pretty">Pretty print JSON</Label>
-            <Switch
-              id="pretty"
-              checked={options.pretty}
-              onCheckedChange={(checked) => setOptions({ ...options, pretty: checked })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="csv-input">CSV Input</Label>
-            <Textarea
-              id="csv-input"
-              placeholder="name,age,city&#10;John,30,NYC&#10;Jane,25,LA"
-              value={csvInput}
-              onChange={(e) => setCsvInput(e.target.value)}
-              className="min-h-[150px] font-mono"
-            />
-          </div>
-
-          <Button onClick={convertToJson} className="w-full" size="lg">
-            Convert to JSON
-          </Button>
-
-          {jsonOutput && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="json-output">JSON Output</Label>
-                <Textarea
-                  id="json-output"
-                  value={jsonOutput}
-                  readOnly
-                  className="min-h-[200px] font-mono"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={copyOutput} variant="outline" className="flex-1">
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy JSON
-                    </>
-                  )}
-                </Button>
-                <Button onClick={clearAll} variant="outline">
-                  Clear
-                </Button>
-              </div>
-            </>
+          <CodeTextarea
+            id="csv-input"
+            placeholder={toJson ? "name,age,city\nJohn,30,NYC\nJane,25,LA" : '[{"name":"John","age":30},{"name":"Jane","age":25}]'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+        </EditorPane>
+      }
+      second={
+        <EditorPane title={`${outputName} output`} htmlFor={current.output ? "csv-output" : undefined} scroll={false}
+          actions={<CopyButton value={current.output} label={`Copy ${outputName}`} />}>
+          {current.output ? (
+            <CodeTextarea id="csv-output" value={current.output} readOnly />
+          ) : (
+            <PaneEmpty title={`${outputName} appears here`} hint={`Type or paste ${inputName} on the left.`} />
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </EditorPane>
+      }
+      status={
+        current.error ? (
+          <span className="text-destructive">Invalid input</span>
+        ) : current.output ? (
+          <span>{current.rows} {current.rows === 1 ? "row" : "rows"} · {current.columns} {current.columns === 1 ? "column" : "columns"}</span>
+        ) : (
+          <span>Ready</span>
+        )
+      }
+    />
   );
 }

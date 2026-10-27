@@ -1,3 +1,4 @@
+import { useDialogFocus } from "./useDialogFocus";
 import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function ShortcutSettingsDialog({
 }: ShortcutSettingsDialogProps) {
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const dialogRef = useDialogFocus(open, onClose);
   const defaultBindings = useMemo(() => getDefaultShortcutBindings(platform), [platform]);
 
   useEffect(() => {
@@ -90,25 +92,6 @@ export function ShortcutSettingsDialog({
     }
   }, [open]);
 
-  useEffect(() => {
-    if (!open || recordingActionId) {
-      return undefined;
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [onClose, open, recordingActionId]);
-
   if (!open) {
     return null;
   }
@@ -121,18 +104,17 @@ export function ShortcutSettingsDialog({
     return (
       <div
         key={action.id}
-        className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
+        className="shortcut-row"
       >
         <div className="min-w-0 flex-1">
           <p className="font-medium">{action.label}</p>
-          <p className="text-sm text-muted-foreground">{action.description}</p>
+          <p className="shortcut-description text-muted-foreground">{action.description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-[132px] rounded-md border bg-muted/40 px-3 py-2 text-center text-sm font-medium">
-            {isRecording ? "Press keys..." : formatShortcutBinding(bindings[actionId], platform)}
-          </div>
           <Button
             type="button"
+            className="shortcut-recorder"
+            aria-pressed={isRecording}
             variant={isRecording ? "default" : "outline"}
             size="sm"
             aria-label={isRecording ? `Cancel recording for ${action.label}` : `Record ${action.label}`}
@@ -141,7 +123,7 @@ export function ShortcutSettingsDialog({
               setErrorMessage("");
             }}
           >
-            {isRecording ? "Cancel" : "Record"}
+            {isRecording ? "Press keys…" : formatShortcutBinding(bindings[actionId], platform)}
           </Button>
           <Button
             type="button"
@@ -171,7 +153,7 @@ export function ShortcutSettingsDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-black/50 p-4 sm:p-6"
+      className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center p-4 sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -179,20 +161,18 @@ export function ShortcutSettingsDialog({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shortcut Settings"
-        className="flex max-h-[calc(100vh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-background shadow-2xl"
+        className="modal-surface shortcut-dialog"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
+        <div className="modal-header flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#EB5757]">
-              Keyboard Shortcuts
-            </p>
-            <h2 className="mt-1 text-xl font-semibold">Customize your shortcuts</h2>
+            <h2 className="text-lg font-semibold">Keyboard Shortcuts</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Record a new shortcut, clear it, or restore defaults at any time.
+              Click a shortcut to record a new key combination.
             </p>
           </div>
           <button
@@ -205,13 +185,13 @@ export function ShortcutSettingsDialog({
           </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+        <div className="modal-body min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {errorMessage ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {errorMessage}
             </div>
           ) : recordingActionId ? (
-            <div className="rounded-lg border border-[#EB5757]/30 bg-[#EB5757]/5 px-3 py-2 text-sm text-foreground">
+            <div role="status" className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
               Recording for {getShortcutActionDefinition(recordingActionId).label}. Press{" "}
               <strong>Esc</strong> to cancel.
             </div>
@@ -224,7 +204,7 @@ export function ShortcutSettingsDialog({
                 Core app actions available from anywhere in the app.
               </p>
             </div>
-            <div className="space-y-2">{GENERAL_ACTIONS.map((action) => renderActionRow(action.id))}</div>
+            <div className="shortcut-rows">{GENERAL_ACTIONS.map((action) => renderActionRow(action.id))}</div>
           </section>
 
           <section className="space-y-3">
@@ -234,12 +214,37 @@ export function ShortcutSettingsDialog({
                 Favorite shortcuts follow the current order in your favorites list.
               </p>
             </div>
-            <div className="space-y-2">{FAVORITE_ACTIONS.map((action) => renderActionRow(action.id))}</div>
+            <div className="shortcut-rows">{FAVORITE_ACTIONS.map((action) => renderActionRow(action.id))}</div>
+          </section>
+
+          <section className="space-y-3">
+            <div>
+              <h3 className="font-medium">Tabs</h3>
+              <p className="text-sm text-muted-foreground">
+                These shortcuts are fixed. They work when a tool tab is open.
+              </p>
+            </div>
+            <div className="shortcut-rows">
+              {[
+                ["Close tab", "Close the tool you are using.", `${platform === "darwin" ? "⌘" : "Ctrl+"}W`],
+                ["Next tab", "Move to the next open tool.", "Ctrl+Tab"],
+                ["Previous tab", "Move to the previous open tool.", "Ctrl+Shift+Tab"],
+                ["Move between tabs", "Use when a tab has focus. Delete closes it.", "← → Home End"],
+              ].map(([label, description, keys]) => (
+                <div key={label} className="shortcut-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{label}</p>
+                    <p className="shortcut-description text-muted-foreground">{description}</p>
+                  </div>
+                  <kbd className="shortcut-fixed">{keys}</kbd>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" onClick={onResetDefaults}>
+        <div className="modal-footer flex items-center justify-between gap-2">
+          <Button type="button" variant="ghost" onClick={onResetDefaults}>
             <RotateCcw className="mr-2 h-4 w-4" />
             Reset All Defaults
           </Button>

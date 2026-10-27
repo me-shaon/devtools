@@ -4,10 +4,19 @@ on:
   push:
     tags:
       - "v*"
+  # Dry run: build and sign every platform and create latest.json without publishing.
+  workflow_dispatch:
+    inputs:
+      draft_release:
+        description: Upload the assets to a draft release (visible only to collaborators).
+        type: boolean
+        default: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
 
     steps:
       - name: Checkout code
@@ -17,9 +26,19 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+          cache: npm
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Validate release metadata
-        run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
+        run: node scripts/check-release.mjs "${{ steps.tag.outputs.tag }}"
 
       - name: Install dependencies
         run: npm ci
@@ -29,20 +48,17 @@ jobs:
 
   build:
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    environment: Production
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        include:
-          - os: windows-latest
-            artifact_name: devtools-windows
-          - os: macos-latest
-            artifact_name: devtools-macos
-          - os: ubuntu-latest
-            artifact_name: devtools-linux
-    runs-on: ${{ matrix.os }}
+    uses: ./.github/workflows/build-app.yml
+    with:
+      release: true
+    secrets: inherit
+
+  release:
+    needs: [test, build]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -53,78 +69,53 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Linux packaging dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fakeroot rpm
-
-      - name: Build and package
-        run: npm run dist
-        env:
-          DEBUG: electron-builder,electron-osx-sign*,electron-notarize*
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: devtools-${{ matrix.os }}
-          path: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-            release/*.yml
-            release/*.blockmap
-          retention-days: 30
-          if-no-files-found: error
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-artifacts
+          pattern: devtools-*
+          path: release-assets
+          merge-multiple: true
 
-      - name: Display structure of downloaded files
-        run: ls -R release-artifacts
+      - name: Display downloaded files
+        run: ls -la release-assets
+
+      - name: Create updater manifest
+        run: |
+          if ls release-assets/*.sig >/dev/null 2>&1; then
+            node scripts/create-updater-manifest.mjs "${{ needs.test.outputs.tag }}" --assets release-assets
+            cat release-assets/latest.json
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            # Without latest.json, installed apps cannot find this release.
+            echo "::error::No updater signatures found. Set TAURI_SIGNING_PRIVATE_KEY in the Production environment."
+            exit 1
+          else
+            echo "::warning::No updater signatures found. Skipping latest.json."
+          fi
+
+      # Lets installs of the Electron version (v1.3.0 and earlier) update to this release.
+      - name: Create Electron updater manifests
+        run: node scripts/create-electron-bridge.mjs "${{ needs.test.outputs.tag }}" --assets release-assets
+
+      - name: Upload release assets (dry run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dry-run
+          path: release-assets/*
+          retention-days: 7
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || inputs.draft_release
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release-artifacts/**/*.dmg
-            release-artifacts/**/*.zip
-            release-artifacts/**/*.exe
-            release-artifacts/**/*.AppImage
-            release-artifacts/**/*.deb
-            release-artifacts/**/*.rpm
-            release-artifacts/**/latest*.yml
-            release-artifacts/**/*.blockmap
-          draft: false
+          files: release-assets/*
+          # A dry run uploads to a draft under a separate tag name, so it never publishes.
+          draft: ${{ github.event_name != 'push' }}
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || format('{0}-dry-run-{1}', needs.test.outputs.tag, github.run_number) }}
+          target_commitish: ${{ github.sha }}
           prerelease: false
           generate_release_notes: false
-          body_path: release-notes/${{ github.ref_name }}.md
-          fail_on_unmatched_files: false
+          body_path: release-notes/${{ needs.test.outputs.tag }}.md
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 function wrapListBlocks(html: string) {
   return html.replace(/(?:^|\n)((?:<li>.*<\/li>\n?)+)/g, (_match, items) => {
     const compactItems = items.replace(/\n/g, "");
@@ -50,4 +52,9 @@ export function convertMarkdown(markdown: string): string {
     .replace(/<br>(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)<br>/g, "$1")
     .replace(/<br>(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)/g, "$1")
     .replace(/(<\/?(?:ul|li|h1|h2|h3|pre|blockquote|hr)[^>]*>)<br>/g, "$1");
+}
+
+
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["target"] });
 }

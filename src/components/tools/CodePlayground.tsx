@@ -86,10 +86,10 @@ export function CodePlayground() {
     setOutput("");
 
     if (language === "javascript") {
+      const originalLog = console.log;
       try {
         // Capture console.log output
         const logs: string[] = [];
-        const originalLog = console.log;
         console.log = (...args) => {
           logs.push(args.map(arg =>
             typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
@@ -103,10 +103,10 @@ export function CodePlayground() {
         console.log = originalLog;
 
         setOutput(logs.join("\n") || (result !== undefined ? String(result) : "Code executed successfully"));
-        toast.success("Code executed!");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
-        console.log = console.log; // Restore
+      } finally {
+        console.log = originalLog;
       }
     } else {
       toast.info(`${language.toUpperCase()} preview is read-only`);
@@ -123,14 +123,7 @@ export function CodePlayground() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Code2 className="h-5 w-5" />
-            Code Playground
-          </CardTitle>
-          <CardDescription>Write and run JavaScript, HTML, and CSS</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Select value={language} onValueChange={updateLanguage}>
@@ -165,12 +158,12 @@ export function CodePlayground() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Output</div>
                 {error ? (
-                  <div className="min-h-[400px] p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <div className="flex items-center gap-2 text-red-500 mb-2">
+                  <div className="min-h-[400px] p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-destructive mb-2">
                       <AlertCircle className="h-4 w-4" />
                       <span className="font-medium">Error</span>
                     </div>
-                    <pre className="text-sm text-red-400 whitespace-pre-wrap">{error}</pre>
+                    <pre className="text-sm text-destructive whitespace-pre-wrap">{error}</pre>
                   </div>
                 ) : (
                   <div className="min-h-[400px] p-4 bg-muted rounded-lg">

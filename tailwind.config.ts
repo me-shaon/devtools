@@ -13,9 +13,21 @@ export default {
       },
     },
     extend: {
+      // One role scale for the whole app, built on the 13px macOS body size.
+      // Overriding the Tailwind steps keeps every tool on the same ramp.
+      fontSize: {
+        "2xs": ["11px", { lineHeight: "16px" }],
+        xs: ["12px", { lineHeight: "16px" }],
+        sm: ["13px", { lineHeight: "20px" }],
+        base: ["14px", { lineHeight: "22px" }],
+        lg: ["15px", { lineHeight: "22px" }],
+        xl: ["17px", { lineHeight: "24px" }],
+        "2xl": ["22px", { lineHeight: "28px", letterSpacing: "-0.02em" }],
+        "3xl": ["26px", { lineHeight: "32px", letterSpacing: "-0.02em" }],
+      },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['var(--font-ui)'],
+        mono: ['var(--font-code)'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -34,6 +46,18 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -83,5 +107,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

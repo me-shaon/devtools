@@ -10,13 +10,6 @@ export function DateDifference() {
   const [date2, setDate2] = useState("");
   const [time1, setTime1] = useState("00:00");
   const [time2, setTime2] = useState("00:00");
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     // Set default dates
     const today = new Date();
@@ -28,7 +21,7 @@ export function DateDifference() {
   }, []);
 
   const formatDateForInput = (date: Date) => {
-    return date.toISOString().split("T")[0];
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   };
 
   const calculateDifference = () => {
@@ -72,23 +65,17 @@ export function DateDifference() {
 
   const difference = calculateDifference();
 
-  const useNow = (position: "first" | "second") => {
-    const current = now;
-    setDate(formatDateForInput(current));
-    setTime(current.toTimeString().slice(0, 5));
-  };
-
-  const setDate = (date: string) => {
-    if (date1 > date2) {
+  const setDateToNow = (position: "first" | "second") => {
+    const current = new Date();
+    const date = formatDateForInput(current);
+    const time = current.toTimeString().slice(0, 5);
+    if (position === "first") {
       setDate1(date);
+      setTime1(time);
     } else {
       setDate2(date);
+      setTime2(time);
     }
-  };
-
-  const setTime = (time: string) => {
-    setTime1(time);
-    setTime2(time);
   };
 
   return (
@@ -99,7 +86,7 @@ export function DateDifference() {
           <CardDescription>Calculate the difference between two dates</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6">
             {/* First Date */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -107,7 +94,7 @@ export function DateDifference() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => useNow("first")}
+                  onClick={() => setDateToNow("first")}
                 >
                   <Clock className="h-3 w-3 mr-1" />
                   Now
@@ -139,7 +126,7 @@ export function DateDifference() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => useNow("second")}
+                  onClick={() => setDateToNow("second")}
                 >
                   <Clock className="h-3 w-3 mr-1" />
                   Now

@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
+import { convertBase, parseBigIntFromBase } from "@/utils/number-base";
 
 type Base = 2 | 8 | 10 | 16;
 
@@ -14,7 +16,6 @@ export function NumberBaseConverter() {
   const [fromBase, setFromBase] = useState<Base>(10);
   const [toBase, setToBase] = useState<Base>(16);
   const [result, setResult] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const bases: { value: Base; label: string; example: string }[] = [
     { value: 2, label: "Binary (Base 2)", example: "1010" },
@@ -29,22 +30,12 @@ export function NumberBaseConverter() {
       return;
     }
 
-    try {
-      // Parse the input value based on fromBase
-      const decimalValue = parseInt(value, fromBase);
-
-      if (isNaN(decimalValue)) {
-        toast.error(`Invalid ${fromBase}-base number`);
-        return;
-      }
-
-      // Convert to target base
-      const converted = decimalValue.toString(toBase).toUpperCase();
-      setResult(converted);
-      toast.success("Converted successfully!");
-    } catch (error) {
-      toast.error("Conversion failed");
+    const converted = convertBase(value, fromBase, toBase);
+    if (!converted.valid) {
+      toast.error(`Invalid ${fromBase}-base number`);
+      return;
     }
+    setResult(converted.value);
   };
 
   const swapBases = () => {
@@ -56,21 +47,16 @@ export function NumberBaseConverter() {
     }
   };
 
-  const copyResult = () => {
-    navigator.clipboard.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Result copied!");
-  };
 
   const getConversionInfo = () => {
     if (!result) return null;
-    const decimalValue = parseInt(value, fromBase);
+    const parsed = parseBigIntFromBase(value, fromBase);
+    if (parsed === null) return null;
     return {
-      decimal: decimalValue.toString(),
-      binary: decimalValue.toString(2),
-      octal: decimalValue.toString(8),
-      hex: decimalValue.toString(16).toUpperCase(),
+      decimal: parsed.toString(),
+      binary: parsed.toString(2),
+      octal: parsed.toString(8),
+      hex: parsed.toString(16).toUpperCase(),
     };
   };
 
@@ -135,7 +121,7 @@ export function NumberBaseConverter() {
             />
           </div>
 
-          <Button onClick={convert} className="w-full" size="lg">
+          <Button onClick={convert} size="lg">
             Convert
           </Button>
 
@@ -146,9 +132,7 @@ export function NumberBaseConverter() {
               </Label>
               <div className="flex gap-2">
                 <Input id="result" value={result} readOnly className="font-mono" />
-                <Button onClick={copyResult} variant="outline" size="icon">
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <CopyButton value={result} label="Copy result" iconOnly />
               </div>
             </div>
           )}
@@ -159,21 +143,21 @@ export function NumberBaseConverter() {
         <Card>
           <CardHeader>
             <CardTitle>All Bases</CardTitle>
-            <CardDescription>Decimal: {info.decimal}</CardDescription>
+            <CardDescription className="break-all">Decimal: {info.decimal}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Binary (2)</Label>
-                <div className="p-2 bg-muted rounded font-mono text-sm">{info.binary}</div>
+                <div className="p-2 bg-muted rounded font-mono text-sm break-all">{info.binary}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Octal (8)</Label>
-                <div className="p-2 bg-muted rounded font-mono text-sm">{info.octal}</div>
+                <div className="p-2 bg-muted rounded font-mono text-sm break-all">{info.octal}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Hexadecimal (16)</Label>
-                <div className="p-2 bg-muted rounded font-mono text-sm">{info.hex}</div>
+                <div className="p-2 bg-muted rounded font-mono text-sm break-all">{info.hex}</div>
               </div>
             </div>
           </CardContent>

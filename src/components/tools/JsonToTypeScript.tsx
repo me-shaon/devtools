@@ -5,8 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Copy, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 interface TypeDefinition {
   name: string;
@@ -19,7 +20,6 @@ interface TypeDefinition {
 export function JsonToTypeScript() {
   const [jsonInput, setJsonInput] = useState("");
   const [tsOutput, setTsOutput] = useState("");
-  const [copied, setCopied] = useState(false);
   const [options, setOptions] = useState({
     rootName: "RootObject",
     readonly: false,
@@ -121,27 +121,16 @@ export function JsonToTypeScript() {
       const parsed = JSON.parse(jsonInput);
       const result = generateInterface(parsed, options.rootName);
       setTsOutput(result);
-      toast.success("Converted to TypeScript!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Invalid JSON");
     }
   };
 
-  const copyOutput = () => {
-    navigator.clipboard.writeText(tsOutput);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("TypeScript copied!");
-  };
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>JSON to TypeScript</CardTitle>
-          <CardDescription>Convert JSON to TypeScript interfaces</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="root-name">Root Interface Name</Label>
             <Input
@@ -172,7 +161,7 @@ export function JsonToTypeScript() {
             />
           </div>
 
-          <Button onClick={convert} className="w-full" size="lg">
+          <Button onClick={convert} size="lg">
             Convert to TypeScript
           </Button>
 
@@ -187,19 +176,7 @@ export function JsonToTypeScript() {
                   className="min-h-[200px] font-mono text-sm"
                 />
               </div>
-              <Button onClick={copyOutput} variant="outline" className="w-full">
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy TypeScript
-                  </>
-                )}
-              </Button>
+              <CopyButton value={tsOutput} label="Copy TypeScript" />
             </>
           )}
         </CardContent>

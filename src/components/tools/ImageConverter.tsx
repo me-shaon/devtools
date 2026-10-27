@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/desktop";
 import {
   buildOutputFilename,
   formatSavingsLabel,
@@ -76,15 +77,6 @@ function getUniqueFileName(fileName: string, usedNames: Map<string, number>): st
   const extension = extensionIndex === -1 ? "" : fileName.slice(extensionIndex);
 
   return `${baseName}-${currentCount + 1}${extension}`;
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const downloadUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = downloadUrl;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(downloadUrl);
 }
 
 async function loadImage(file: File): Promise<HTMLImageElement> {
@@ -262,7 +254,7 @@ export function ImageConverter() {
       return undefined;
     }
 
-    const initialResults = bulkFiles.map((file) => ({
+    const initialResults: BulkCompressionResult[] = bulkFiles.map((file) => ({
       id: getFileId(file),
       name: file.name,
       originalSize: file.size,
@@ -368,13 +360,23 @@ export function ImageConverter() {
     setBulkFiles(supportedFiles);
   };
 
-  const handleSingleDownload = () => {
+  const handleSingleDownload = async () => {
     if (!singleFile || !singleResult) {
       return;
     }
 
-    downloadBlob(singleResult.blob, buildOutputFilename(singleFile.name, singleResult.format));
-    toast.success("Compressed image downloaded.");
+    try {
+      const saved = await saveFile(
+        singleResult.blob,
+        buildOutputFilename(singleFile.name, singleResult.format),
+      );
+      if (saved) {
+        toast.success("Compressed image downloaded.");
+      }
+    } catch (error) {
+      console.error("Failed to save compressed image:", error);
+      toast.error("Unable to save the compressed image.");
+    }
   };
 
   const handleBulkDownload = async () => {
@@ -401,12 +403,18 @@ export function ImageConverter() {
       ),
     );
 
-    const zipBlob = new Blob([zipSync(zipEntries, { level: 6 })], {
+    const zipBlob = new Blob([new Uint8Array(zipSync(zipEntries, { level: 6 }))], {
       type: "application/zip",
     });
 
-    downloadBlob(zipBlob, "compressed-images.zip");
-    toast.success("ZIP download is ready.");
+    try {
+      if (await saveFile(zipBlob, "compressed-images.zip")) {
+        toast.success("ZIP download is ready.");
+      }
+    } catch (error) {
+      console.error("Failed to save ZIP file:", error);
+      toast.error("Unable to save the ZIP file.");
+    }
   };
 
   const bulkHasQualityControl = bulkFiles.some((file) =>
@@ -506,8 +514,8 @@ export function ImageConverter() {
                               <span
                                 className={`ml-2 ${
                                   getSavingsPercent(singleFile.size, singleResult.blob.size) >= 0
-                                    ? "text-green-600"
-                                    : "text-amber-600"
+                                    ? "text-success"
+                                    : "text-warning"
                                 }`}
                               >
                                 (
@@ -524,7 +532,7 @@ export function ImageConverter() {
 
                     <div className="space-y-2">
                       <Label>Compression Settings</Label>
-                      <div className="space-y-4 rounded-lg border p-4">
+                      <div className="space-y-4 rounded-lg bg-muted/50 p-4">
                         <div className="space-y-1.5">
                           <Label>Output Format</Label>
                           <Select
@@ -594,7 +602,7 @@ export function ImageConverter() {
                   <div className="flex justify-center">
                     <Button
                       onClick={handleSingleDownload}
-                      className="w-full sm:w-auto sm:min-w-[220px]"
+                      className="sm:w-auto sm:min-w-[220px]"
                       size="lg"
                       disabled={!singleResult || singleProcessing}
                     >
@@ -652,7 +660,7 @@ export function ImageConverter() {
                     />
                   </div>
 
-                  <div className="space-y-4 rounded-lg border p-4">
+                  <div className="space-y-4 rounded-lg bg-muted/50 p-4">
                     <div className="space-y-2">
                       <Label>Bulk Output</Label>
                       <Select

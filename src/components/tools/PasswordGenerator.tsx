@@ -5,13 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/tools/CopyButton";
 
 export function PasswordGenerator() {
   const [length, setLength] = useState(16);
   const [password, setPassword] = useState("");
-  const [copied, setCopied] = useState(false);
   const [options, setOptions] = useState({
     uppercase: true,
     lowercase: true,
@@ -51,12 +51,6 @@ export function PasswordGenerator() {
     generatePassword();
   }, [length, options]);
 
-  const copyPassword = () => {
-    navigator.clipboard.writeText(password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success("Password copied!");
-  };
 
   const getStrength = () => {
     let strength = 0;
@@ -66,10 +60,10 @@ export function PasswordGenerator() {
     if (options.numbers) strength++;
     if (options.symbols) strength++;
 
-    if (strength <= 2) return { label: "Weak", color: "text-red-500", bg: "bg-red-500" };
-    if (strength <= 3) return { label: "Fair", color: "text-yellow-500", bg: "bg-yellow-500" };
-    if (strength <= 4) return { label: "Good", color: "text-blue-500", bg: "bg-blue-500" };
-    return { label: "Strong", color: "text-green-500", bg: "bg-green-500" };
+    if (strength <= 2) return { label: "Weak", color: "text-destructive", bg: "bg-destructive text-destructive-foreground" };
+    if (strength <= 3) return { label: "Fair", color: "text-warning", bg: "bg-warning" };
+    if (strength <= 4) return { label: "Good", color: "text-info", bg: "bg-info" };
+    return { label: "Strong", color: "text-success", bg: "bg-success text-success-foreground" };
   };
 
   const strength = getStrength();
@@ -77,11 +71,7 @@ export function PasswordGenerator() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Password Generator</CardTitle>
-          <CardDescription>Generate secure random passwords</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <Label>Password Length: {length}</Label>
             <Slider
@@ -136,12 +126,8 @@ export function PasswordGenerator() {
             <Label>Generated Password</Label>
             <div className="flex gap-2">
               <Input value={password} readOnly className="font-mono" />
-              <Button onClick={copyPassword} variant="outline" size="icon">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-              <Button onClick={generatePassword} variant="outline" size="icon">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              <CopyButton value={password} label="Copy password" iconOnly />
+              <button type="button" className="toolbar-text-button" onClick={generatePassword} aria-label="Generate new password" title="Generate new password"><RefreshCw size={14} aria-hidden="true" /></button>
             </div>
           </div>
 

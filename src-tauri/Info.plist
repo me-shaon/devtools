@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- The bundle is DevToolsApp.app, but the Dock and the menu bar show the brand name. -->
+  <key>CFBundleName</key>
+  <string>DevTools</string>
+  <key>CFBundleDisplayName</key>
+  <string>DevTools</string>
+</dict>
+</plist>

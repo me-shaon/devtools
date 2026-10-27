@@ -3,65 +3,56 @@
 @tailwind utilities;
 
 @layer base {
+  /* One token set per theme. Text tokens meet WCAG AA (4.5:1) and control
+     boundaries (--input) meet 3:1 on card, editor, and muted surfaces. */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 72.2% 50.6%;
+    --background: 220 23% 98%; --foreground: 222 25% 16%;
+    --card: 0 0% 100%; --card-foreground: 222 25% 16%;
+    --popover: 0 0% 100%; --popover-foreground: 222 25% 16%;
+    --primary: 215 78% 47%; --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 95%; --secondary-foreground: 222 25% 16%;
+    --muted: 220 18% 95%; --muted-foreground: 218 12% 42%;
+    --accent: 214 73% 91%; --accent-foreground: 216 68% 29%;
+    --destructive: 0 74% 40%; --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 24%; --success-foreground: 0 0% 100%;
+    --warning: 26 90% 31%; --warning-foreground: 0 0% 100%;
+    --info: 221 83% 45%; --info-foreground: 0 0% 100%;
+    --border: 218 20% 86%; --input: 218 13% 55%; --ring: 215 78% 47%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96.1%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 89.8%;
-    --sidebar-ring: 0 72.2% 50.6%;
+    --sidebar-background: 220 23% 96%; --sidebar-foreground: 222 25% 16%;
+    --sidebar-primary: 215 78% 47%; --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 73% 91%; --sidebar-accent-foreground: 216 68% 29%;
+    --sidebar-border: 218 20% 86%; --sidebar-ring: 215 78% 47%;
+    /* Text over the glass chrome needs a darker gray than over opaque cards. */
+    --chrome-muted-foreground: 216 23% 28%;
+    --chrome-input-border: 218 22% 48%;
+    --surface-editor: #fff; --surface-chrome: #eef3fb;
+    --surface-sidebar: #e9eef6; --surface-raised: #fff;
+    --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Cantarell", sans-serif;
+    --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Cascadia Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 72.2% 50.6%;
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 14.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14.9%;
-    --sidebar-ring: 0 72.2% 50.6%;
+    --background: 222 32% 10%; --foreground: 220 30% 93%;
+    --card: 222 30% 13%; --card-foreground: 220 30% 93%;
+    --popover: 222 30% 13%; --popover-foreground: 220 30% 93%;
+    --primary: 213 80% 66%; --primary-foreground: 222 25% 14%;
+    --secondary: 222 24% 19%; --secondary-foreground: 220 30% 93%;
+    --muted: 222 24% 19%; --muted-foreground: 220 18% 72%;
+    --accent: 215 30% 26%; --accent-foreground: 213 100% 87%;
+    --destructive: 0 90% 76%; --destructive-foreground: 222 25% 10%;
+    --success: 142 69% 58%; --success-foreground: 222 25% 10%;
+    --warning: 48 96% 53%; --warning-foreground: 222 25% 10%;
+    --info: 213 94% 72%; --info-foreground: 222 25% 10%;
+    --border: 222 20% 27%; --input: 220 16% 52%; --ring: 213 91% 72%;
+    --sidebar-background: 222 28% 15%; --sidebar-foreground: 220 30% 93%;
+    --sidebar-primary: 213 80% 66%; --sidebar-primary-foreground: 222 25% 14%;
+    --sidebar-accent: 215 30% 26%; --sidebar-accent-foreground: 213 100% 87%;
+    --sidebar-border: 222 20% 27%; --sidebar-ring: 213 91% 72%;
+    --chrome-muted-foreground: 218 30% 86%;
+    --chrome-input-border: 218 18% 60%;
+    --surface-editor: #121a28; --surface-chrome: #1c2536;
+    --surface-sidebar: #1a2232; --surface-raised: #2b3750;
   }
 }
 
@@ -73,3 +64,335 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Workspace foundation: native system type, a 4px spacing scale, and quiet materials. */
+body { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+/* One focus style for every control, so keyboard position is always visible. */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+[role="tab"]:focus-visible, [role="switch"]:focus-visible, [role="slider"]:focus-visible,
+[role="combobox"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+/* Theme placeholders instead of the browser gray, which fails contrast on light surfaces. */
+::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+button:disabled { opacity: .6; cursor: not-allowed; }
+.workspace { background: var(--surface-chrome); }
+.workspace-sidebar { background: var(--surface-sidebar); box-shadow: inset -1px 0 0 hsl(var(--border) / .5); }
+@supports (backdrop-filter: blur(20px)) {
+  .workspace-sidebar { background: linear-gradient(145deg, hsl(var(--background) / .8), transparent), var(--surface-sidebar); backdrop-filter: blur(20px) saturate(1.2); }
+}
+.workspace-titlebar { display: flex; flex-shrink: 0; align-items: center; gap: 8px; height: 56px; padding: 0 12px; background: linear-gradient(hsl(var(--card) / .65), transparent), var(--surface-chrome); border-bottom: 1px solid hsl(var(--border)); }
+.chrome-button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 6px; color: hsl(var(--muted-foreground)); }
+.chrome-button:hover { background: hsl(var(--foreground) / .06); color: hsl(var(--foreground)); }
+.workspace-tabs { display: flex; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.workspace-tab-placeholder { align-self: center; font-weight: 600; padding: 0 12px; }
+.workspace-tab-wrap { display: flex; position: relative; align-items: center; flex-shrink: 0; padding-right: 22px; }
+.workspace-tab-wrap + .workspace-tab-wrap::before { content: ''; height: 18px; width: 1px; background: hsl(var(--border)); }
+.workspace-tab { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 12px; white-space: nowrap; color: hsl(var(--muted-foreground)); position: relative; }
+.workspace-tab[aria-selected="true"] { color: hsl(var(--foreground)); font-weight: 600; }
+.workspace-tab[aria-selected="true"]::after { content: ''; position: absolute; bottom: 0; left: 12px; right: 4px; height: 2px; background: hsl(var(--primary)); }
+.workspace-tab[aria-selected="true"] svg { color: hsl(var(--primary)); }
+.tab-close { position: absolute; right: 4px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px; opacity: 0; }
+.workspace-tab-wrap:hover .tab-close, .workspace-tab-wrap:focus-within .tab-close { opacity: 1; }
+.tab-close:hover { background: hsl(var(--foreground) / .1); }
+.workspace-content { flex: 1; min-height: 0; overflow: auto; background: hsl(var(--card)); }
+.workspace-home { padding: 40px 28px; }
+.tool-panel[hidden] { display: none; }
+.tool-panel-editor { height: 100%; }
+.tool-panel-form { max-width: 1100px; margin: 0 auto; padding: 28px 32px; }
+.tool-heading { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 24px; }
+.json-workspace { display: flex; flex-direction: column; height: 100%; min-height: 420px; background: var(--surface-editor); }
+.editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid hsl(var(--border)); }
+.toolbar-actions { display: flex; align-items: center; gap: 12px; }
+.native-button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid hsl(var(--border)); border-radius: 6px; padding: 5px 12px; font-weight: 500; background: linear-gradient(hsl(var(--card) / .7), transparent), var(--surface-raised); box-shadow: 0 1px 3px hsl(220 30% 15% / .09); }
+.native-button:hover { border-color: hsl(var(--primary) / .6); }
+.toolbar-text-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.toolbar-text-button:hover:not(:disabled) { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.indent-control { display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground)); }
+.indent-control select { background: transparent; color: hsl(var(--foreground)); padding: 3px 6px; border: 1px solid hsl(var(--input)); border-radius: 5px; }
+.indent-control option { background: var(--surface-editor); }
+.layout-switch { display: flex; padding: 2px; gap: 2px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border) / .7); border-radius: 7px; flex-shrink: 0; }
+.layout-switch button { display: flex; align-items: center; gap: 6px; padding: 4px 9px; font-size: 12px; color: hsl(var(--muted-foreground)); border-radius: 5px; }
+.layout-switch button[aria-pressed="true"] { background: var(--surface-raised); color: hsl(var(--foreground)); box-shadow: 0 0 0 1px hsl(var(--muted-foreground)), 0 1px 3px hsl(220 30% 10% / .16); }
+.editor-panels { flex: 1; min-height: 0; }
+.editor-pane { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.editor-pane-header { height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid hsl(var(--border) / .5); background: hsl(var(--muted) / .35); font-size: 12px; font-weight: 500; }
+.code-input-wrap { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+.line-numbers { flex-shrink: 0; width: 44px; padding: 16px 10px 0 0; text-align: right; overflow: hidden; color: hsl(var(--muted-foreground)); font: 12px/24px var(--font-code); user-select: none; }
+.code-input-wrap textarea { padding: 16px 16px 16px 0; flex: 1; width: 0; min-width: 0; resize: none; border: 0; background: transparent; color: hsl(var(--foreground)); font: 14px/24px var(--font-code); tab-size: 2; }
+.code-input-wrap textarea:focus-visible { outline-offset: -2px; }
+.code-input-wrap textarea::placeholder { color: hsl(var(--muted-foreground)); font-size: 13px; }
+.code-output { flex: 1; min-height: 0; overflow: auto; }
+.code-output pre { padding: 16px 16px 16px 0; font: 14px/24px var(--font-code); min-width: max-content; }
+.code-line { display: flex; }
+.output-line-number { flex: 0 0 44px; padding-right: 10px; text-align: right; color: hsl(var(--muted-foreground)); font-size: 12px; user-select: none; }
+.json-key { color: #6d42ba; }.json-string { color: #aa3540; }.json-literal { color: #2865b5; }.json-number { color: #805720; }
+.dark .json-key { color: #bb9aec; }.dark .json-string { color: #e9a394; }.dark .json-literal { color: #91b9ee; }.dark .json-number { color: #dec28e; }
+.editor-empty { height: 100%; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); gap: 8px; padding: 20px; text-align: center; }
+.editor-empty p { color: hsl(var(--foreground)); font-weight: 500; }.editor-empty span { font-size: 12px; }
+.editor-resize { background: hsl(var(--border)); position: relative; flex-basis: 1px; }
+.editor-resize::after { content: ''; position: absolute; inset: 0 -3px; z-index: 2; }
+[data-layout="below"] .editor-resize::after { inset: -3px 0; }
+.editor-resize[data-resize-handle-active], .editor-resize:focus-visible { background: hsl(var(--primary)); }
+.editor-status { height: 32px; flex-shrink: 0; padding: 0 16px; display: flex; align-items: center; gap: 16px; color: hsl(var(--muted-foreground)); border-top: 1px solid hsl(var(--border)); font-size: 11px; }
+.editor-status span { display: inline-flex; align-items: center; gap: 6px; }.status-valid { color: #228044; }
+.dark .status-valid { color: #80cb95; }.json-error { padding: 10px 20px; background: hsl(var(--destructive) / .08); color: hsl(var(--destructive)); font-size: 12px; }
+.command-surface { background: hsl(var(--card) / .96); backdrop-filter: blur(24px); border-radius: 14px; box-shadow: 0 24px 80px hsl(220 30% 10% / .28), inset 0 1px 0 hsl(var(--foreground) / .06); }
+@media (max-width: 850px) { .editor-toolbar { padding: 10px 12px; flex-wrap: wrap; }.toolbar-actions { gap: 5px; }.indent-control { padding-left: 8px; }.workspace-titlebar { gap: 2px; padding: 0 8px; }.tool-panel-form { padding: 24px 20px; } }
+@media (max-width: 540px) { .editor-toolbar { gap: 8px; }.editor-status { gap: 8px; }.editor-status span:last-child { display: none; }.workspace-tab { padding: 0 8px; }.tab-close { opacity: 1; }.workspace-home { padding: 28px 20px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }
+@media (prefers-reduced-transparency: reduce) { .workspace-sidebar, .command-surface { backdrop-filter: none; background: hsl(var(--card)); } }
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+.workspace-tabs { scrollbar-width: none; }
+.workspace-tabs::-webkit-scrollbar { display: none; }
+.command-surface > div { scrollbar-width: thin; }
+.tool-panel-form .font-mono { font-family: var(--font-code); }
+/* Desktop panes own their scrolling, so switching tools preserves scroll position. */
+.workspace-content { overflow: hidden; }
+.tool-panel-form { height: 100%; overflow: auto; }
+.workspace-home { height: 100%; overflow: auto; }
+.json-info { padding: 8px 20px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .4); border-bottom: 1px solid hsl(var(--border)); font-size: 12px; }
+@media (min-width: 640px) and (max-width: 900px) {
+  .workspace-sidebar { width: 200px; }
+  .workspace-sidebar[aria-hidden="true"] { width: 0; }
+  .tool-panel-form { padding: 20px 16px; }
+}
+
+/* Native vibrancy lives beneath the webview; every ancestor must let it through. */
+html:has(.workspace[data-platform="darwin"]),
+body:has(.workspace[data-platform="darwin"]),
+body:has(.workspace[data-platform="darwin"]) #root,
+/* A blue wash over the native glass. The blur still shows through, and the wash keeps sidebar text
+   readable whatever is behind the window (vibrancy alone lightens over bright content). */
+.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(238 244 255 / .42), rgb(218 231 253 / .38)); }
+.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(15 21 34 / .84), rgb(12 17 28 / .88)); }
+.workspace[data-platform="darwin"] .sidebar-brand { padding-top: 28px; height: 84px; border-bottom: 0; }
+.workspace[data-platform="darwin"] .workspace-titlebar {
+  background: linear-gradient(rgb(255 255 255 / .60), rgb(246 248 251 / .38));
+  border-bottom-color: rgb(0 0 0 / .08);
+}
+.dark .workspace[data-platform="darwin"] .workspace-titlebar { background: rgb(30 32 38 / .6); border-bottom-color: rgb(255 255 255 / .07); }
+.workspace[data-platform="darwin"][data-sidebar-open="false"] .workspace-titlebar { padding-left: 82px; }
+.workspace-sidebar input { background: hsl(var(--card) / .45); border-color: hsl(var(--chrome-input-border)); box-shadow: 0 1px 2px rgb(0 0 0 / .025); }
+.workspace-home { max-width: 680px; padding-top: 64px; }
+
+.workspace-home h1 + p { font-size: 13px; }
+
+.home-tool-list { gap: 2px 24px; }
+.home-tool-row { display: flex; align-items: center; gap: 12px; padding: 12px 8px; text-align: left; border-radius: 7px; transition: background 120ms; }
+.home-tool-row:hover { background: hsl(var(--muted)); }
+.home-tool-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: linear-gradient(hsl(var(--card)), hsl(var(--muted))); box-shadow: inset 0 0 0 1px hsl(var(--foreground) / .07), 0 1px 2px rgb(0 0 0 / .04); }
+.release-backdrop { background: rgb(18 23 32 / .18); backdrop-filter: blur(5px); }
+.release-sheet { background: linear-gradient(hsl(var(--card) / .96), hsl(var(--background) / .94)); backdrop-filter: blur(40px) saturate(1.3); box-shadow: 0 24px 80px rgb(0 0 0 / .22), 0 2px 8px rgb(0 0 0 / .10), inset 0 1px rgb(255 255 255 / .5); border-color: hsl(var(--foreground) / .14); }
+.release-sheet h2 { letter-spacing: -.01em; }
+.release-body { scrollbar-width: thin; }
+@media (prefers-reduced-transparency: reduce) {
+  .release-sheet { background: hsl(var(--card)); backdrop-filter: none; }
+  .release-backdrop { backdrop-filter: none; }
+}
+
+/* A continuous window frame around a distinct, inset working surface. */
+
+.workspace > main { padding: 0 10px 10px 0; }
+.workspace-titlebar { height: 56px; background: transparent; border: 0; padding: 0 10px; }
+.workspace[data-platform="darwin"] .workspace-titlebar,
+.dark .workspace[data-platform="darwin"] .workspace-titlebar { background: transparent; border: 0; }
+.workspace-content { border-radius: 11px; box-shadow: 0 4px 18px rgb(26 36 60 / .08), 0 1px 3px rgb(26 36 60 / .10); }
+.workspace-content.is-home { background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--background))); }
+ .workspace-sidebar,
+.workspace[data-platform="darwin"] .workspace-sidebar {
+  background: transparent; box-shadow: none; border: 0;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+@media (max-width: 639px) {
+  .workspace-sidebar { background: hsl(var(--background) / .96); }
+}
+.workspace-sidebar input {
+  background: linear-gradient(rgb(255 255 255 / .42), rgb(255 255 255 / .16));
+  border-color: hsl(var(--chrome-input-border));
+  box-shadow: inset 0 1px rgb(255 255 255 / .65), 0 1px 3px rgb(43 71 112 / .04);
+}
+
+.sidebar-brand { border: 0; padding-left: 22px; }
+.sidebar-brand img { width: 24px; height: 24px; }
+/* Secondary text over the glass chrome uses a stronger gray than over opaque cards. */
+.workspace-sidebar, .workspace-titlebar { --muted-foreground: var(--chrome-muted-foreground); }
+.workspace-sidebar nav { padding: 8px 4px; }
+.workspace-sidebar nav button { min-height: 32px; }
+.workspace-sidebar nav button:hover { background-color: hsl(var(--foreground) / .055); }
+.sidebar-footer { margin: 0 14px; padding: 12px 0 14px; border-color: hsl(var(--foreground) / .08); }
+.sidebar-footer > div > p { text-align: left; font-size: 11px; margin-bottom: 8px; }
+.sidebar-footer-actions { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; }
+.sidebar-footer-actions > button:first-child { width: 100%; padding: 0; border: 0; background: transparent; height: 24px; font-size: 11px; box-shadow: none; }
+.workspace-home { width: 100%; max-width: 650px; padding: clamp(36px, 7vh, 68px) 36px 36px; }
+.workspace-home > div:first-child { margin-bottom: 25px; }
+.workspace-home h1 { font-size: 22px; line-height: 28px; letter-spacing: -.02em; font-weight: 650; }
+.workspace-home h1 + p { font-size: 13px; line-height: 1.6; margin-top: 10px; }
+.home-search { width: 100%; height: 46px; display: flex; align-items: center; gap: 11px; padding: 0 14px; border-radius: 9px; background: hsl(var(--card)); color: hsl(var(--muted-foreground)); box-shadow: 0 2px 6px rgb(22 35 58 / .06), inset 0 0 0 1px hsl(var(--foreground) / .12); text-align: left; margin-bottom: 32px; }
+.home-search:hover { box-shadow: 0 3px 9px rgb(22 35 58 / .09), inset 0 0 0 1px hsl(var(--primary) / .4); }
+.home-search kbd { margin-left: auto; font-family: var(--font-ui); font-size: 11px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); border-radius: 4px; padding: 2px 5px; }
+.workspace-home h2 { font-weight: 600; font-size: 12px; color: hsl(var(--muted-foreground)); margin-bottom: 9px; }
+.home-tool-list { gap: 0 20px; }
+.home-tool-row { gap: 10px; padding: 12px 6px; border-radius: 6px; min-height: 60px; }
+.home-tool-row:nth-child(n+3) { border-top: 1px solid hsl(var(--foreground) / .06); }
+.home-tool-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(#fff, #edf3ff); box-shadow: 0 2px 3px rgb(30 50 90 / .08), inset 0 0 0 1px rgb(40 70 130 / .10); }
+.dark .home-tool-icon { background: linear-gradient(#394251, #2a303d); }
+.home-tool-icon svg { stroke-width: 1.65; }
+.home-tool-arrow { margin-left: auto; color: hsl(var(--muted-foreground)); opacity: 0; }
+.home-tool-row:hover .home-tool-arrow, .home-tool-row:focus-visible .home-tool-arrow { opacity: 1; }
+@media (max-width: 900px) { .workspace-home { padding: 36px 24px; }.home-tool-list { grid-template-columns: 1fr; }.home-tool-row:nth-child(n+2) { border-top: 1px solid hsl(var(--foreground) / .06); } }
+@media (max-width: 639px) { .workspace > main { padding-left: 8px; padding-right: 8px; }.workspace-home { padding: 28px 20px; } }
+@media (prefers-reduced-transparency: reduce) {
+  .workspace, .workspace[data-platform="darwin"],
+  .dark .workspace, .dark .workspace[data-platform="darwin"] {
+    background: var(--surface-sidebar); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+  }
+}
+
+/* Dialogs share the window's cool glass chrome, with opaque reading surfaces. */
+.modal-backdrop { background: rgb(22 33 53 / .20); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.modal-surface { background: hsl(var(--card) / .94); border: 1px solid hsl(var(--foreground) / .14); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 70px rgb(17 30 53 / .24), 0 4px 12px rgb(17 30 53 / .12); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+.modal-header, .modal-footer { flex-shrink: 0; padding: 18px 24px; background: linear-gradient(120deg, hsl(var(--card) / .85), hsl(var(--accent) / .35)); }
+.modal-header { border-bottom: 1px solid hsl(var(--foreground) / .08); box-shadow: inset 0 1px rgb(255 255 255 / .45); }
+.modal-header h2 { font-size: 17px; letter-spacing: -.01em; }
+.modal-header p { font-size: 12px; line-height: 1.5; }
+.modal-footer { border-top: 1px solid hsl(var(--foreground) / .08); padding-top: 12px; padding-bottom: 12px; }
+.modal-body { background: hsl(var(--card)); scrollbar-width: thin; }
+.shortcut-dialog { display: flex; flex-direction: column; width: 100%; max-width: 760px; max-height: calc(100dvh - 48px); }
+.shortcut-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 14px 0; }
+.shortcut-row + .shortcut-row { border-top: 1px solid hsl(var(--foreground) / .07); }
+.shortcut-description { font-size: 12px; line-height: 1.5; margin-top: 3px; max-width: 40ch; }
+.shortcut-row > div:last-child { display: grid; grid-template-columns: 105px 40px 40px; gap: 3px; }
+.shortcut-recorder { min-width: 105px; font-size: 12px; height: 30px; box-shadow: inset 0 1px hsl(var(--card)), 0 1px 2px rgb(0 0 0 / .04); }
+.shortcut-recorder[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--ring) / .25); }
+.shortcut-row button:not(.shortcut-recorder) { padding: 0 7px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.shortcut-dialog section > div > p { font-size: 12px; }
+.release-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
+.command-surface .modal-header { padding: 8px 12px; }
+.command-surface .modal-footer { padding: 10px 16px; font-size: 11px; }
+/* The selected palette row sits on the accent tint, so its secondary text darkens with it. */
+.command-surface [aria-selected="true"] { --muted-foreground: 216 40% 30%; }
+.dark .command-surface [aria-selected="true"] { --muted-foreground: 215 24% 84%; }
+.dark .modal-header { box-shadow: inset 0 1px rgb(255 255 255 / .06); }
+@media (max-width: 600px) {
+  .shortcut-row { grid-template-columns: 1fr; gap: 9px; }
+  .modal-header, .modal-footer { padding-left: 18px; padding-right: 18px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .modal-backdrop, .modal-surface { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .modal-surface { background: hsl(var(--card)); }
+}
+
+/* Tool controls use the same compact desktop scale as the window chrome. */
+.desktop-button, .desktop-input, .desktop-select-trigger { font-size: 13px; }
+.tool-panel-form { padding: 24px; }
+.tool-panel-form label { font-size: 12px; font-weight: 600; }
+/* A label that sits beside its own switch or checkbox names an option, not a field: body weight. */
+.tool-panel-form label:has(+ button[role="switch"]), .tool-panel-form label:has(+ button[role="checkbox"]),
+.tool-panel-form button[role="switch"] + label, .tool-panel-form button[role="checkbox"] + label { font-size: 13px; font-weight: 400; }
+.tool-panel-form textarea { border-color: hsl(var(--input)); background-color: var(--surface-editor); border-radius: 7px; line-height: 1.6; }
+.tool-panel-form textarea[readonly] { background-color: hsl(var(--muted) / .45); }
+.desktop-input, .desktop-select-trigger { background: hsl(var(--card)); border-color: hsl(var(--input)); box-shadow: inset 0 1px 2px rgb(18 30 50 / .025); }
+.desktop-segments { background: hsl(var(--muted)); border: 1px solid hsl(var(--foreground) / .08); padding: 2px; border-radius: 7px; }
+.desktop-segments [role="tab"] { font-size: 12px; padding-top: 3px; padding-bottom: 3px; }
+/* The active segment is raised and outlined, so its state does not depend on a faint fill step. */
+.desktop-segments [data-state="active"] { background: var(--surface-raised); color: hsl(var(--foreground)); box-shadow: 0 0 0 1px hsl(var(--muted-foreground)), 0 1px 3px rgb(15 28 48 / .12); }
+.tool-panel-form .tool-card { border-color: hsl(var(--foreground) / .09); border-radius: 9px; }
+.desktop-menu, .desktop-tooltip { background: hsl(var(--card) / .97); color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / .12); box-shadow: 0 10px 28px rgb(17 30 53 / .16), 0 2px 6px rgb(17 30 53 / .08); backdrop-filter: blur(24px); border-radius: 8px; }
+.desktop-menu { max-height: min(384px, var(--radix-select-content-available-height)); }
+.desktop-menu [role="option"], .desktop-tooltip { font-size: 12px; }
+.tool-help { border-top: 1px solid hsl(var(--foreground) / .10); padding-top: 16px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.tool-help summary { cursor: pointer; padding: 6px 0; font-weight: 500; }
+.tool-help summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: 3px; }
+.tool-help-content { padding: 10px 0 0 14px; }
+.tool-help-question + .tool-help-question { border-top: 1px solid hsl(var(--foreground) / .06); }
+.tool-help-question summary { color: hsl(var(--foreground)); padding: 10px 0; }
+.tool-help-question p { max-width: 72ch; line-height: 1.65; padding: 0 0 14px; }
+@media (prefers-reduced-transparency: reduce) {
+  .desktop-menu, .desktop-tooltip { background: hsl(var(--card)); backdrop-filter: none; }
+}
+.tool-panel-form select { min-height: 32px; padding-top: 4px; padding-bottom: 4px; font-size: 13px; border-color: hsl(var(--input)); border-radius: 6px; }
+
+/* Sidebar tool rows: the favorite star is its own button and appears on hover or keyboard focus. */
+.sidebar-favorite { opacity: 0; transition: opacity .12s; }
+.sidebar-tool:hover .sidebar-favorite, .sidebar-tool:focus-within .sidebar-favorite, .sidebar-favorite.is-favorite { opacity: 1; }
+.sidebar-favorite:hover { background: hsl(var(--foreground) / .08); }
+.sidebar-search-kbd { position: absolute; right: 5px; top: 5px; height: 22px; padding: 0 6px; border-radius: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); }
+.sidebar-search-kbd:hover { color: hsl(var(--foreground)); }
+.sidebar-empty-action { margin-top: 6px; color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Tab strip: tabs shrink before they scroll, and the edges fade so overflow is visible. */
+.workspace-tab { max-width: 200px; }
+.workspace-tab span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.workspace-tabs[data-overflow="true"] { mask-image: linear-gradient(90deg, transparent, #000 20px, #000 calc(100% - 20px), transparent); }
+
+/* Shared tool workspace: panes for text-in, text-out tools. */
+.tool-panel-workspace { padding: 0; }
+.pane-actions { display: flex; align-items: center; gap: 2px; }
+.pane-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pane-body-scroll { overflow: auto; }
+.code-textarea { flex: 1; width: 100%; min-height: 0; resize: none; border: 0; padding: 14px 16px; background: transparent; color: hsl(var(--foreground)); font: 13px/22px var(--font-code); tab-size: 2; }
+.code-textarea:focus-visible { outline-offset: -2px; }
+.code-textarea::placeholder { color: hsl(var(--muted-foreground)); }
+.pane-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border-bottom: 1px solid hsl(var(--border) / .5); font-size: 12px; }
+.option-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: hsl(var(--foreground)); }
+.result-list { display: flex; flex-direction: column; }
+.result-row { display: grid; grid-template-columns: 112px 1fr auto; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid hsl(var(--border) / .5); }
+.result-row-label { font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+.result-row-value { min-width: 0; font: 12px/18px var(--font-code); overflow-wrap: anywhere; color: hsl(var(--foreground)); user-select: text; }
+.result-row-value:empty::before { content: '—'; color: hsl(var(--muted-foreground)); }
+.copy-button[data-copied] { color: hsl(var(--success)); }
+.workspace-notice { padding: 8px 16px; font-size: 12px; border-bottom: 1px solid hsl(var(--border) / .5); }
+.workspace-notice[data-tone="error"] { color: hsl(var(--destructive)); }
+.workspace-notice[data-tone="success"] { color: hsl(var(--success)); }
+.workspace-help { border-top: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground)); max-height: 40%; overflow: auto; flex-shrink: 0; }
+.workspace-help .tool-help { border-top: 0; padding: 4px 16px; }
+@media (max-width: 640px) { .result-row { grid-template-columns: 1fr auto; } .result-row-label { grid-column: 1 / -1; } }
+.shortcut-row > kbd.shortcut-fixed { justify-self: end; font-family: var(--font-ui); font-size: 12px; padding: 4px 8px; border-radius: 5px; border: 1px solid hsl(var(--input)); background: hsl(var(--muted)); color: hsl(var(--foreground)); white-space: nowrap; }
+.result-row-value.code-textarea { flex: none; overflow: hidden; word-break: break-all; padding: 2px 0; font-size: 12px; line-height: 18px; border-radius: 3px; }
+.result-row-value.code-textarea::placeholder { font-family: var(--font-ui); }
+
+/* Window material.
+   macOS: the native NSVisualEffectView sidebar material (tauri.macos.conf.json) is the frame,
+   so the page paints nothing over it. Windows and Linux have no vibrancy and get a solid,
+   neutral frame instead of an imitation. */
+.workspace,
+.workspace[data-platform="darwin"] { background: var(--surface-chrome); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* A blue wash over the native glass. The blur still shows through, and the wash keeps sidebar text
+   readable whatever is behind the window (vibrancy alone lightens over bright content). */
+.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(238 244 255 / .42), rgb(218 231 253 / .38)); }
+.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(15 21 34 / .84), rgb(12 17 28 / .88)); }
+.workspace-content, .workspace-content.is-home { background: hsl(var(--card)); }
+.workspace-content { box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .06), 0 6px 20px rgb(0 0 0 / .06); }
+.dark .workspace-content { box-shadow: 0 0 0 1px rgb(255 255 255 / .07), 0 2px 6px rgb(0 0 0 / .3), 0 10px 30px rgb(0 0 0 / .25); }
+
+/* Sidebar rows follow macOS source lists: a quiet neutral selection, accent only on the icon. */
+.workspace-sidebar nav .bg-accent,
+.workspace-sidebar nav button.bg-accent { background: hsl(var(--foreground) / .09); box-shadow: none; color: hsl(var(--foreground)); }
+.workspace-sidebar nav .bg-accent svg:first-child { color: hsl(var(--primary)); }
+.workspace-sidebar nav .bg-accent span { font-weight: 500; }
+.workspace-sidebar nav .sidebar-tool:hover:not(.bg-accent) { background-color: hsl(var(--foreground) / .05); }
+.workspace-sidebar nav .sidebar-tool button:hover { background: transparent; }
+.workspace-sidebar input,
+.dark .workspace-sidebar input { background: hsl(var(--foreground) / .045); border-color: hsl(var(--chrome-input-border)); box-shadow: none; }
+.sidebar-search-kbd { background: hsl(var(--foreground) / .06); border-color: hsl(var(--foreground) / .12); }
+.sidebar-footer { border-color: hsl(var(--foreground) / .1); }
+
+/* Typography roles. Headings balance their lines, prose avoids lone last words, and
+   numbers that change in place (sizes, counts, times) use tabular figures. */
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+.dark body { line-height: 1.55; }
+.editor-status, .sidebar-footer, .result-row-value, .line-numbers, .output-line-number, kbd,
+.workspace-tab, [data-numeric], table { font-variant-numeric: tabular-nums; }
+code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-settings: "calt" 0; }
+
+/* Full-pane editors. The text area is the pane, so a focus box around it reads as a stray
+   border. The pane shows focus with an accent rule under its header, and the caret marks
+   the spot. Text starts a gutter's width from the line numbers. */
+.code-input-wrap textarea { padding-left: 12px; }
+.code-input-wrap textarea:focus-visible, .code-textarea:not(.result-row-value):focus-visible { outline: none; }
+.editor-pane-header { position: relative; }
+.editor-pane:focus-within > .editor-pane-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: hsl(var(--ring)); }
+.result-row-value.code-textarea:focus-visible { outline-offset: 2px; }
