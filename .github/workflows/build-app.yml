@@ -160,6 +160,7 @@ jobs:
           Write-Host "Window title: $($app.MainWindowTitle)"
           if ($app.MainWindowTitle -ne "DevTools") { throw "The DevToolsApp window did not open" }
           Stop-Process -Id $app.Id
+          $app.WaitForExit(10000) | Out-Null
 
       - name: Check the upgrade from the Electron version (Windows)
         if: runner.os == 'Windows'
@@ -178,6 +179,13 @@ jobs:
           function Test-ElectronInstalled {
             (Test-Path (Join-Path $electronDir "Uninstall DevToolsApp.exe")) -and (Get-DevToolsEntries)
           }
+
+          # The previous step leaves WebView2 helpers behind. The Electron installer looks for a
+          # running DevToolsApp.exe before it installs, so stop every leftover process first.
+          Write-Host "Processes before the install:"
+          Get-Process DevToolsApp, msedgewebview2 -ErrorAction SilentlyContinue | Format-Table Id, ProcessName, StartTime
+          Get-Process DevToolsApp, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 3
 
           # The one-click installer can hand off to a child process, so wait for the files to appear.
           # Shared runners are sometimes slow, so try the install a second time before failing.
