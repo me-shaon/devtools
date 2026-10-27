@@ -49,7 +49,7 @@ const lazyNamed = <T extends Record<string, ComponentType>>(
 // keywords: extra search terms, so "sha" finds Hash Generator. The command palette, the sidebar
 // filter, and launchers such as Raycast (through the tool manifest) use them.
 export const ALL_TOOLS = [
-  { icon: FileJson, name: "JSON Viewer", id: "json-viewer", category: "Development Tools", keywords: ["json", "format", "pretty", "minify", "validate", "jsonpath", "query"] },
+  { icon: FileJson, name: "JSON Viewer", id: "json-viewer", category: "Development Tools", keywords: ["json", "format", "pretty", "minify", "validate", "jsonpath", "query", "python dict", "ruby hash", "js object", "json5", "jsonc", "ndjson", "jsonl", "repair"] },
   { icon: Code, name: "Code Playground", id: "code-playground", category: "Development Tools", keywords: ["javascript", "js", "html", "css", "run", "editor"] },
   { icon: Terminal, name: "Regex Tester", id: "regex-generator", category: "Development Tools", keywords: ["regex", "regexp", "pattern", "match", "replace", "capture group", "regex generator"] },
   { icon: Type, name: "JSON to Code", id: "json-typescript", category: "Development Tools", keywords: ["typescript", "ts", "interface", "types", "go", "golang", "struct", "rust", "serde", "python", "dataclass", "pydantic", "swift", "codable", "kotlin", "json schema", "codegen", "model"] },

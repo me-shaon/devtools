@@ -31,7 +31,6 @@ describe("JSON workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Format", exact: true }));
     fireEvent.change(input, { target: { value: '{"broken":' } });
     expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Validate" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Invalid JSON");
     expect(output().querySelector("code")).toBeNull();
   });

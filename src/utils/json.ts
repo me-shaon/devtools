@@ -2,6 +2,8 @@
  * JSON Viewer utility functions
  */
 
+import { LosslessNumber } from './json-repair';
+
 export interface JsonNode {
   key: string;
   value: any;
@@ -47,7 +49,7 @@ function buildJsonTree(data: any, key: string, depth: number): JsonNode {
     depth,
   };
 
-  if (type === 'object' && data !== null) {
+  if (type === 'object' && isContainer(data)) {
     const children: JsonNode[] = [];
     let size = 0;
 
@@ -77,6 +79,7 @@ function buildJsonTree(data: any, key: string, depth: number): JsonNode {
  */
 export function getJsonType(value: any): JsonNode['type'] {
   if (value === null) return 'null';
+  if (value instanceof LosslessNumber) return 'number';
   if (Array.isArray(value)) return 'array';
   const type = typeof value;
   if (type === 'string' || type === 'number' || type === 'boolean') return type;
@@ -121,6 +124,55 @@ export function sortJsonKeys(input: string): string | null {
   }
 }
 
+/** Sort object keys in a parsed value, at every depth. */
+export function sortJsonValue(value: unknown): unknown {
+  return sortObject(value);
+}
+
+/**
+ * Write a parsed value as JSON, like JSON.stringify, but write large numbers
+ * (LosslessNumber) as their exact text. The indent is a space count or "\t".
+ */
+export function stringifyJson(value: unknown, indent: number | string = 0): string {
+  const gap = typeof indent === 'number' ? ' '.repeat(indent) : indent;
+  if (!hasLosslessNumber(value)) return JSON.stringify(value, null, gap) ?? 'null';
+  const write = (node: unknown, pad: string): string => {
+    if (node instanceof LosslessNumber) return node.text;
+    if (node === null || typeof node !== 'object') return JSON.stringify(node) ?? 'null';
+    const inner = pad + gap;
+    const join = (items: string[], open: string, close: string) =>
+      items.length === 0 ? open + close
+        : gap ? `${open}\n${inner}${items.join(`,\n${inner}`)}\n${pad}${close}` : `${open}${items.join(',')}${close}`;
+    if (Array.isArray(node)) return join(node.map((item) => write(item, inner)), '[', ']');
+    const colon = gap ? ': ' : ':';
+    const record = node as Record<string, unknown>;
+    return join(Object.keys(record).map((key) => `${JSON.stringify(key)}${colon}${write(record[key], inner)}`), '{', '}');
+  };
+  return write(value, '');
+}
+
+function hasLosslessNumber(value: unknown): boolean {
+  if (value instanceof LosslessNumber) return true;
+  if (value === null || typeof value !== 'object') return false;
+  for (const item of Object.values(value)) if (hasLosslessNumber(item)) return true;
+  return false;
+}
+
+/** Type, key count, and depth of a parsed value, for the status bar. */
+export function describeJsonValue(value: unknown): { type: JsonNode['type']; keys: number; depth: number } {
+  let keys = 0;
+  let depth = 0;
+  const visit = (node: unknown, level: number) => {
+    if (!isContainer(node)) return;
+    const values: unknown[] = Array.isArray(node) ? node : Object.values(node as object);
+    if (!Array.isArray(node)) keys += values.length;
+    if (values.length) depth = Math.max(depth, level + 1);
+    for (const item of values) visit(item, level + 1);
+  };
+  visit(value, 0);
+  return { type: getJsonType(value), keys, depth };
+}
+
 /**
  * Recursively sort object keys
  */
@@ -129,7 +181,7 @@ function sortObject(obj: any): any {
     return obj.map(sortObject);
   }
 
-  if (obj !== null && typeof obj === 'object') {
+  if (isContainer(obj)) {
     const sorted: any = {};
     const keys = Object.keys(obj).sort();
     for (const key of keys) {
@@ -146,11 +198,15 @@ function sortObject(obj: any): any {
  */
 export function jsonToXml(input: string, rootName = 'root'): string | null {
   try {
-    const data = JSON.parse(input);
-    return valueToXmlLines(data, rootName, true).join('\n');
+    return jsonValueToXml(JSON.parse(input), rootName);
   } catch {
     return null;
   }
+}
+
+/** Convert a parsed value to XML. */
+export function jsonValueToXml(value: unknown, rootName = 'root'): string {
+  return valueToXmlLines(value, rootName, true).join('\n');
 }
 
 function xmlName(name: string): string {
@@ -160,7 +216,7 @@ function xmlName(name: string): string {
 }
 
 function isContainer(value: any): boolean {
-  return value !== null && typeof value === 'object';
+  return value !== null && typeof value === 'object' && !(value instanceof LosslessNumber);
 }
 
 /**
@@ -211,15 +267,20 @@ function escapeXml(str: string): string {
  */
 export function jsonToYaml(input: string): string | null {
   try {
-    const data = JSON.parse(input);
-    return yamlValue(data);
+    return yamlValue(JSON.parse(input));
   } catch {
     return null;
   }
 }
 
+/** Convert a parsed value to YAML. */
+export function jsonValueToYaml(value: unknown): string {
+  return yamlValue(value);
+}
+
 function yamlScalar(value: any): string {
   if (value === null) return 'null';
+  if (value instanceof LosslessNumber) return value.text;
   if (Array.isArray(value)) return '[]';
   if (typeof value === 'object') return '{}';
   if (typeof value === 'string') return JSON.stringify(value); // valid YAML double-quoted string
@@ -276,7 +337,7 @@ export function getJsonPaths(data: any, prefix = ''): string[] {
       paths.push(path);
       paths.push(...getJsonPaths(data[i], path));
     }
-  } else if (data !== null && typeof data === 'object') {
+  } else if (isContainer(data)) {
     for (const key of Object.keys(data)) {
       const path = SIMPLE_KEY.test(key)
         ? prefix ? `${prefix}.${key}` : key
@@ -466,4 +527,33 @@ function getDepth(obj: any, currentDepth = 0): number {
     return Math.max(...values.map((val) => getDepth(val, currentDepth + 1)));
   }
   return currentDepth;
+}
+
+export type JsonViewMode = 'format' | 'minify' | 'sort' | 'yaml' | 'xml' | 'query';
+
+export type JsonView =
+  | { ok: true; text: string; kind: 'json' | 'yaml' | 'xml' }
+  | { ok: false; message: string };
+
+/** Render a parsed value for the JSON Viewer output pane. The indent is a space count or "\t". */
+export function renderJsonView(value: unknown, mode: JsonViewMode, indent: number | string, query = ''): JsonView {
+  switch (mode) {
+    case 'minify':
+      return { ok: true, text: stringifyJson(value), kind: 'json' };
+    case 'sort':
+      return { ok: true, text: stringifyJson(sortJsonValue(value), indent), kind: 'json' };
+    case 'yaml':
+      return { ok: true, text: jsonValueToYaml(value), kind: 'yaml' };
+    case 'xml':
+      return { ok: true, text: jsonValueToXml(value), kind: 'xml' };
+    case 'query': {
+      if (!query.trim()) return { ok: false, message: 'Enter a query.' };
+      const result = runJsonQuery(value, query);
+      if (result.ok === false) return { ok: false, message: result.error };
+      if (!result.found) return { ok: false, message: 'No match for this query.' };
+      return { ok: true, text: stringifyJson(result.value, indent), kind: 'json' };
+    }
+    default:
+      return { ok: true, text: stringifyJson(value, indent), kind: 'json' };
+  }
 }

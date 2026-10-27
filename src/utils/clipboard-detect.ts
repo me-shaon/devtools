@@ -1,3 +1,5 @@
+import { readJson } from "@/utils/json-repair";
+
 /** A tool suggestion for pasted text. Higher scores are surer matches. */
 export interface PasteSuggestion {
   toolId: string;
@@ -94,6 +96,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (isJson(text)) {
     add("json-viewer", "JSON", 90);
     add("json-typescript", "JSON", 40);
+  } else if (/^[[{(]/.test(text) && readJson(text).ok) {
+    add("json-viewer", "a data literal", 70);
   }
   if (single && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) add("uuid-generator", "a UUID", 90);
   if (single && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(text)) add("uuid-generator", "a ULID", 85);

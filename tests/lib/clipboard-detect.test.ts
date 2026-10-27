@@ -9,6 +9,8 @@ describe("detectPastedContent", () => {
   it("recognises common developer content", () => {
     expect(first("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U")).toBe("jwt-decoder");
     expect(first('{"name": "DevTools", "tools": [1, 2]}')).toBe("json-viewer");
+    expect(detectPastedContent("{'name': 'Ada', 'admin': True}", ids)[0]).toMatchObject({ toolId: "json-viewer", label: "a data literal" });
+    expect(first('{"id"=>1, :role=>:admin}')).toBe("json-viewer");
     expect(first("550e8400-e29b-41d4-a716-446655440000")).toBe("uuid-generator");
     expect(first("1761562800")).toBe("timestamp");
     expect(first("1761562800123")).toBe("timestamp");
