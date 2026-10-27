@@ -201,7 +201,7 @@ describe('verifyJwtSignature', () => {
   it('reports unsupported algorithms', async () => {
     const make = (alg: string) =>
       `${b64url(JSON.stringify({ alg, typ: 'JWT' }))}.${b64url(JSON.stringify({ a: 1 }))}.c2ln`;
-    for (const alg of ['RS256', 'ES256', 'none']) {
+    for (const alg of ['XS256', 'RS1']) {
       const result = await verifyJwtSignature(make(alg), 'x');
       expect(result).toEqual({ status: 'unsupported', message: 'Algorithm not supported for verification' });
     }

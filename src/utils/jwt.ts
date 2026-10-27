@@ -1,11 +1,11 @@
 /**
- * JWT decoder utility functions
+ * JWT decode, verify, and sign utilities. All crypto runs locally with Web Crypto.
  */
 
 export interface JwtHeader {
   alg?: string;
   typ?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface JwtPayload {
@@ -16,7 +16,7 @@ export interface JwtPayload {
   nbf?: number;
   iat?: number;
   jti?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface DecodedJwt {
@@ -28,11 +28,35 @@ export interface DecodedJwt {
   error?: string;
 }
 
+/** Removes surrounding whitespace and an "Authorization: Bearer" style prefix. */
+export function cleanJwtInput(token: string): string {
+  return token.trim().replace(/^(authorization:\s*)?bearer\s+/i, "").trim();
+}
+
+/** Decodes base64url (or base64) text to bytes. Throws on characters outside the alphabet. */
+function base64ToBytes(value: string): Uint8Array {
+  const base64 = value.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+const textToBase64Url = (text: string) => bytesToBase64Url(new TextEncoder().encode(text));
+
 /**
  * Decode JWT token
  */
 export function decodeJwt(token: string): DecodedJwt {
-  if (!token.trim()) {
+  token = cleanJwtInput(token);
+  if (!token) {
     return {
       header: {},
       payload: {},
@@ -56,15 +80,10 @@ export function decodeJwt(token: string): DecodedJwt {
 
     const [headerB64, payloadB64, signature] = parts;
 
-    // Add padding if needed
-    const addPadding = (str: string) => str + "=".repeat((4 - (str.length % 4)) % 4);
-
-    // Decode base64url
+    // Decode base64url as UTF-8 text
     const base64urlDecode = (str: string): string => {
       try {
-        const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = addPadding(base64);
-        return atob(padded);
+        return new TextDecoder().decode(base64ToBytes(str));
       } catch (e) {
         throw new Error(`Failed to decode base64url: ${(e as Error).message}`);
       }
@@ -87,8 +106,9 @@ export function decodeJwt(token: string): DecodedJwt {
     } catch (e) {
       // Handle case where base64 padding creates extra bytes at the end
       // First try stripping trailing control characters
+      // eslint-disable-next-line no-control-regex
       let cleaned = payloadJson.replace(/[\x00-\x1F\x7F]+$/g, '');
-      // Also try stripping any non-ASCII characters at the end
+      // Also try stripping replacement and other non-ASCII characters at the end
       cleaned = cleaned.replace(/[^\x20-\x7E]+$/g, '');
 
       // Check if JSON is complete (has closing brace)
@@ -166,6 +186,403 @@ export function isValidJwtFormat(token: string): boolean {
   return parts.length === 3 && parts.every((part) => part.length > 0);
 }
 
+// ---------------------------------------------------------------------------
+// Time claims
+
+const TIME_UNITS: [string, number][] = [
+  ["y", 365 * 86_400_000],
+  ["d", 86_400_000],
+  ["h", 3_600_000],
+  ["min", 60_000],
+  ["s", 1000],
+];
+
+/** A distance such as "in 1 h 30 min" or "3 d 4 h ago", with at most two units. */
+export function formatRelativeTime(deltaMs: number): string {
+  let rest = Math.round(Math.abs(deltaMs) / 1000) * 1000;
+  if (rest === 0) return "now";
+  const parts: string[] = [];
+  for (const [unit, size] of TIME_UNITS) {
+    if (parts.length === 2) break;
+    const count = Math.floor(rest / size);
+    if (count > 0) {
+      parts.push(`${count} ${unit}`);
+      rest -= count * size;
+    } else if (parts.length > 0) {
+      break;
+    }
+  }
+  const text = parts.join(" ");
+  return deltaMs > 0 ? `in ${text}` : `${text} ago`;
+}
+
+export type JwtTimeState = "active" | "expired" | "not-yet-valid" | "no-expiry";
+
+export interface JwtTimeClaim {
+  claim: "iat" | "nbf" | "exp";
+  label: string;
+  value: unknown;
+  /** Null when the value is not a number. */
+  date: Date | null;
+  relative: string;
+  warning?: string;
+}
+
+export interface JwtTimeInfo {
+  state: JwtTimeState;
+  summary: string;
+  claims: JwtTimeClaim[];
+}
+
+const TIME_CLAIMS: [JwtTimeClaim["claim"], string][] = [
+  ["iat", "Issued at (iat)"],
+  ["nbf", "Not before (nbf)"],
+  ["exp", "Expires at (exp)"],
+];
+
+/** Reads iat, nbf and exp, and tells whether the token is valid at `now`. */
+export function describeTimeClaims(payload: JwtPayload, now: number = Date.now()): JwtTimeInfo {
+  const claims: JwtTimeClaim[] = [];
+  for (const [claim, label] of TIME_CLAIMS) {
+    const value = payload[claim];
+    if (value === undefined) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      claims.push({ claim, label, value, date: null, relative: "", warning: "Not a number" });
+      continue;
+    }
+    const date = new Date(value * 1000);
+    const entry: JwtTimeClaim = { claim, label, value, date, relative: formatRelativeTime(date.getTime() - now) };
+    // Seconds stay below 1e11 until the year 5138. Larger values are almost always milliseconds.
+    if (value > 1e11) entry.warning = "This looks like milliseconds. JWT times are in seconds.";
+    claims.push(entry);
+  }
+
+  const time = (claim: string) => claims.find((c) => c.claim === claim)?.date?.getTime();
+  const exp = time("exp");
+  const nbf = time("nbf");
+  let state: JwtTimeState;
+  let summary: string;
+  if (exp !== undefined && exp <= now) {
+    state = "expired";
+    summary = `Expired ${formatRelativeTime(exp - now)}`;
+  } else if (nbf !== undefined && nbf > now) {
+    state = "not-yet-valid";
+    summary = `Not valid yet (valid ${formatRelativeTime(nbf - now)})`;
+  } else if (exp !== undefined) {
+    state = "active";
+    summary = `Expires ${formatRelativeTime(exp - now)}`;
+  } else {
+    state = "no-expiry";
+    summary = "No exp claim";
+  }
+  return { state, summary, claims };
+}
+
+// ---------------------------------------------------------------------------
+// Algorithms and keys
+
+export const JWT_ALGORITHMS = [
+  "HS256", "HS384", "HS512",
+  "RS256", "RS384", "RS512",
+  "PS256", "PS384", "PS512",
+  "ES256", "ES384", "ES512",
+  "EdDSA",
+] as const;
+
+export type JwtAlgorithm = (typeof JWT_ALGORITHMS)[number];
+
+type Family = "hmac" | "rsa" | "pss" | "ec" | "ed";
+
+interface AlgorithmSpec {
+  family: Family;
+  hash?: string;
+  curve?: string;
+  /** The JWK `kty` for this algorithm. */
+  kty?: string;
+}
+
+const HASHES: Record<string, string> = { "256": "SHA-256", "384": "SHA-384", "512": "SHA-512" };
+const CURVES: Record<string, string> = { "256": "P-256", "384": "P-384", "512": "P-521" };
+
+function algorithmSpec(alg: string): AlgorithmSpec | null {
+  // RFC 9864 adds "Ed25519" as a fully specified name for EdDSA with Ed25519.
+  if (alg === "EdDSA" || alg === "Ed25519") return { family: "ed", kty: "OKP", curve: "Ed25519" };
+  const match = /^(HS|RS|PS|ES)(256|384|512)$/.exec(alg);
+  if (!match) return null;
+  const hash = HASHES[match[2]];
+  switch (match[1]) {
+    case "HS": return { family: "hmac", hash };
+    case "RS": return { family: "rsa", hash, kty: "RSA" };
+    case "PS": return { family: "pss", hash, kty: "RSA" };
+    default: return { family: "ec", hash, kty: "EC", curve: CURVES[match[2]] };
+  }
+}
+
+/** True for algorithms that use a key pair instead of a shared secret. */
+export function isAsymmetricAlgorithm(alg: unknown): boolean {
+  const spec = typeof alg === "string" ? algorithmSpec(alg) : null;
+  return Boolean(spec && spec.family !== "hmac");
+}
+
+function importParams(spec: AlgorithmSpec): RsaHashedImportParams | EcKeyImportParams | Algorithm {
+  switch (spec.family) {
+    case "rsa": return { name: "RSASSA-PKCS1-v1_5", hash: spec.hash! };
+    case "pss": return { name: "RSA-PSS", hash: spec.hash! };
+    case "ec": return { name: "ECDSA", namedCurve: spec.curve! };
+    default: return { name: "Ed25519" };
+  }
+}
+
+function signParams(spec: AlgorithmSpec): Algorithm | RsaPssParams | EcdsaParams {
+  switch (spec.family) {
+    case "hmac": return { name: "HMAC" };
+    case "rsa": return { name: "RSASSA-PKCS1-v1_5" };
+    // RFC 7518 fixes the PSS salt length to the hash output size.
+    case "pss": return { name: "RSA-PSS", saltLength: Number(spec.hash!.slice(4)) / 8 };
+    case "ec": return { name: "ECDSA", hash: spec.hash! };
+    default: return { name: "Ed25519" };
+  }
+}
+
+// Minimal DER helpers, to convert PKCS#1, SEC1 and X.509 keys to the formats Web Crypto imports.
+
+const OID_RSA = [0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01];
+const OID_EC = [0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01];
+const CURVE_OIDS: Record<string, number[]> = {
+  "P-256": [0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07],
+  "P-384": [0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22],
+  "P-521": [0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x23],
+};
+const SEC1_KEY_SIZES: Record<number, string> = { 32: "P-256", 48: "P-384", 66: "P-521" };
+
+function der(tag: number, ...parts: ArrayLike<number>[]): Uint8Array {
+  const length = parts.reduce((sum, part) => sum + part.length, 0);
+  const lengthBytes: number[] = [];
+  if (length < 0x80) {
+    lengthBytes.push(length);
+  } else {
+    for (let n = length; n > 0; n = Math.floor(n / 256)) lengthBytes.unshift(n & 0xff);
+    lengthBytes.unshift(0x80 | lengthBytes.length);
+  }
+  const out = new Uint8Array(1 + lengthBytes.length + length);
+  out[0] = tag;
+  out.set(lengthBytes, 1);
+  let offset = 1 + lengthBytes.length;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+interface DerNode {
+  tag: number;
+  /** Offset of the tag byte. */
+  offset: number;
+  start: number;
+  end: number;
+}
+
+function readDer(bytes: Uint8Array, offset: number): DerNode {
+  if (offset + 2 > bytes.length) throw new Error("Truncated DER data");
+  let length = bytes[offset + 1];
+  let start = offset + 2;
+  if (length & 0x80) {
+    const count = length & 0x7f;
+    if (count === 0 || count > 4) throw new Error("Unsupported DER length");
+    length = 0;
+    for (let i = 0; i < count; i++) length = length * 256 + bytes[start + i];
+    start += count;
+  }
+  if (start + length > bytes.length) throw new Error("Truncated DER data");
+  return { tag: bytes[offset], offset, start, end: start + length };
+}
+
+function derChildren(bytes: Uint8Array, node: DerNode): DerNode[] {
+  const children: DerNode[] = [];
+  for (let offset = node.start; offset < node.end; ) {
+    const child = readDer(bytes, offset);
+    children.push(child);
+    offset = child.end;
+  }
+  return children;
+}
+
+/** Returns the SubjectPublicKeyInfo of an X.509 certificate. */
+function certificateSpki(cert: Uint8Array): Uint8Array {
+  const tbs = derChildren(cert, readDer(cert, 0))[0];
+  const fields = derChildren(cert, tbs);
+  // tbsCertificate: [0] version (optional), serial, signature, issuer, validity, subject, spki.
+  const spki = fields[(fields[0].tag === 0xa0 ? 1 : 0) + 5];
+  if (!spki || spki.tag !== 0x30) throw new Error("No public key in the certificate");
+  return cert.slice(spki.offset, spki.end);
+}
+
+function sec1Curve(sec1: Uint8Array): string | undefined {
+  // ECPrivateKey: SEQUENCE { version, privateKey OCTET STRING, ... }
+  const privateKey = derChildren(sec1, readDer(sec1, 0))[1];
+  return privateKey ? SEC1_KEY_SIZES[privateKey.end - privateKey.start] : undefined;
+}
+
+type ParsedKey =
+  | { kind: "secret" }
+  | { kind: "spki"; der: Uint8Array }
+  | { kind: "pkcs8"; der: Uint8Array }
+  | { kind: "jwk"; jwk: JsonWebKey & { kid?: string; alg?: string } }
+  | { kind: "jwks"; keys: (JsonWebKey & { kid?: string; alg?: string })[] };
+
+class KeyInputError extends Error {}
+
+const PEM_PATTERN = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/;
+
+/** Reads pasted key text: PEM (public, private, or certificate), a JWK, or a JWKS. */
+function parseKeyText(text: string): ParsedKey {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{")) {
+    let json: unknown;
+    try {
+      json = JSON.parse(trimmed);
+    } catch {
+      throw new KeyInputError("The key is not valid JSON.");
+    }
+    if (json && typeof json === "object" && Array.isArray((json as { keys?: unknown }).keys)) {
+      return { kind: "jwks", keys: (json as { keys: JsonWebKey[] }).keys };
+    }
+    if (json && typeof json === "object" && typeof (json as JsonWebKey).kty === "string") {
+      return { kind: "jwk", jwk: json as JsonWebKey };
+    }
+    throw new KeyInputError("The JSON is not a JWK or a JWKS. A JWK needs a \"kty\" field.");
+  }
+
+  const pem = PEM_PATTERN.exec(trimmed);
+  if (!pem) return { kind: "secret" };
+  const label = pem[1];
+  let body: Uint8Array;
+  try {
+    body = base64ToBytes(pem[2].replace(/\s+/g, ""));
+  } catch {
+    throw new KeyInputError("The PEM body is not valid Base64.");
+  }
+  try {
+    switch (label) {
+      case "PUBLIC KEY":
+        return { kind: "spki", der: body };
+      case "RSA PUBLIC KEY":
+        return { kind: "spki", der: der(0x30, der(0x30, OID_RSA, [0x05, 0x00]), der(0x03, [0x00], body)) };
+      case "CERTIFICATE":
+        return { kind: "spki", der: certificateSpki(body) };
+      case "PRIVATE KEY":
+        return { kind: "pkcs8", der: body };
+      case "RSA PRIVATE KEY":
+        return { kind: "pkcs8", der: der(0x30, [0x02, 0x01, 0x00], der(0x30, OID_RSA, [0x05, 0x00]), der(0x04, body)) };
+      case "EC PRIVATE KEY": {
+        const curve = sec1Curve(body);
+        if (!curve) throw new KeyInputError("The EC private key uses an unsupported curve.");
+        return { kind: "pkcs8", der: der(0x30, [0x02, 0x01, 0x00], der(0x30, OID_EC, CURVE_OIDS[curve]), der(0x04, body)) };
+      }
+      case "ENCRYPTED PRIVATE KEY":
+        throw new KeyInputError("The private key is encrypted. Decrypt it first, for example with openssl pkcs8.");
+      default:
+        throw new KeyInputError(`PEM type "${label}" is not supported.`);
+    }
+  } catch (error) {
+    if (error instanceof KeyInputError) throw error;
+    throw new KeyInputError(`The ${label.toLowerCase()} is not valid DER data.`);
+  }
+}
+
+const PRIVATE_JWK_FIELDS = ["d", "p", "q", "dp", "dq", "qi", "oth", "k"];
+
+/** Strips fields that make Web Crypto reject a JWK the user meant for this algorithm. */
+function jwkForImport(jwk: JsonWebKey, publicOnly: boolean): JsonWebKey {
+  const copy: Record<string, unknown> = { ...jwk };
+  for (const field of ["alg", "use", "key_ops", "ext", "kid", "x5c", "x5t", "x5t#S256", "x5u"]) delete copy[field];
+  if (publicOnly) for (const field of PRIVATE_JWK_FIELDS) delete copy[field];
+  return copy as JsonWebKey;
+}
+
+const isPrivateJwk = (jwk: JsonWebKey) => typeof jwk.d === "string";
+
+/** Checks a JWK's own `alg` and `kty` against the token algorithm before import. */
+function checkJwkFits(jwk: JsonWebKey & { alg?: string }, alg: string, spec: AlgorithmSpec): void {
+  if (jwk.alg && jwk.alg !== alg) throw new KeyInputError(`The key is for ${jwk.alg}, but the token uses ${alg}.`);
+  if (jwk.kty !== spec.kty) throw new KeyInputError(`The key type ${jwk.kty} does not fit ${alg}.`);
+}
+
+async function importOrExplain(
+  format: "spki" | "pkcs8" | "jwk",
+  data: Uint8Array | JsonWebKey,
+  spec: AlgorithmSpec,
+  alg: string,
+  usage: KeyUsage
+): Promise<CryptoKey> {
+  try {
+    return format === "jwk"
+      ? await crypto.subtle.importKey("jwk", data as JsonWebKey, importParams(spec), true, [usage])
+      : await crypto.subtle.importKey(format, data as BufferSource, importParams(spec), true, [usage]);
+  } catch (error) {
+    if ((error as Error).name === "NotSupportedError" && spec.family === "ed") {
+      throw new KeyInputError("This system does not support Ed25519 keys.");
+    }
+    throw new KeyInputError(`The key does not fit ${alg}. Check that the key type and curve match the algorithm.`);
+  }
+}
+
+/** Imports a private key, then exports its public half as a CryptoKey for verification. */
+async function publicFromPrivate(privateKey: CryptoKey, spec: AlgorithmSpec, alg: string): Promise<CryptoKey> {
+  const jwk = await crypto.subtle.exportKey("jwk", privateKey);
+  return importOrExplain("jwk", jwkForImport(jwk, true), spec, alg, "verify");
+}
+
+/** Returns the candidate verification keys for the token, with their kid when known. */
+async function verificationKeys(
+  text: string,
+  alg: string,
+  spec: AlgorithmSpec,
+  kid: unknown
+): Promise<{ key: CryptoKey; kid?: string }[]> {
+  const parsed = parseKeyText(text);
+  switch (parsed.kind) {
+    case "secret":
+      throw new KeyInputError("Paste a PEM public key, a JWK, or a JWKS.");
+    case "spki":
+      return [{ key: await importOrExplain("spki", parsed.der, spec, alg, "verify") }];
+    case "pkcs8":
+      return [{ key: await publicFromPrivate(await importOrExplain("pkcs8", parsed.der, spec, alg, "sign"), spec, alg) }];
+    case "jwk":
+      checkJwkFits(parsed.jwk, alg, spec);
+      return [{ key: await importOrExplain("jwk", jwkForImport(parsed.jwk, true), spec, alg, "verify"), kid: parsed.jwk.kid }];
+    case "jwks": {
+      let candidates = parsed.keys;
+      if (typeof kid === "string") {
+        candidates = candidates.filter((jwk) => jwk.kid === kid);
+        if (candidates.length === 0) throw new KeyInputError(`No key in the JWKS has kid "${kid}".`);
+      } else {
+        candidates = candidates.filter((jwk) => jwk.kty === spec.kty && (!jwk.alg || jwk.alg === alg));
+        if (candidates.length === 0) throw new KeyInputError(`No key in the JWKS fits ${alg}.`);
+      }
+      const keys: { key: CryptoKey; kid?: string }[] = [];
+      for (const jwk of candidates) {
+        checkJwkFits(jwk, alg, spec);
+        keys.push({ key: await importOrExplain("jwk", jwkForImport(jwk, true), spec, alg, "verify"), kid: jwk.kid });
+      }
+      return keys;
+    }
+  }
+}
+
+function secretBytes(secret: string, secretIsBase64: boolean): Uint8Array {
+  if (!secretIsBase64) return new TextEncoder().encode(secret);
+  try {
+    return base64ToBytes(secret);
+  } catch {
+    throw new KeyInputError("The secret is not valid Base64.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Verify
+
 export type JwtVerifyStatus = "valid" | "invalid" | "unsupported" | "error";
 
 export interface JwtVerifyResult {
@@ -173,53 +590,35 @@ export interface JwtVerifyResult {
   message: string;
 }
 
-const HMAC_HASHES: Record<string, string> = {
-  HS256: "SHA-256",
-  HS384: "SHA-384",
-  HS512: "SHA-512",
-};
-
-function base64ToBytes(value: string): Uint8Array {
-  const base64 = value.trim().replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
 /**
- * Verify the signature of an HS256, HS384 or HS512 token with Web Crypto.
+ * Verify the token signature with Web Crypto.
+ * HS* tokens take a secret. RS*, PS*, ES* and EdDSA tokens take a PEM public key,
+ * a certificate, a private key, a JWK, or a JWKS (the key is picked by `kid`).
  * This does not check exp, nbf, issuer, audience or key trust.
  */
 export async function verifyJwtSignature(
   token: string,
-  secret: string,
+  key: string,
   options: { secretIsBase64?: boolean } = {}
 ): Promise<JwtVerifyResult> {
-  const trimmed = token.trim();
+  const trimmed = cleanJwtInput(token);
   const decoded = decodeJwt(trimmed);
   if (decoded.error) {
     return { status: "error", message: decoded.error };
   }
 
   const alg = typeof decoded.header.alg === "string" ? decoded.header.alg : "";
-  const hash = HMAC_HASHES[alg];
-  if (!hash) {
+  if (alg === "none") {
+    return { status: "unsupported", message: 'Unsigned token (alg "none")' };
+  }
+  const spec = algorithmSpec(alg);
+  if (!spec) {
     return { status: "unsupported", message: "Algorithm not supported for verification" };
   }
 
-  if (!secret) {
-    return { status: "error", message: "Enter a secret to verify the signature." };
-  }
-
-  let keyBytes: Uint8Array;
-  try {
-    keyBytes = options.secretIsBase64
-      ? base64ToBytes(secret)
-      : new TextEncoder().encode(secret);
-  } catch {
-    return { status: "error", message: "The secret is not valid Base64." };
+  if (!key.trim()) {
+    const what = spec.family === "hmac" ? "a secret" : "a public key";
+    return { status: "error", message: `Enter ${what} to verify the signature.` };
   }
 
   let signatureBytes: Uint8Array;
@@ -229,25 +628,145 @@ export async function verifyJwtSignature(
     return { status: "invalid", message: "Signature invalid" };
   }
 
+  const [headerB64, payloadB64] = trimmed.split(".");
+  const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+
   try {
-    const [headerB64, payloadB64] = trimmed.split(".");
-    const key = await crypto.subtle.importKey(
-      "raw",
-      keyBytes as BufferSource,
-      { name: "HMAC", hash },
-      false,
-      ["verify"]
-    );
-    const ok = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      signatureBytes as BufferSource,
-      new TextEncoder().encode(`${headerB64}.${payloadB64}`)
-    );
-    return ok
-      ? { status: "valid", message: "Signature valid" }
-      : { status: "invalid", message: "Signature invalid" };
+    let keys: { key: CryptoKey; kid?: string }[];
+    if (spec.family === "hmac") {
+      if (parseKeyText(key).kind !== "secret") {
+        throw new KeyInputError(`This looks like a public or private key. ${alg} tokens use a shared secret.`);
+      }
+      const raw = secretBytes(key, Boolean(options.secretIsBase64));
+      keys = [{ key: await crypto.subtle.importKey("raw", raw as BufferSource, { name: "HMAC", hash: spec.hash! }, false, ["verify"]) }];
+    } else {
+      keys = await verificationKeys(key, alg, spec, decoded.header.kid);
+    }
+
+    for (const candidate of keys) {
+      if (await crypto.subtle.verify(signParams(spec), candidate.key, signatureBytes as BufferSource, data)) {
+        const message = candidate.kid ? `Signature valid (kid "${candidate.kid}")` : "Signature valid";
+        return { status: "valid", message };
+      }
+    }
+    return { status: "invalid", message: "Signature invalid" };
   } catch (error) {
+    if (error instanceof KeyInputError) return { status: "error", message: error.message };
     return { status: "error", message: "Verification failed: " + (error as Error).message };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Sign
+
+async function signingKey(text: string, alg: string, spec: AlgorithmSpec, secretIsBase64: boolean): Promise<CryptoKey> {
+  if (spec.family === "hmac") {
+    if (!text) throw new KeyInputError("Enter a secret to sign the token.");
+    const raw = secretBytes(text, secretIsBase64);
+    return crypto.subtle.importKey("raw", raw as BufferSource, { name: "HMAC", hash: spec.hash! }, false, ["sign"]);
+  }
+  if (!text.trim()) throw new KeyInputError("Enter a private key to sign the token.");
+  const parsed = parseKeyText(text);
+  if (parsed.kind === "pkcs8") return importOrExplain("pkcs8", parsed.der, spec, alg, "sign");
+  if (parsed.kind === "jwk" && isPrivateJwk(parsed.jwk)) {
+    checkJwkFits(parsed.jwk, alg, spec);
+    return importOrExplain("jwk", jwkForImport(parsed.jwk, false), spec, alg, "sign");
+  }
+  throw new KeyInputError("Paste a private key (PEM or JWK) to sign the token. A public key can only verify.");
+}
+
+/** Signs `header` and `payload` with the algorithm in `header.alg`. Throws with a readable message. */
+export async function signJwt(
+  header: JwtHeader,
+  payload: unknown,
+  key: string,
+  options: { secretIsBase64?: boolean } = {}
+): Promise<string> {
+  const alg = typeof header.alg === "string" ? header.alg : "";
+  const spec = algorithmSpec(alg);
+  if (!spec) throw new Error(`Choose an algorithm to sign with. "${alg || "(none)"}" is not supported.`);
+  const cryptoKey = await signingKey(key, alg, spec, Boolean(options.secretIsBase64));
+  const data = `${textToBase64Url(JSON.stringify(header))}.${textToBase64Url(JSON.stringify(payload))}`;
+  const signature = await crypto.subtle.sign(signParams(spec), cryptoKey, new TextEncoder().encode(data));
+  return `${data}.${bytesToBase64Url(new Uint8Array(signature))}`;
+}
+
+function toPem(label: string, buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const lines = btoa(binary).match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----`;
+}
+
+/** Generates a new key pair for an asymmetric algorithm, as PKCS#8 and SPKI PEM. */
+export async function generateJwtKeyPair(alg: string): Promise<{ privateKeyPem: string; publicKeyPem: string }> {
+  const spec = algorithmSpec(alg);
+  if (!spec || spec.family === "hmac") throw new Error(`${alg} does not use a key pair.`);
+  const params =
+    spec.family === "rsa" || spec.family === "pss"
+      ? { ...importParams(spec), modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) }
+      : importParams(spec);
+  const pair = (await crypto.subtle.generateKey(params as RsaHashedKeyGenParams, true, ["sign", "verify"])) as CryptoKeyPair;
+  return {
+    privateKeyPem: toPem("PRIVATE KEY", await crypto.subtle.exportKey("pkcs8", pair.privateKey)),
+    publicKeyPem: toPem("PUBLIC KEY", await crypto.subtle.exportKey("spki", pair.publicKey)),
+  };
+}
+
+/** Derives the public key (SPKI PEM and JWK) that matches a private signing key. */
+export async function derivePublicKey(
+  alg: string,
+  privateKeyText: string,
+  options: { kid?: string } = {}
+): Promise<{ pem: string; jwk: JsonWebKey & { kid?: string; alg?: string; use?: string } }> {
+  const spec = algorithmSpec(alg);
+  if (!spec || spec.family === "hmac") throw new Error(`${alg} does not use a key pair.`);
+  const privateKey = await signingKey(privateKeyText, alg, spec, false);
+  const publicKey = await publicFromPrivate(privateKey, spec, alg);
+  const exported = jwkForImport(await crypto.subtle.exportKey("jwk", publicKey), true);
+  const jwk = { ...exported, ...(options.kid ? { kid: options.kid } : {}), alg, use: "sig" };
+  return { pem: toPem("PUBLIC KEY", await crypto.subtle.exportKey("spki", publicKey)), jwk };
+}
+
+// ---------------------------------------------------------------------------
+// Encoder helpers
+
+/** Sets `alg` in header JSON text. Invalid JSON is replaced with a minimal header. */
+export function setHeaderAlgorithm(headerText: string, alg: string): string {
+  let header: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(headerText);
+    header = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { typ: "JWT" };
+  } catch {
+    header = { typ: "JWT" };
+  }
+  const { alg: _old, ...rest } = header;
+  void _old;
+  return JSON.stringify({ alg, ...rest }, null, 2);
+}
+
+/**
+ * Sets iat to `nowSeconds`, moves nbf (when present) to now, and sets exp so the token
+ * keeps its lifetime (one hour when the payload has no lifetime). Invalid JSON is returned as it is.
+ */
+export function refreshTimeClaims(payloadText: string, nowSeconds: number): string {
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(payloadText);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payloadText;
+  } catch {
+    return payloadText;
+  }
+  const { iat, exp } = payload;
+  const lifetime = typeof iat === "number" && typeof exp === "number" && exp > iat ? exp - iat : 3600;
+  payload.iat = nowSeconds;
+  if ("nbf" in payload) payload.nbf = nowSeconds;
+  payload.exp = nowSeconds + lifetime;
+  return JSON.stringify(payload, null, 2);
+}
+
+/** A starter payload for new test tokens. */
+export function defaultJwtPayload(nowSeconds: number): string {
+  return JSON.stringify({ sub: "1234567890", name: "John Doe", iat: nowSeconds, exp: nowSeconds + 3600 }, null, 2);
 }
