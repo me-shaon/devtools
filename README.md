@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 42 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 47 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
