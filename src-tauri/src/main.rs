@@ -100,6 +100,91 @@ fn write_tool_manifest(app: AppHandle, manifest: ToolManifest) -> Result<(), Str
     std::fs::rename(&temp, dir.join(MANIFEST_FILE)).map_err(|error| error.to_string())
 }
 
+/// The frontend opens the command palette when it receives this event.
+const OPEN_PALETTE_EVENT: &str = "open-command-palette";
+
+/// Shows the window with the command palette open, ready to search.
+fn show_command_palette(app: &tauri::AppHandle) {
+    use tauri::Emitter;
+    show_main_window(app);
+    let _ = app.emit(OPEN_PALETTE_EVENT, ());
+}
+
+/// The global shortcut hides DevTools when it is in front, and otherwise brings it up searching.
+fn toggle_from_shortcut(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        let in_front = window.is_visible().unwrap_or(false) && window.is_focused().unwrap_or(false);
+        if in_front {
+            let _ = window.hide();
+            return;
+        }
+    }
+    show_command_palette(app);
+}
+
+/// Replaces the global shortcut. `None` turns it off. The error text names the reason, for
+/// example a combination that another app already uses.
+#[tauri::command]
+fn set_global_shortcut(app: AppHandle, accelerator: Option<String>) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+    let shortcuts = app.global_shortcut();
+    shortcuts.unregister_all().map_err(|error| error.to_string())?;
+    if let Some(accelerator) = accelerator.filter(|value| !value.trim().is_empty()) {
+        let shortcut: Shortcut = accelerator
+            .parse()
+            .map_err(|_| format!("\"{accelerator}\" is not a valid shortcut."))?;
+        shortcuts.register(shortcut).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+/// Adds the menu bar (macOS) or tray (Windows, Linux) icon. Linux desktops without a tray
+/// return an error, which only means there is no icon.
+fn build_tray(app: &tauri::App) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    use tauri::tray::TrayIconBuilder;
+
+    let open = MenuItem::with_id(app, "open", "Open DevTools", true, None::<&str>)?;
+    let search = MenuItem::with_id(app, "search", "Search Tools…", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit DevTools", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &search, &PredefinedMenuItem::separator(app)?, &quit])?;
+
+    let builder = TrayIconBuilder::with_id("main")
+        .tooltip("DevTools")
+        .menu(&menu)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open" => show_main_window(app),
+            "search" => show_command_palette(app),
+            "quit" => app.exit(0),
+            _ => {}
+        });
+
+    // macOS draws a monochrome template image in the menu bar and opens the menu on click.
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-template.png"))?)
+        .icon_as_template(true)
+        .show_menu_on_left_click(true);
+
+    // Windows and Linux show the app icon; a left click opens the window, a right click the menu.
+    #[cfg(not(target_os = "macos"))]
+    let builder = {
+        use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+        let builder = builder.show_menu_on_left_click(false).on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main_window(tray.app_handle());
+            }
+        });
+        match app.default_window_icon() {
+            Some(icon) => builder.icon(icon.clone()),
+            None => builder,
+        }
+    };
+    builder.build(app)?;
+    Ok(())
+}
+
 /// Brings the main window to the front, including after the window was closed or the app hidden.
 fn show_main_window(app: &tauri::AppHandle) {
     use tauri::Manager;
@@ -149,7 +234,7 @@ fn main() {
     let builder = tauri::Builder::default();
 
     #[cfg(not(feature = "e2e"))]
-    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme, write_tool_manifest]);
+    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme, write_tool_manifest, set_global_shortcut]);
 
     #[cfg(feature = "e2e")]
     let builder = builder
@@ -157,6 +242,7 @@ fn main() {
             save_file,
             set_window_theme,
             write_tool_manifest,
+            set_global_shortcut,
             e2e::e2e_report,
             e2e::e2e_saved_files,
             e2e::e2e_tool_names
@@ -176,6 +262,15 @@ fn main() {
     let app = builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        toggle_from_shortcut(app);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
@@ -188,6 +283,9 @@ fn main() {
             let _ = app.deep_link().register_all();
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |_event| show_main_window(&handle));
+            if let Err(error) = build_tray(app) {
+                eprintln!("The tray icon is not available: {error}");
+            }
             Ok(())
         })
         .on_window_event(|_window, _event| {

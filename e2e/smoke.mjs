@@ -269,7 +269,8 @@ try {
   await step("toggles the theme", async () => {
     const isDark = () => browser.execute(() => document.documentElement.classList.contains("dark"));
     const before = await isDark();
-    await (await browser.$(`button*=${before ? "Dark" : "Light"}`)).click();
+    // The app's theme toggle, by its label: tools such as HTML Preview have their own Light buttons.
+    await (await browser.$(`button[aria-label="${before ? "Switch to light appearance" : "Switch to dark appearance"}"]`)).click();
     await browser.waitUntil(async () => (await isDark()) !== before, {
       timeout: 5000,
       timeoutMsg: "The theme did not change",

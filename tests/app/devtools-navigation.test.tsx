@@ -186,7 +186,7 @@ describe("DevToolsApp navigation", () => {
     }
 
     const recentButtons = within(recentSection).getAllByRole("button", {
-      name: /code playground|regex generator|json to typescript|hash generator|uuid generator|password generator/i,
+      name: /code playground|regex generator|json to code|hash generator|uuid generator|password generator/i,
     });
 
     expect(recentButtons).toHaveLength(6);

@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
@@ -46,6 +47,13 @@ export interface DesktopBridge {
   onDeepLink?: (callback: (url: string) => void) => () => void;
   /** Writes the tool list that launchers such as Raycast read. */
   writeToolManifest?: (manifest: ToolManifest) => Promise<void>;
+  /**
+   * Registers the system-wide shortcut (an accelerator such as "Command+Shift+Space"), or turns
+   * it off with null. Resolves to an error message when the system refuses it, otherwise null.
+   */
+  setGlobalShortcut?: (accelerator: string | null) => Promise<string | null>;
+  /** Calls back when the tray menu or the global shortcut asks for the command palette. */
+  onOpenCommandPalette?: (callback: () => void) => () => void;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
@@ -160,8 +168,36 @@ function createTauriBridge(): DesktopBridge {
     }
   };
 
+  const setGlobalShortcut = async (accelerator: string | null) => {
+    try {
+      await invoke("set_global_shortcut", { accelerator });
+      return null;
+    } catch (error) {
+      return String(error);
+    }
+  };
+
+  const onOpenCommandPalette = (callback: () => void) => {
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    listen("open-command-palette", () => {
+      if (active) callback();
+    })
+      .then((stop) => {
+        if (active) unlisten = stop;
+        else stop();
+      })
+      .catch((error) => console.error("Failed to listen for the command palette event:", error));
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  };
+
   return {
     setWindowTheme,
+    setGlobalShortcut,
+    onOpenCommandPalette,
     writeToolManifest,
     onDeepLink,
     platform: toNodePlatform(getOsPlatform()),
