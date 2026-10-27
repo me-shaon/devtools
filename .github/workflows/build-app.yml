@@ -158,7 +158,7 @@ jobs:
           if ($app.HasExited) { throw "DevToolsApp exited with code $($app.ExitCode)" }
           $app.Refresh()
           Write-Host "Window title: $($app.MainWindowTitle)"
-          if ($app.MainWindowTitle -ne "DevToolsApp") { throw "The DevToolsApp window did not open" }
+          if ($app.MainWindowTitle -ne "DevTools") { throw "The DevToolsApp window did not open" }
           Stop-Process -Id $app.Id
 
       - name: Check the upgrade from the Electron version (Windows)
@@ -170,7 +170,7 @@ jobs:
           function Get-DevToolsEntries {
             # Some system keys cannot be read on the runner. Skip them.
             Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue |
-              Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object DisplayName -like "DevToolsApp*"
+              Get-ItemProperty -ErrorAction SilentlyContinue | Where-Object DisplayName -like "DevTools*"
           }
 
           gh release download v1.3.0 --repo "${{ github.repository }}" --pattern "DevToolsApp-windows-setup.exe" --dir "$env:RUNNER_TEMP\electron"
@@ -205,13 +205,13 @@ jobs:
           $entries | Format-List PSPath, DisplayName, DisplayVersion, UninstallString
           if (Test-Path $electronDir) { throw "The Electron install folder is still present: $electronDir" }
           if (@($entries).Count -ne 1) { throw "Expected one DevToolsApp uninstall entry, found $(@($entries).Count)" }
-          $tauriApp = Join-Path $env:LOCALAPPDATA "DevToolsApp\DevToolsApp.exe"
+          $tauriApp = Join-Path $env:LOCALAPPDATA "DevTools\DevToolsApp.exe"
           if (-not (Test-Path $tauriApp)) { throw "The Tauri app is not installed at $tauriApp" }
 
       - name: Check that the shipped app starts (macOS)
         if: runner.os == 'macOS'
         run: |
-          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/DevToolsApp.app/Contents/MacOS/DevToolsApp"
+          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/DevTools.app/Contents/MacOS/DevToolsApp"
           "$app" &
           pid=$!
           sleep 15

@@ -66,7 +66,7 @@ const releaseNotesPath = path.join(releaseNotesDir, `${tag}.md`);
 fs.mkdirSync(releaseNotesDir, { recursive: true });
 
 if (!fs.existsSync(releaseNotesPath)) {
-  const template = `# DevToolsApp ${tag}
+  const template = `# DevTools ${tag}
 
 ## Highlights
 

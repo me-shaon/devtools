@@ -1,8 +1,10 @@
-# DevToolsApp Desktop
+# DevTools Desktop
 
 Offline-first developer utilities for macOS, Windows, and Linux. No cloud dependencies, no data collection.
 
-![DevToolsApp Desktop](assets/app-screenshot.png)
+![DevTools](assets/brand/svg/logo-horizontal-primary.svg)
+
+![DevTools Desktop](assets/app-screenshot.png)
 
 ## Features
 
@@ -70,7 +72,7 @@ Get the latest release for your platform:
 
 Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron version updates to the Tauri version through its usual update button.
 
-- On macOS, the app closes after the update. Open DevToolsApp again to start the new version.
+- On macOS, the app closes after the update. Open DevTools again to start the new version.
 - On Windows, the new installer removes the Electron version.
 - On Linux, the new `.deb` and `.rpm` packages replace the old `devtools` package. An AppImage is replaced in place.
 
@@ -164,7 +166,7 @@ npm run lint             # Run ESLint
 npm run dist:mac         # Build macOS packages (.app, .dmg)
 npm run dist:win         # Build the Windows installer (NSIS .exe)
 npm run dist:linux       # Build Linux packages (.AppImage, .deb, .rpm)
-npm run icon             # Generate app icons from src-tauri/app-icon.png
+npm run brand:build      # Rebuild logos, PNG exports, favicons, and desktop icons
 ```
 
 ## Adding a Tool
@@ -195,3 +197,7 @@ npm run dev  # Run in development mode
 ## License
 
 MIT
+
+## Brand assets
+
+The [brand asset guide](assets/brand/README.md) includes SVG and PNG logos, desktop icons, social artwork, colors, and usage rules. The approved brand name is **DevTools**.

@@ -2,7 +2,7 @@
   "name": "devtools",
   "private": true,
   "version": "2.0.0",
-  "description": "DevToolsApp - Your Essential Developer Companion",
+  "description": "DevTools - Your Essential Developer Companion",
   "author": "Ahmed Shamim",
   "license": "MIT",
   "type": "module",
@@ -19,7 +19,7 @@
     "dist:linux:deb": "tauri build --bundles deb",
     "dist:linux:rpm": "tauri build --bundles rpm",
     "tauri": "tauri",
-    "icon": "tauri icon src-tauri/app-icon.png -o src-tauri/icons",
+    "icon": "npm run brand:build",
     "clean": "rm -rf node_modules/.vite dist src-tauri/target",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -28,7 +28,8 @@
     "release:collect": "node scripts/collect-release-assets.mjs",
     "release:manifest": "node scripts/create-updater-manifest.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "brand:build": "node scripts/build-brand.mjs"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",
@@ -78,6 +79,7 @@
     "jsdom": "^20.0.3",
     "jsqr": "^1.4.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
