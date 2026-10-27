@@ -8,6 +8,7 @@ import {
   Clock,
   CodeXml,
   Code,
+  Coins,
   Database,
   Dices,
   FileCode2,
@@ -28,6 +29,9 @@ import {
   ScanLine,
   ScanText,
   Shield,
+  ShieldAlert,
+  ShieldOff,
+  Sparkles,
   Terminal,
   Type,
 } from "lucide-react";
@@ -72,6 +76,10 @@ export const ALL_TOOLS = [
   { icon: ScanText, name: "String Inspector", id: "string-inspector", category: "Text Tools", keywords: ["count", "characters", "words", "bytes", "unicode", "invisible", "zero width"] },
   { icon: ListOrdered, name: "Line Tools", id: "line-tools", category: "Text Tools", keywords: ["sort", "dedupe", "unique", "lines", "shuffle", "reverse"] },
   { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities", keywords: ["units", "length", "weight", "temperature", "currency"] },
+  { icon: ShieldOff, name: "Image Metadata Cleaner", id: "image-metadata", category: "AI Tools", keywords: ["exif", "metadata", "remove metadata", "gps", "c2pa", "content credentials", "ai generated", "stable diffusion prompt", "privacy", "strip exif"] },
+  { icon: ShieldAlert, name: "Secret & PII Redactor", id: "secret-redactor", category: "AI Tools", keywords: ["redact", "secrets", "api key", "token", "password", "pii", "mask", "sanitize", "chatgpt", "privacy"] },
+  { icon: Coins, name: "Token Counter", id: "token-counter", category: "AI Tools", keywords: ["tokens", "tokenizer", "gpt", "openai", "o200k", "llm", "prompt", "cost", "context window", "claude"] },
+  { icon: Sparkles, name: "AI Text Cleaner", id: "ai-text-cleaner", category: "AI Tools", keywords: ["clean text", "invisible characters", "zero width", "smart quotes", "em dash", "citations", "markdown", "chatgpt", "normalize"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -85,6 +93,10 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  "image-metadata": lazyNamed(() => import("@/components/tools/ImageMetadataCleaner"), "ImageMetadataCleaner"),
+  "secret-redactor": lazyNamed(() => import("@/components/tools/SecretRedactor"), "SecretRedactor"),
+  "token-counter": lazyNamed(() => import("@/components/tools/TokenCounter"), "TokenCounter"),
+  "ai-text-cleaner": lazyNamed(() => import("@/components/tools/AiTextCleaner"), "AiTextCleaner"),
   "code-formatter": lazyNamed(() => import("@/components/tools/CodeFormatter"), "CodeFormatter"),
   "random-string": lazyNamed(() => import("@/components/tools/RandomString"), "RandomString"),
   "yaml-json": lazyNamed(() => import("@/components/tools/YamlJson"), "YamlJson"),

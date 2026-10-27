@@ -57,6 +57,13 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
 - **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines
 
+### AI Tools
+
+- **Image Metadata Cleaner** - Remove AI prompts, Content Credentials (C2PA), AI-generated labels, GPS, and camera data from JPEG, PNG, and WebP images. Keep the original pixels, or save a clean copy as JPG, PNG, WebP, or AVIF
+- **Secret & PII Redactor** - Mask API keys, tokens, passwords, emails, and other personal data before you paste text into an AI chat, and restore the values in the reply
+- **Token Counter** - Count GPT tokens exactly, estimate Claude, Gemini, and Llama tokens, check the context window, and estimate cost from your own price table
+- **AI Text Cleaner** - Remove hidden characters, citation markers, and Markdown from AI-written text, and straighten quotes and dashes
+
 ### Utilities
 
 - **Unit Converter** - Convert length, weight, temperature, and currency units
@@ -131,7 +138,7 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librs
 ```
 src/
 ├── components/
-│   └── tools/       # Tool implementations (32 React components)
+│   └── tools/       # Tool implementations (36 React components)
 ├── app/
 │   └── DevToolsApp.tsx   # Main app with sidebar navigation
 └── main.tsx         # React entry point

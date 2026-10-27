@@ -60,7 +60,7 @@ import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
-const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader"]);
+const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "secret-redactor", "token-counter", "ai-text-cleaner"]);
 const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";
