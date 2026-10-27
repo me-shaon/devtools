@@ -8,6 +8,10 @@ describe("searchTools keywords", () => {
   it("finds tools by keyword", () => {
     expect(ids("sha")[0]).toBe("hash-generator");
     expect(ids("yml")[0]).toBe("yaml-json");
+    expect(ids("YAML to JSON")[0]).toBe("yaml-json");
+    expect(ids("toml")[0]).toBe("yaml-json");
+    expect(ids("dotenv")[0]).toBe("yaml-json");
+    expect(ids("properties")[0]).toBe("yaml-json");
     expect(ids("diff")[0]).toBe("text-compare");
     expect(ids("nanoid")[0]).toBe("random-string");
   });

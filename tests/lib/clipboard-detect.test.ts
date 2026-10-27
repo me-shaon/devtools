@@ -42,6 +42,15 @@ describe("detectPastedContent", () => {
     expect(detectPastedContent("curl https://example.com", new Set(["json-viewer"]))).toEqual([]);
   });
 
+  it("sends TOML and .env files to the config converter", () => {
+    const detect = (text: string) => detectPastedContent(text, ids)[0];
+    expect(detect('[package]\nname = "demo"\nversion = "0.1.0"')).toMatchObject({ toolId: "yaml-json", label: "TOML" });
+    expect(detect("# local\nDB_HOST=localhost\nexport DB_PORT=5432")).toMatchObject({ toolId: "yaml-json", label: ".env" });
+    expect(detect("name: demo\nversion: 1")).toMatchObject({ toolId: "yaml-json", label: "YAML" });
+    expect(first("PATH=/usr/bin")).toBeUndefined();
+    expect(first("[link]\nsee the docs")).toBeUndefined();
+  });
+
   it("returns at most three suggestions, surest first", () => {
     const suggestions = detectPastedContent('{"a": 1}', ids);
     expect(suggestions.map((s) => s.toolId)).toEqual(["json-viewer", "json-typescript"]);

@@ -63,6 +63,12 @@ const isTimestamp = (text: string) => {
   return ms > Date.UTC(2000, 0, 1) && ms < Date.UTC(2100, 0, 1);
 };
 
+/** Two or more KEY=value lines with UPPER_SNAKE keys, and nothing else but comments. */
+const isEnvFile = (text: string) => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith("#"));
+  return lines.length >= 2 && lines.every((line) => /^(export\s+)?[A-Z_][A-Z0-9_]*=/.test(line));
+};
+
 /**
  * Guesses which tools fit pasted text, surest first. Runs only on a paste the user makes,
  * so the app never reads the clipboard on its own.
@@ -99,6 +105,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /%[0-9a-f]{2}/i.test(text) && !/\s/.test(text)) add("url-encoder", "URL-encoded text", 60);
   if (single && isPrintableBase64(text)) add("base64", "Base64", 60);
   if (!single && /^[^\n:#]+:\s?.+\n(\s*[^\n:#]+:.*\n?)+$/.test(text) && !isJson(text)) add("yaml-json", "YAML", 50);
+  if (!single && /^\[\[?[\w.\-" ]+\]\]?[ \t]*$/m.test(text) && /^[\w.\-"]+[ \t]*=[ \t]*\S/m.test(text)) add("yaml-json", "TOML", 50);
+  if (isEnvFile(text)) add("yaml-json", ".env", 50);
 
   return found.sort((a, b) => b.score - a.score).slice(0, 3);
 }
