@@ -100,6 +100,41 @@ fn write_tool_manifest(app: AppHandle, manifest: ToolManifest) -> Result<(), Str
     std::fs::rename(&temp, dir.join(MANIFEST_FILE)).map_err(|error| error.to_string())
 }
 
+/// A downloaded update installs when the user quits. The frontend owns the download, so on quit
+/// the shell asks it to install, then exits once it confirms or after a timeout.
+static UPDATE_READY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static QUITTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+const INSTALL_ON_QUIT_EVENT: &str = "install-update-and-quit";
+const INSTALL_ON_QUIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
+#[tauri::command]
+fn set_update_ready(ready: bool) {
+    UPDATE_READY.store(ready, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// Exits after the frontend has installed the update (or failed to).
+#[tauri::command]
+fn quit_now(app: AppHandle) {
+    QUITTING.store(true, std::sync::atomic::Ordering::SeqCst);
+    app.exit(0);
+}
+
+/// Quits, installing a downloaded update first. Returns false when the quit must wait.
+pub(crate) fn request_quit(app: &tauri::AppHandle) -> bool {
+    use std::sync::atomic::Ordering;
+    use tauri::Emitter;
+    if !UPDATE_READY.load(Ordering::SeqCst) || QUITTING.swap(true, Ordering::SeqCst) {
+        return true;
+    }
+    let _ = app.emit(INSTALL_ON_QUIT_EVENT, ());
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(INSTALL_ON_QUIT_TIMEOUT);
+        handle.exit(0);
+    });
+    false
+}
+
 /// The frontend opens the command palette when it receives this event.
 const OPEN_PALETTE_EVENT: &str = "open-command-palette";
 
@@ -156,7 +191,11 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "open" => show_main_window(app),
             "search" => show_command_palette(app),
-            "quit" => app.exit(0),
+            "quit" => {
+                if request_quit(app) {
+                    app.exit(0);
+                }
+            }
             _ => {}
         });
 
@@ -234,7 +273,7 @@ fn main() {
     let builder = tauri::Builder::default();
 
     #[cfg(not(feature = "e2e"))]
-    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme, write_tool_manifest, set_global_shortcut]);
+    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme, write_tool_manifest, set_global_shortcut, set_update_ready, quit_now]);
 
     #[cfg(feature = "e2e")]
     let builder = builder
@@ -243,6 +282,9 @@ fn main() {
             set_window_theme,
             write_tool_manifest,
             set_global_shortcut,
+            set_update_ready,
+            quit_now,
+            e2e::e2e_request_quit,
             e2e::e2e_report,
             e2e::e2e_saved_files,
             e2e::e2e_tool_names
@@ -300,6 +342,14 @@ fn main() {
         .expect("error while building DevToolsApp");
 
     app.run(|_app, _event| {
+        // Cmd+Q, the last window closing on Windows and Linux, or a system shutdown: install a
+        // downloaded update first. A quit from quit_now or the timeout passes straight through.
+        if let tauri::RunEvent::ExitRequested { api, .. } = &_event {
+            if !request_quit(_app) {
+                api.prevent_exit();
+            }
+        }
+
         // Show the hidden window again when the dock icon is clicked.
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = _event {

@@ -54,9 +54,18 @@ export interface DesktopBridge {
   setGlobalShortcut?: (accelerator: string | null) => Promise<string | null>;
   /** Calls back when the tray menu or the global shortcut asks for the command palette. */
   onOpenCommandPalette?: (callback: () => void) => () => void;
+  /**
+   * Turns automatic updating on or off. When on, the app downloads updates in the background
+   * and installs a downloaded update when it quits.
+   */
+  setAutoUpdate?: (enabled: boolean) => void;
 }
 
 const UPDATE_CHECK_DELAY_MS = 15000;
+/** The app can stay open for days in the menu bar, so it checks again while it runs. */
+export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/** The shell sends this when the user quits with a downloaded update; see main.rs. */
+const INSTALL_ON_QUIT_EVENT = "install-update-and-quit";
 const UPDATE_CHECK_TIMEOUT_MS = 30000;
 
 function toNodePlatform(osPlatform: string): string {
@@ -77,6 +86,8 @@ function createTauriBridge(): DesktopBridge {
   let pendingUpdate: Update | null = null;
   let updateCheckTimeout: ReturnType<typeof setTimeout> | null = null;
   let updateState: UpdateState = { status: isDev ? "unsupported" : "idle" };
+  let autoUpdate = true;
+  let installOnQuitListening = false;
 
   const setUpdateState = (nextState: UpdateState) => {
     updateState = nextState;
@@ -111,6 +122,10 @@ function createTauriBridge(): DesktopBridge {
           ? { status: "available", version: pendingUpdate.version }
           : { status: "not-available" },
       );
+      if (pendingUpdate && autoUpdate) {
+        // Download in the background; the user only restarts, or the update installs on quit.
+        void downloadUpdate().catch(() => {});
+      }
     } catch (error) {
       console.error("Update check failed:", error);
       setUpdateState({
@@ -127,10 +142,82 @@ function createTauriBridge(): DesktopBridge {
       return;
     }
 
-    // Let the renderer settle before starting network/update work.
+    // Let the renderer settle before starting network/update work, then check again
+    // periodically while the app stays open.
     updateCheckTimeout = setTimeout(() => {
-      runUpdateCheck();
+      void runUpdateCheck();
+      setInterval(() => void runUpdateCheck(), UPDATE_CHECK_INTERVAL_MS);
     }, UPDATE_CHECK_DELAY_MS);
+    listenForInstallOnQuit();
+  };
+
+  // When the user quits with a downloaded update, install it before the app exits. The shell
+  // waits for this and exits by itself after a timeout, so a failed install never blocks quitting.
+  const listenForInstallOnQuit = () => {
+    if (installOnQuitListening) return;
+    installOnQuitListening = true;
+    listen(INSTALL_ON_QUIT_EVENT, async () => {
+      try {
+        if (pendingUpdate && updateState.status === "downloaded") await pendingUpdate.install();
+      } catch (error) {
+        console.error("Installing the update on quit failed:", error);
+      } finally {
+        try {
+          await invoke("quit_now");
+        } catch {
+          // The shell's timeout quits the app anyway.
+        }
+      }
+    }).catch((error) => console.error("Failed to listen for quit:", error));
+  };
+
+  const downloadUpdate = async () => {
+    if (isDev || !pendingUpdate) {
+      if (isDev) {
+        setUpdateState({
+          status: "unsupported",
+          message: "Updates are disabled in development builds.",
+        });
+      }
+      return false;
+    }
+    if (updateState.status === "downloading" || updateState.status === "downloaded") return true;
+
+    let contentLength = 0;
+    let downloaded = 0;
+
+    setUpdateState({ ...updateState, status: "downloading", progress: 0 });
+
+    try {
+      await pendingUpdate.download((event) => {
+        if (event.event === "Started") {
+          contentLength = event.data.contentLength ?? 0;
+        } else if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          setUpdateState({
+            ...updateState,
+            status: "downloading",
+            progress: contentLength ? (downloaded / contentLength) * 100 : undefined,
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Update download failed:", error);
+      setUpdateState({
+        status: "error",
+        message: error instanceof Error ? error.message : String(error ?? "Unable to download the update."),
+      });
+      throw error;
+    }
+
+    setUpdateState({ status: "downloaded", version: pendingUpdate.version, progress: 100 });
+    // Tell the shell, so quitting installs the update.
+    try {
+      await invoke("set_update_ready", { ready: true });
+    } catch (error) {
+      console.error("Could not mark the update as ready to install on quit:", error);
+    }
+    return true;
   };
 
   const setWindowTheme = async (theme: "light" | "dark" | null) => {
@@ -213,46 +300,10 @@ function createTauriBridge(): DesktopBridge {
       };
     },
     checkForUpdates: runUpdateCheck,
-    downloadUpdate: async () => {
-      if (isDev || !pendingUpdate) {
-        if (isDev) {
-          setUpdateState({
-            status: "unsupported",
-            message: "Updates are disabled in development builds.",
-          });
-        }
-        return false;
-      }
-
-      let contentLength = 0;
-      let downloaded = 0;
-
-      setUpdateState({ ...updateState, status: "downloading", progress: 0 });
-
-      try {
-        await pendingUpdate.download((event) => {
-          if (event.event === "Started") {
-            contentLength = event.data.contentLength ?? 0;
-          } else if (event.event === "Progress") {
-            downloaded += event.data.chunkLength;
-            setUpdateState({
-              ...updateState,
-              status: "downloading",
-              progress: contentLength ? (downloaded / contentLength) * 100 : undefined,
-            });
-          }
-        });
-      } catch (error) {
-        console.error("Update download failed:", error);
-        setUpdateState({
-          status: "error",
-          message: error instanceof Error ? error.message : String(error ?? "Unable to download the update."),
-        });
-        throw error;
-      }
-
-      setUpdateState({ status: "downloaded", version: pendingUpdate.version, progress: 100 });
-      return true;
+    downloadUpdate,
+    setAutoUpdate: (enabled: boolean) => {
+      autoUpdate = enabled;
+      if (enabled && updateState.status === "available") void downloadUpdate().catch(() => {});
     },
     installUpdate: async () => {
       if (isDev || !pendingUpdate) {

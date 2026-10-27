@@ -39,6 +39,7 @@ import {
 import { getReleaseNotes } from "@/data/releaseNotes";
 import { parseDeepLink } from "@/utils/deep-link";
 import { buildToolManifest } from "@/utils/tool-manifest";
+import { Switch } from "@/components/ui/switch";
 import { detectPastedContent, type PasteSuggestion } from "@/utils/clipboard-detect";
 import { PasteSuggestions } from "@/components/app/PasteSuggestions";
 import { loadGlobalShortcut, saveGlobalShortcut, toAccelerator, type GlobalShortcut } from "@/utils/global-shortcut";
@@ -62,6 +63,7 @@ import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 
 const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
+const AUTO_UPDATE_STORAGE_KEY = "devtools-auto-update";
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
 const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "secret-redactor", "token-counter", "ai-text-cleaner", "json-typescript", "certificate-decoder", "html-preview", "html-to-jsx", "svg-to-css", "curl-to-code"]);
 const MAX_RECENT_TOOLS = 6;
@@ -377,8 +379,8 @@ const DevToolsApp = () => {
           : "Downloading update...";
       case "downloaded":
         return updateState.version
-          ? `Version ${updateState.version} is ready to install.`
-          : "Update is ready to install.";
+          ? `Version ${updateState.version} is ready. It installs when you quit DevTools.`
+          : "An update is ready. It installs when you quit DevTools.";
       case "checking":
         return "Checking for updates...";
       case "error":
@@ -602,6 +604,39 @@ const DevToolsApp = () => {
     };
     window.setTimeout(fill, 0);
   }, [pasted]);
+
+  // Automatic updates: download in the background and install on quit. On by default.
+  const [autoUpdate, setAutoUpdate] = useState(() => {
+    try {
+      return localStorage.getItem(AUTO_UPDATE_STORAGE_KEY) !== "false";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    desktop?.setAutoUpdate?.(autoUpdate);
+    try {
+      localStorage.setItem(AUTO_UPDATE_STORAGE_KEY, String(autoUpdate));
+    } catch {
+      // The choice still applies for this session.
+    }
+  }, [desktop, autoUpdate]);
+
+  // Say once when an update has downloaded, with a way to restart now.
+  const announcedUpdateRef = useRef<string | null>(null);
+  const installUpdateRef = useRef(() => {});
+  installUpdateRef.current = () => void desktop?.installUpdate();
+  useEffect(() => {
+    if (updateState.status !== "downloaded" || !updateState.version) return;
+    if (announcedUpdateRef.current === updateState.version) return;
+    announcedUpdateRef.current = updateState.version;
+    toast(`DevTools ${updateState.version} is ready`, {
+      id: "update-ready",
+      description: "It installs when you quit DevTools.",
+      duration: 20000,
+      action: { label: "Restart now", onClick: () => installUpdateRef.current() },
+    });
+  }, [updateState.status, updateState.version]);
 
   const tabStripRef = useRef<HTMLDivElement>(null);
   const [tabsOverflow, setTabsOverflow] = useState(false);
@@ -859,6 +894,12 @@ const DevToolsApp = () => {
             </p>
             {updateStatusLabel && updateState.status !== "unsupported" && (
               <p className={`text-center text-2xs leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
+            )}
+            {desktop && updateState.status !== "unsupported" && (
+              <label className="sidebar-auto-update" htmlFor="auto-update">
+                Update automatically
+                <Switch id="auto-update" checked={autoUpdate} onCheckedChange={setAutoUpdate} />
+              </label>
             )}
             <div className="sidebar-footer-actions">
               <Button
