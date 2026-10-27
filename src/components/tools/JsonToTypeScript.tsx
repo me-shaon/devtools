@@ -172,7 +172,7 @@ export function JsonToTypeScript() {
             />
           </div>
 
-          <Button onClick={convert} className="w-full" size="lg">
+          <Button onClick={convert} size="lg">
             Convert to TypeScript
           </Button>
 

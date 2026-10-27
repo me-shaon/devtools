@@ -3,65 +3,56 @@
 @tailwind utilities;
 
 @layer base {
+  /* One token set per theme. Text tokens meet WCAG AA (4.5:1) and control
+     boundaries (--input) meet 3:1 on card, editor, and muted surfaces. */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 72.2% 50.6%;
+    --background: 220 23% 98%; --foreground: 222 25% 16%;
+    --card: 0 0% 100%; --card-foreground: 222 25% 16%;
+    --popover: 0 0% 100%; --popover-foreground: 222 25% 16%;
+    --primary: 215 78% 47%; --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 95%; --secondary-foreground: 222 25% 16%;
+    --muted: 220 18% 95%; --muted-foreground: 218 12% 42%;
+    --accent: 214 73% 91%; --accent-foreground: 216 68% 29%;
+    --destructive: 0 74% 40%; --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 24%; --success-foreground: 0 0% 100%;
+    --warning: 26 90% 31%; --warning-foreground: 0 0% 100%;
+    --info: 221 83% 45%; --info-foreground: 0 0% 100%;
+    --border: 218 20% 86%; --input: 218 13% 55%; --ring: 215 78% 47%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96.1%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 89.8%;
-    --sidebar-ring: 0 72.2% 50.6%;
+    --sidebar-background: 220 23% 96%; --sidebar-foreground: 222 25% 16%;
+    --sidebar-primary: 215 78% 47%; --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 73% 91%; --sidebar-accent-foreground: 216 68% 29%;
+    --sidebar-border: 218 20% 86%; --sidebar-ring: 215 78% 47%;
+    /* Text over the glass chrome needs a darker gray than over opaque cards. */
+    --chrome-muted-foreground: 216 23% 28%;
+    --chrome-input-border: 218 22% 48%;
+    --surface-editor: #fff; --surface-chrome: #f1f4f8;
+    --surface-sidebar: #e9eef6; --surface-raised: #fff;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
+    --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 72.2% 50.6%;
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 14.9%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 14.9%;
-    --sidebar-ring: 0 72.2% 50.6%;
+    --background: 225 8% 12%; --foreground: 220 16% 92%;
+    --card: 225 8% 14%; --card-foreground: 220 16% 92%;
+    --popover: 225 8% 14%; --popover-foreground: 220 16% 92%;
+    --primary: 213 80% 66%; --primary-foreground: 222 25% 14%;
+    --secondary: 225 8% 18%; --secondary-foreground: 220 16% 92%;
+    --muted: 225 8% 18%; --muted-foreground: 220 10% 68%;
+    --accent: 215 30% 26%; --accent-foreground: 213 100% 87%;
+    --destructive: 0 90% 76%; --destructive-foreground: 222 25% 10%;
+    --success: 142 69% 58%; --success-foreground: 222 25% 10%;
+    --warning: 48 96% 53%; --warning-foreground: 222 25% 10%;
+    --info: 213 94% 72%; --info-foreground: 222 25% 10%;
+    --border: 220 8% 30%; --input: 220 8% 50%; --ring: 213 91% 72%;
+    --sidebar-background: 225 10% 16%; --sidebar-foreground: 220 16% 92%;
+    --sidebar-primary: 213 80% 66%; --sidebar-primary-foreground: 222 25% 14%;
+    --sidebar-accent: 215 30% 26%; --sidebar-accent-foreground: 213 100% 87%;
+    --sidebar-border: 220 8% 30%; --sidebar-ring: 213 91% 72%;
+    --chrome-muted-foreground: 215 24% 84%;
+    --chrome-input-border: 218 14% 60%;
+    --surface-editor: #1b1d21; --surface-chrome: #272a30;
+    --surface-sidebar: #242831; --surface-raised: #363a42;
   }
 }
 
@@ -75,33 +66,16 @@
 }
 
 /* Workspace foundation: native system type, a 4px spacing scale, and quiet materials. */
-:root {
-  --background: 220 23% 98%; --foreground: 222 25% 16%;
-  --card: 0 0% 100%; --card-foreground: 222 25% 16%;
-  --primary: 215 78% 47%; --primary-foreground: 0 0% 100%;
-  --accent: 214 73% 91%; --accent-foreground: 216 68% 29%;
-  --muted: 220 18% 95%; --muted-foreground: 218 12% 42%;
-  --border: 218 20% 86%; --input: 218 20% 86%; --ring: 215 78% 47%;
-  --surface-editor: #fff; --surface-chrome: #f1f4f8;
-  --surface-sidebar: #e9eef6; --surface-raised: #fff;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
-  --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-}
-.dark {
-  --background: 225 8% 12%; --foreground: 220 16% 92%;
-  --card: 225 8% 14%; --card-foreground: 220 16% 92%;
-  --primary: 213 91% 72%; --primary-foreground: 222 25% 14%;
-  --accent: 215 30% 26%; --accent-foreground: 213 100% 87%;
-  --muted: 225 8% 18%; --muted-foreground: 220 10% 68%;
-  --border: 220 8% 26%; --input: 220 8% 30%; --ring: 213 91% 72%;
-  --surface-editor: #1b1d21; --surface-chrome: #272a30;
-  --surface-sidebar: #242831; --surface-raised: #363a42;
-}
 body { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 button, input, textarea, select { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
-button:disabled { opacity: .45; cursor: not-allowed; }
+/* One focus style for every control, so keyboard position is always visible. */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+[role="tab"]:focus-visible, [role="switch"]:focus-visible, [role="slider"]:focus-visible,
+[role="combobox"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+/* Theme placeholders instead of the browser gray, which fails contrast on light surfaces. */
+::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 .workspace { background: var(--surface-chrome); }
 .workspace-sidebar { background: var(--surface-sidebar); box-shadow: inset -1px 0 0 hsl(var(--border) / .5); }
 @supports (backdrop-filter: blur(20px)) {
@@ -139,7 +113,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .indent-control option { background: var(--surface-editor); }
 .layout-switch { display: flex; padding: 2px; gap: 2px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border) / .7); border-radius: 7px; flex-shrink: 0; }
 .layout-switch button { display: flex; align-items: center; gap: 6px; padding: 4px 9px; font-size: 12px; color: hsl(var(--muted-foreground)); border-radius: 5px; }
-.layout-switch button[aria-pressed="true"] { background: var(--surface-raised); color: hsl(var(--foreground)); box-shadow: 0 1px 3px hsl(220 30% 10% / .16); }
+.layout-switch button[aria-pressed="true"] { background: var(--surface-raised); color: hsl(var(--foreground)); box-shadow: 0 0 0 1px hsl(var(--input)), 0 1px 3px hsl(220 30% 10% / .16); }
 .editor-panels { flex: 1; min-height: 0; }
 .editor-pane { height: 100%; display: flex; flex-direction: column; min-width: 0; }
 .editor-pane-header { height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid hsl(var(--border) / .5); background: hsl(var(--muted) / .35); font-size: 12px; font-weight: 500; }
@@ -197,7 +171,7 @@ body:has(.workspace[data-platform="darwin"]) #root,
 }
 .dark .workspace[data-platform="darwin"] .workspace-titlebar { background: rgb(30 32 38 / .6); border-bottom-color: rgb(255 255 255 / .07); }
 .workspace[data-platform="darwin"][data-sidebar-open="false"] .workspace-titlebar { padding-left: 82px; }
-.workspace-sidebar input { background: hsl(var(--card) / .45); border-color: hsl(var(--foreground) / .12); box-shadow: 0 1px 2px rgb(0 0 0 / .025); }
+.workspace-sidebar input { background: hsl(var(--card) / .45); border-color: hsl(var(--chrome-input-border)); box-shadow: 0 1px 2px rgb(0 0 0 / .025); }
 .workspace-home { max-width: 680px; padding-top: 64px; }
 .workspace-home h1 { font-size: 23px; font-weight: 650; letter-spacing: -.6px; }
 .workspace-home h1 + p { font-size: 13px; }
@@ -260,7 +234,7 @@ body:has(.workspace[data-platform="darwin"]) #root,
 }
 .workspace-sidebar input {
   background: linear-gradient(rgb(255 255 255 / .42), rgb(255 255 255 / .16));
-  border-color: rgb(94 124 168 / .20);
+  border-color: hsl(var(--chrome-input-border));
   box-shadow: inset 0 1px rgb(255 255 255 / .65), 0 1px 3px rgb(43 71 112 / .04);
 }
 .dark .workspace-sidebar input { background: rgb(17 25 40 / .25); box-shadow: inset 0 1px rgb(255 255 255 / .06); }
@@ -272,13 +246,13 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .dark .workspace-sidebar nav button.bg-accent { background: linear-gradient(rgb(66 112 179 / .65), rgb(43 81 139 / .6)); color: #eaf3ff; }
 .sidebar-brand { border: 0; padding-left: 22px; }
 .sidebar-brand img { width: 24px; height: 24px; }
-/* Navigation needs stronger contrast than secondary hints over glass. */
-.workspace-sidebar nav { --muted-foreground: 216 23% 28%; padding: 8px 4px; }
-.dark .workspace-sidebar nav { --muted-foreground: 215 24% 84%; }
+/* Secondary text over the glass chrome uses a stronger gray than over opaque cards. */
+.workspace-sidebar, .workspace-titlebar { --muted-foreground: var(--chrome-muted-foreground); }
+.workspace-sidebar nav { padding: 8px 4px; }
 .workspace-sidebar nav button { min-height: 32px; }
 .workspace-sidebar nav button:hover { background-color: hsl(var(--foreground) / .055); }
 .sidebar-footer { margin: 0 14px; padding: 12px 0 14px; border-color: hsl(var(--foreground) / .08); }
-.sidebar-footer > div > p { text-align: left; font-size: 10px; margin-bottom: 8px; }
+.sidebar-footer > div > p { text-align: left; font-size: 11px; margin-bottom: 8px; }
 .sidebar-footer-actions { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; }
 .sidebar-footer-actions > button:first-child { width: 100%; padding: 0; border: 0; background: transparent; height: 24px; font-size: 11px; box-shadow: none; }
 .workspace-home { width: 100%; max-width: 650px; padding: clamp(36px, 7vh, 68px) 36px 36px; }
@@ -327,6 +301,9 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .release-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
 .command-surface .modal-header { padding: 8px 12px; }
 .command-surface .modal-footer { padding: 10px 16px; font-size: 11px; }
+/* The selected palette row sits on the accent tint, so its secondary text darkens with it. */
+.command-surface [aria-selected="true"] { --muted-foreground: 216 40% 30%; }
+.dark .command-surface [aria-selected="true"] { --muted-foreground: 215 24% 84%; }
 .dark .modal-header { box-shadow: inset 0 1px rgb(255 255 255 / .06); }
 @media (max-width: 600px) {
   .shortcut-row { grid-template-columns: 1fr; gap: 9px; }
@@ -341,12 +318,13 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .desktop-button, .desktop-input, .desktop-select-trigger { font-size: 13px; }
 .tool-panel-form { padding: 24px; }
 .tool-panel-form label { font-size: 12px; font-weight: 600; }
-.tool-panel-form textarea { border-color: hsl(var(--foreground) / .14); background-color: var(--surface-editor); border-radius: 7px; line-height: 1.6; }
+.tool-panel-form textarea { border-color: hsl(var(--input)); background-color: var(--surface-editor); border-radius: 7px; line-height: 1.6; }
 .tool-panel-form textarea[readonly] { background-color: hsl(var(--muted) / .45); }
-.desktop-input, .desktop-select-trigger { background: hsl(var(--card)); border-color: hsl(var(--foreground) / .16); box-shadow: inset 0 1px 2px rgb(18 30 50 / .025); }
+.desktop-input, .desktop-select-trigger { background: hsl(var(--card)); border-color: hsl(var(--input)); box-shadow: inset 0 1px 2px rgb(18 30 50 / .025); }
 .desktop-segments { background: hsl(var(--muted)); border: 1px solid hsl(var(--foreground) / .08); padding: 2px; border-radius: 7px; }
 .desktop-segments [role="tab"] { font-size: 12px; padding-top: 3px; padding-bottom: 3px; }
-.desktop-segments [data-state="active"] { background: hsl(var(--card)); box-shadow: 0 1px 3px rgb(15 28 48 / .12); }
+/* The active segment is raised and outlined, so its state does not depend on a faint fill step. */
+.desktop-segments [data-state="active"] { background: var(--surface-raised); color: hsl(var(--foreground)); box-shadow: 0 0 0 1px hsl(var(--input)), 0 1px 3px rgb(15 28 48 / .12); }
 .tool-panel-form .tool-card { border-color: hsl(var(--foreground) / .09); border-radius: 9px; }
 .desktop-menu, .desktop-tooltip { background: hsl(var(--card) / .97); color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / .12); box-shadow: 0 10px 28px rgb(17 30 53 / .16), 0 2px 6px rgb(17 30 53 / .08); backdrop-filter: blur(24px); border-radius: 8px; }
 .desktop-menu { max-height: min(384px, var(--radix-select-content-available-height)); }
@@ -361,4 +339,4 @@ body:has(.workspace[data-platform="darwin"]) #root,
 @media (prefers-reduced-transparency: reduce) {
   .desktop-menu, .desktop-tooltip { background: hsl(var(--card)); backdrop-filter: none; }
 }
-.tool-panel-form select { min-height: 32px; padding-top: 4px; padding-bottom: 4px; font-size: 13px; border-color: hsl(var(--foreground) / .16); border-radius: 6px; }
+.tool-panel-form select { min-height: 32px; padding-top: 4px; padding-bottom: 4px; font-size: 13px; border-color: hsl(var(--input)); border-radius: 6px; }

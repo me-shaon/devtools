@@ -128,7 +128,7 @@ export function CaseConverter() {
             onChange={(e) => setInput(e.target.value)}
             className="min-h-[120px] font-mono"
           />
-          <Button onClick={convert} className="mt-4 w-full" size="lg">
+          <Button onClick={convert} className="mt-4" size="lg">
             Convert Text
           </Button>
         </CardContent>

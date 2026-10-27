@@ -125,7 +125,7 @@ export function ApiFormatter() {
                   onChange={(e) => setInput(e.target.value)}
                   className="min-h-[150px] font-mono text-sm"
                 />
-                <Button onClick={formatJson} className="w-full">
+                <Button onClick={formatJson}>
                   Format JSON
                 </Button>
               </div>
@@ -139,7 +139,7 @@ export function ApiFormatter() {
                   onChange={(e) => setInput(e.target.value)}
                   className="min-h-[150px] font-mono text-sm"
                 />
-                <Button onClick={minifyJson} className="w-full">
+                <Button onClick={minifyJson}>
                   Minify JSON
                 </Button>
               </div>
@@ -153,7 +153,7 @@ export function ApiFormatter() {
                   onChange={(e) => setInput(e.target.value)}
                   className="min-h-[150px] font-mono text-sm"
                 />
-                <Button onClick={parseUrlEncoded} className="w-full">
+                <Button onClick={parseUrlEncoded}>
                   Parse URL Encoded
                 </Button>
               </div>
@@ -167,7 +167,7 @@ export function ApiFormatter() {
                   onChange={(e) => setInput(e.target.value)}
                   className="min-h-[150px] font-mono text-sm"
                 />
-                <Button onClick={parseQueryString} className="w-full">
+                <Button onClick={parseQueryString}>
                   Parse Query String
                 </Button>
               </div>

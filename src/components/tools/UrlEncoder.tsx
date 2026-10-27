@@ -156,7 +156,7 @@ export function UrlEncoder() {
                 />
               </div>
 
-              <Button onClick={encode} className="w-full" size="lg">
+              <Button onClick={encode} size="lg">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Encode
               </Button>
@@ -207,7 +207,7 @@ export function UrlEncoder() {
                 />
               </div>
 
-              <Button onClick={decode} className="w-full" size="lg">
+              <Button onClick={decode} size="lg">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Decode
               </Button>

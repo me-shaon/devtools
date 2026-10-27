@@ -160,7 +160,7 @@ function ContrastChecker() {
                   className="flex items-center justify-between rounded-md border p-2 text-sm"
                 >
                   <span>{check.label}</span>
-                  <span className={check.pass ? "font-medium text-green-600" : "font-medium text-destructive"}>
+                  <span className={check.pass ? "font-medium text-success" : "font-medium text-destructive"}>
                     {check.pass ? "Pass" : "Fail"}
                   </span>
                 </li>

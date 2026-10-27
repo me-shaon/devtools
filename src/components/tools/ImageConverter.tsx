@@ -514,8 +514,8 @@ export function ImageConverter() {
                               <span
                                 className={`ml-2 ${
                                   getSavingsPercent(singleFile.size, singleResult.blob.size) >= 0
-                                    ? "text-green-600"
-                                    : "text-amber-600"
+                                    ? "text-success"
+                                    : "text-warning"
                                 }`}
                               >
                                 (
@@ -602,7 +602,7 @@ export function ImageConverter() {
                   <div className="flex justify-center">
                     <Button
                       onClick={handleSingleDownload}
-                      className="w-full sm:w-auto sm:min-w-[220px]"
+                      className="sm:w-auto sm:min-w-[220px]"
                       size="lg"
                       disabled={!singleResult || singleProcessing}
                     >

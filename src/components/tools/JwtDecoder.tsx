@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,10 +108,10 @@ export function JwtDecoder() {
   const issuedAtDate = decoded ? getJwtIssuedAtDate(decoded) : null;
   const notBeforeDate = decoded?.payload.nbf ? new Date(decoded.payload.nbf * 1000) : null;
   const expirationStatus = decoded?.isExpired
-    ? { label: "Expired", className: "bg-red-500" }
+    ? { label: "Expired", className: "bg-destructive text-destructive-foreground" }
     : decoded?.payload.exp
-    ? { label: "Not expired", className: "bg-green-500" }
-    : { label: "No exp claim", className: "bg-amber-500 text-black" };
+    ? { label: "Not expired", className: "bg-success text-success-foreground" }
+    : { label: "No exp claim", className: "bg-warning text-warning-foreground" };
 
   return (
     <div className="space-y-6">
@@ -126,7 +127,7 @@ export function JwtDecoder() {
             onChange={(e) => setInput(e.target.value)}
             className="font-mono"
           />
-          <Button onClick={decodeJwt} className="mt-4 w-full" size="lg">
+          <Button onClick={decodeJwt} className="mt-4" size="lg">
             Decode JWT
           </Button>
         </CardContent>
@@ -162,23 +163,23 @@ export function JwtDecoder() {
                   className="font-mono"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="jwt-secret-base64"
                   checked={secretIsBase64}
-                  onChange={(e) => setSecretIsBase64(e.target.checked)}
+                  onCheckedChange={setSecretIsBase64}
                 />
-                Secret is Base64-encoded
-              </label>
+                <Label htmlFor="jwt-secret-base64">Secret is Base64-encoded</Label>
+              </div>
               {verify && (
                 <div role="status" className="flex items-center gap-3">
                   <Badge
                     className={
                       verify.status === "valid"
-                        ? "bg-green-500"
+                        ? "bg-success text-success-foreground"
                         : verify.status === "invalid"
-                        ? "bg-red-500"
-                        : "bg-amber-500 text-black"
+                        ? "bg-destructive text-destructive-foreground"
+                        : "bg-warning text-warning-foreground"
                     }
                   >
                     {verify.message}

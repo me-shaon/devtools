@@ -179,7 +179,7 @@ export function UUIDGenerator() {
       )}
 
       {/* Generate Button */}
-      <Button onClick={generateUUIDs} className="w-full gap-2">
+      <Button onClick={generateUUIDs} className="gap-2">
         <RefreshCw className="w-4 h-4" />
         {getGenerateButtonLabel(version, isNameBased ? 1 : count)}
       </Button>

@@ -169,7 +169,7 @@ export function RegexGenerator() {
             />
           </div>
 
-          <Button onClick={testRegex} className="w-full">
+          <Button onClick={testRegex}>
             Test Pattern
           </Button>
         </CardContent>
@@ -183,9 +183,9 @@ export function RegexGenerator() {
           <CardContent>
             <div className="space-y-2">
               {matches.map((match, index) => (
-                <div key={index} className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <div key={index} className="p-3 bg-success/10 border border-success/30 rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">Match {index + 1}</div>
-                  <code className="text-green-400">{match[0]}</code>
+                  <code className="text-success">{match[0]}</code>
                   {match.index !== undefined && (
                     <div className="text-xs text-muted-foreground mt-1">
                       Position: {match.index}

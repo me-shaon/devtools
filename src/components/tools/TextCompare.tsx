@@ -141,11 +141,11 @@ export function TextCompare() {
   const getLineColor = (type: LineDiff["type"]) => {
     switch (type) {
       case "added":
-        return "border-green-500/30 bg-green-500/10";
+        return "border-success/30 bg-success/10";
       case "removed":
-        return "border-red-500/30 bg-red-500/10";
+        return "border-destructive/30 bg-destructive/10";
       case "modified":
-        return "border-yellow-500/30 bg-yellow-500/10";
+        return "border-warning/30 bg-warning/10";
       default:
         return "border-border bg-muted/40";
     }
@@ -154,11 +154,11 @@ export function TextCompare() {
   const getLineBadge = (type: LineDiff["type"]) => {
     switch (type) {
       case "added":
-        return <Badge className="bg-green-500">Added</Badge>;
+        return <Badge className="bg-success text-success-foreground">Added</Badge>;
       case "removed":
-        return <Badge className="bg-red-500">Removed</Badge>;
+        return <Badge className="bg-destructive text-destructive-foreground">Removed</Badge>;
       case "modified":
-        return <Badge className="bg-yellow-500 text-black">Modified</Badge>;
+        return <Badge className="bg-warning text-warning-foreground">Modified</Badge>;
       default:
         return <Badge variant="outline">Unchanged</Badge>;
     }
@@ -167,9 +167,9 @@ export function TextCompare() {
   const getCharClassName = (type: DiffResult["type"]) => {
     switch (type) {
       case "added":
-        return "bg-green-500/20 text-green-700 dark:text-green-300";
+        return "bg-success/20 text-success";
       case "removed":
-        return "bg-red-500/20 text-red-700 line-through dark:text-red-300";
+        return "bg-destructive/20 text-destructive line-through";
       default:
         return "text-foreground";
     }
@@ -183,10 +183,10 @@ export function TextCompare() {
       return "bg-muted text-muted-foreground";
     }
     if (line.startsWith("+")) {
-      return "bg-green-500/10 text-green-700 dark:text-green-300";
+      return "bg-success/10 text-success";
     }
     if (line.startsWith("-")) {
-      return "bg-red-500/10 text-red-700 dark:text-red-300";
+      return "bg-destructive/10 text-destructive";
     }
     return "bg-transparent text-foreground";
   };
@@ -278,16 +278,16 @@ export function TextCompare() {
                 <div className="text-2xl font-bold">{result.equal ? "Yes" : "No"}</div>
                 <div className="text-sm text-muted-foreground">Exact Match</div>
               </div>
-              <div className="rounded-lg bg-green-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-green-500">{result.comparison.addedLines}</div>
+              <div className="rounded-lg bg-success/10 p-3 text-center">
+                <div className="text-2xl font-bold text-success">{result.comparison.addedLines}</div>
                 <div className="text-sm text-muted-foreground">Added</div>
               </div>
-              <div className="rounded-lg bg-red-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-red-500">{result.comparison.removedLines}</div>
+              <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                <div className="text-2xl font-bold text-destructive">{result.comparison.removedLines}</div>
                 <div className="text-sm text-muted-foreground">Removed</div>
               </div>
-              <div className="rounded-lg bg-yellow-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-yellow-500">{modifiedCount}</div>
+              <div className="rounded-lg bg-warning/10 p-3 text-center">
+                <div className="text-2xl font-bold text-warning">{modifiedCount}</div>
                 <div className="text-sm text-muted-foreground">Modified</div>
               </div>
               <div className="rounded-lg bg-muted p-3 text-center">
@@ -371,16 +371,16 @@ export function TextCompare() {
                       </div>
                       {diff.type === "modified" && diff.oldContent !== undefined ? (
                         <div className="space-y-2">
-                          <div className="rounded-md border border-red-500/20 bg-red-500/5 p-2">
-                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-red-500">
+                          <div className="rounded-md border border-destructive/20 bg-destructive/5 p-2">
+                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-destructive">
                               Before
                             </div>
-                            <div className="whitespace-pre-wrap break-words font-mono text-sm text-red-500 line-through decoration-red-500">
+                            <div className="whitespace-pre-wrap break-words font-mono text-sm text-destructive line-through decoration-destructive">
                               {diff.oldContent || "(empty line)"}
                             </div>
                           </div>
-                          <div className="rounded-md border border-green-500/20 bg-green-500/5 p-2">
-                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-green-600 dark:text-green-400">
+                          <div className="rounded-md border border-success/20 bg-success/5 p-2">
+                            <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-success">
                               After
                             </div>
                             <div className="whitespace-pre-wrap break-words font-mono text-sm">

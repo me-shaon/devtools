@@ -101,7 +101,7 @@ export function JsonViewer() {
       <div className="toolbar-actions">
         <label className="indent-control" style={{ borderLeft: 0, paddingLeft: 0 }} htmlFor="json-query-input">Query</label>
         <input id="json-query-input" type="text" list="json-query-paths" spellCheck={false} autoComplete="off" value={query} placeholder="$.tools[0]" aria-describedby="json-query-hint"
-          style={{ minWidth: 220, padding: "4px 8px", border: "1px solid hsl(var(--border))", borderRadius: 6, background: "transparent", fontFamily: "monospace", fontSize: 12 }}
+          style={{ minWidth: 220, padding: "4px 8px", border: "1px solid hsl(var(--input))", borderRadius: 6, background: "transparent", fontFamily: "monospace", fontSize: 12 }}
           onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); transform("query"); } }} />
         <datalist id="json-query-paths">{suggestions.map((path) => <option key={path} value={path} />)}</datalist>
         <button type="button" className="toolbar-text-button" onClick={() => transform("query")}>Run query</button>

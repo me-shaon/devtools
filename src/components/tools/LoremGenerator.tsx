@@ -123,7 +123,7 @@ export function LoremGenerator() {
             />
           </div>
 
-          <Button onClick={generate} className="w-full" size="lg">
+          <Button onClick={generate} size="lg">
             Generate Lorem Ipsum
           </Button>
 

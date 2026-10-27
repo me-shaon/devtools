@@ -166,12 +166,12 @@ export function CodePlayground() {
               <div className="space-y-2">
                 <div className="text-sm font-medium">Output</div>
                 {error ? (
-                  <div className="min-h-[400px] p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <div className="flex items-center gap-2 text-red-500 mb-2">
+                  <div className="min-h-[400px] p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <div className="flex items-center gap-2 text-destructive mb-2">
                       <AlertCircle className="h-4 w-4" />
                       <span className="font-medium">Error</span>
                     </div>
-                    <pre className="text-sm text-red-400 whitespace-pre-wrap">{error}</pre>
+                    <pre className="text-sm text-destructive whitespace-pre-wrap">{error}</pre>
                   </div>
                 ) : (
                   <div className="min-h-[400px] p-4 bg-muted rounded-lg">

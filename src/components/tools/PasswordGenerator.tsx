@@ -66,10 +66,10 @@ export function PasswordGenerator() {
     if (options.numbers) strength++;
     if (options.symbols) strength++;
 
-    if (strength <= 2) return { label: "Weak", color: "text-red-500", bg: "bg-red-500" };
-    if (strength <= 3) return { label: "Fair", color: "text-yellow-500", bg: "bg-yellow-500" };
-    if (strength <= 4) return { label: "Good", color: "text-blue-500", bg: "bg-blue-500" };
-    return { label: "Strong", color: "text-green-500", bg: "bg-green-500" };
+    if (strength <= 2) return { label: "Weak", color: "text-destructive", bg: "bg-destructive text-destructive-foreground" };
+    if (strength <= 3) return { label: "Fair", color: "text-warning", bg: "bg-warning" };
+    if (strength <= 4) return { label: "Good", color: "text-info", bg: "bg-info" };
+    return { label: "Strong", color: "text-success", bg: "bg-success text-success-foreground" };
   };
 
   const strength = getStrength();

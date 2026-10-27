@@ -365,7 +365,7 @@ const DevToolsApp = () => {
       case "checking":
         return "Checking for updates...";
       case "error":
-        return updateState.message || "Update check failed.";
+        return "The update did not complete. Check your connection and try again.";
       case "unsupported":
         return "Updates are disabled in development builds.";
       default:
@@ -559,7 +559,7 @@ const DevToolsApp = () => {
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Star
-              className={`w-3.5 h-3.5 ${isFavorite ? "fill-yellow-400 text-yellow-400" : theme.textDim}`}
+              className={`w-3.5 h-3.5 ${isFavorite ? "fill-warning text-warning" : theme.textDim}`}
             />
           </span>
         )}
@@ -627,7 +627,7 @@ const DevToolsApp = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search..."
-                className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} focus:border-[#EB5757] focus:ring-0 rounded-md`}
+                className={`pl-9 ${theme.input} ${theme.border} text-sm h-8 ${theme.text} placeholder:${theme.textMuted} rounded-md`}
               />
             </div>
             <button
