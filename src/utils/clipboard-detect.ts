@@ -105,6 +105,7 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (/-----BEGIN (CERTIFICATE|CERTIFICATE REQUEST)-----/.test(text)) add("certificate-decoder", "a certificate", 100);
   if (/^curl\s/i.test(text)) add("curl-to-code", "a cURL command", 95);
   if (isJson(text)) {
+    if (/"\$schema"\s*:\s*"https?:\/\/json-schema\.org\//.test(text)) add("json-schema", "a JSON Schema", 95);
     add("json-viewer", "JSON", 90);
     add("json-typescript", "JSON", 40);
   } else if (/^[[{(]/.test(text) && readJson(text).ok) {

@@ -64,6 +64,12 @@ describe("detectPastedContent", () => {
     expect(first("[link]\nsee the docs")).toBeUndefined();
   });
 
+  it("sends a JSON Schema to the schema validator", () => {
+    const suggestions = detectPastedContent('{"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}', ids);
+    expect(suggestions[0]).toMatchObject({ toolId: "json-schema", label: "a JSON Schema" });
+    expect(suggestions.map((s) => s.toolId)).toContain("json-viewer");
+  });
+
   it("returns at most three suggestions, surest first", () => {
     const suggestions = detectPastedContent('{"a": 1}', ids);
     expect(suggestions.map((s) => s.toolId)).toEqual(["json-viewer", "json-typescript"]);

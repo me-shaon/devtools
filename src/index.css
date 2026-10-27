@@ -433,3 +433,10 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .regex-cheatsheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; padding-bottom: 12px; }
 .regex-cheatsheet div { display: flex; gap: 10px; }
 .regex-cheatsheet dt { min-width: 64px; font-family: var(--font-code); color: hsl(var(--foreground)); }
+.schema-issues { max-height: 35%; overflow: auto; flex-shrink: 0; }
+.schema-issue-list { margin: 6px -16px 0; }
+.schema-issue { display: grid; grid-template-columns: minmax(80px, auto) 1fr auto; gap: 12px; width: 100%; padding: 4px 16px; text-align: left; color: hsl(var(--foreground)); }
+.schema-issue:hover, .schema-issue:focus-visible { background: hsl(var(--muted) / .6); }
+.schema-issue-path { font: 12px/18px var(--font-code); color: hsl(var(--destructive)); overflow-wrap: anywhere; }
+.schema-issue-message { min-width: 0; }
+.schema-issue-keyword { font: 11px/18px var(--font-code); color: hsl(var(--muted-foreground)); }
