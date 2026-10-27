@@ -11,6 +11,37 @@ export interface ConversionResult {
 }
 
 /**
+ * Parse a string in the given base into a BigInt.
+ * Mirrors parseInt: optional sign, optional 0x prefix for base 16,
+ * and parsing stops at the first invalid character.
+ * Returns null when no valid digit is found.
+ */
+export function parseBigIntFromBase(value: string, base: NumberBase): bigint | null {
+  let text = value.trim();
+  let negative = false;
+  if (text[0] === '-' || text[0] === '+') {
+    negative = text[0] === '-';
+    text = text.slice(1);
+  }
+  if (base === 16 && /^0x/i.test(text)) {
+    text = text.slice(2);
+  }
+
+  let result = 0n;
+  const bigBase = BigInt(base);
+  let digits = 0;
+  for (const ch of text) {
+    const digit = parseInt(ch, 36);
+    if (Number.isNaN(digit) || digit >= base) break;
+    result = result * bigBase + BigInt(digit);
+    digits++;
+  }
+
+  if (digits === 0) return null;
+  return negative ? -result : result;
+}
+
+/**
  * Convert a number from one base to another
  */
 export function convertBase(
@@ -26,10 +57,10 @@ export function convertBase(
       return { value: '', valid: false, error: 'Empty input' };
     }
 
-    // Parse the number from the source base
-    const decimalValue = parseInt(trimmed, fromBase);
+    // Parse the number from the source base (exact, BigInt based)
+    const parsed = parseBigIntFromBase(trimmed, fromBase);
 
-    if (isNaN(decimalValue)) {
+    if (parsed === null) {
       return {
         value: '',
         valid: false,
@@ -38,7 +69,7 @@ export function convertBase(
     }
 
     // Convert to the target base
-    const result = decimalValue.toString(toBase).toUpperCase();
+    const result = parsed.toString(toBase).toUpperCase();
 
     return { value: result, valid: true };
   } catch (error) {

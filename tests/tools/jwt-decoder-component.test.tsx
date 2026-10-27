@@ -16,7 +16,7 @@ describe("JwtDecoder", () => {
 
     expect(await screen.findByText("Expiration Status")).toBeInTheDocument();
     expect(screen.getByText("Not expired")).toBeInTheDocument();
-    expect(screen.getByText("Token decoded locally. Signature not verified.")).toBeInTheDocument();
+    expect(screen.getByText("Token decoded locally. Enter a secret below to check an HMAC signature.")).toBeInTheDocument();
     expect(screen.getByText("What is a JWT?")).toBeInTheDocument();
   });
 });

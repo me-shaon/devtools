@@ -9,6 +9,7 @@ import {
   getJwtExpirationDate,
   getJwtIssuedAtDate,
   isValidJwtFormat,
+  verifyJwtSignature,
 } from '@/utils/jwt';
 
 describe('JWT Utils', () => {
@@ -140,5 +141,75 @@ describe('JWT Utils', () => {
       expect(result.payload.exp).toBe(1516242622);
       expect(result.payload.jti).toBe('bc908.123');
     });
+  });
+});
+
+describe('verifyJwtSignature', () => {
+  const jwtIoToken =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+
+  const b64url = (input: string | Uint8Array) => {
+    const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
+    return Buffer.from(bytes).toString('base64url');
+  };
+
+  async function sign(alg: 'HS256' | 'HS384' | 'HS512', secret: Uint8Array) {
+    const hash = { HS256: 'SHA-256', HS384: 'SHA-384', HS512: 'SHA-512' }[alg];
+    const data = `${b64url(JSON.stringify({ alg, typ: 'JWT' }))}.${b64url(JSON.stringify({ sub: 'abc' }))}`;
+    const key = await crypto.subtle.importKey('raw', secret as BufferSource, { name: 'HMAC', hash }, false, ['sign']);
+    const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data)));
+    return `${data}.${b64url(sig)}`;
+  }
+
+  it('accepts the jwt.io example token', async () => {
+    const result = await verifyJwtSignature(jwtIoToken, 'your-256-bit-secret');
+    expect(result).toEqual({ status: 'valid', message: 'Signature valid' });
+  });
+
+  it('rejects the wrong secret', async () => {
+    const result = await verifyJwtSignature(jwtIoToken, 'wrong-secret');
+    expect(result.status).toBe('invalid');
+  });
+
+  it('rejects a tampered payload', async () => {
+    const [h, , s] = jwtIoToken.split('.');
+    const payload = b64url(JSON.stringify({ sub: '1234567890', name: 'Jane Doe', iat: 1516239022 }));
+    const result = await verifyJwtSignature(`${h}.${payload}.${s}`, 'your-256-bit-secret');
+    expect(result.status).toBe('invalid');
+  });
+
+  it('rejects a tampered signature', async () => {
+    const result = await verifyJwtSignature(jwtIoToken.slice(0, -2) + 'AA', 'your-256-bit-secret');
+    expect(result.status).toBe('invalid');
+  });
+
+  it.each(['HS256', 'HS384', 'HS512'] as const)('verifies %s tokens', async (alg) => {
+    const secret = new TextEncoder().encode('s3cret');
+    const token = await sign(alg, secret);
+    expect((await verifyJwtSignature(token, 's3cret')).status).toBe('valid');
+    expect((await verifyJwtSignature(token, 'other')).status).toBe('invalid');
+  });
+
+  it('treats the secret as Base64 when asked', async () => {
+    const raw = new Uint8Array([1, 2, 3, 250, 251, 252, 0, 9]);
+    const token = await sign('HS256', raw);
+    const secret = Buffer.from(raw).toString('base64');
+    expect((await verifyJwtSignature(token, secret, { secretIsBase64: true })).status).toBe('valid');
+    expect((await verifyJwtSignature(token, secret)).status).toBe('invalid');
+  });
+
+  it('reports unsupported algorithms', async () => {
+    const make = (alg: string) =>
+      `${b64url(JSON.stringify({ alg, typ: 'JWT' }))}.${b64url(JSON.stringify({ a: 1 }))}.c2ln`;
+    for (const alg of ['RS256', 'ES256', 'none']) {
+      const result = await verifyJwtSignature(make(alg), 'x');
+      expect(result).toEqual({ status: 'unsupported', message: 'Algorithm not supported for verification' });
+    }
+  });
+
+  it('reports errors for a missing secret, bad Base64 secret and bad token', async () => {
+    expect((await verifyJwtSignature(jwtIoToken, '')).status).toBe('error');
+    expect((await verifyJwtSignature(jwtIoToken, '***', { secretIsBase64: true })).status).toBe('error');
+    expect((await verifyJwtSignature('abc', 'x')).status).toBe('error');
   });
 });

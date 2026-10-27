@@ -260,3 +260,57 @@ describe('Color Utils', () => {
     });
   });
 });
+
+import {
+  meetsWcagAALarge,
+  meetsWcagAANormal,
+  meetsWcagAAALarge,
+  meetsWcagAAANormal,
+} from '@/utils/color';
+
+describe('Contrast and parsing', () => {
+  it('black on white is 21:1', () => {
+    expect(getContrastRatio(parseColor('#000')!, parseColor('#fff')!)).toBeCloseTo(21, 5);
+  });
+
+  it('#777 on white is about 4.48:1', () => {
+    const r = getContrastRatio(parseColor('#777777')!, parseColor('#ffffff')!);
+    expect(r).toBeCloseTo(4.48, 2);
+    expect(meetsWcagAANormal(parseColor('#777')!, parseColor('#fff')!)).toBe(false);
+    expect(meetsWcagAALarge(parseColor('#777')!, parseColor('#fff')!)).toBe(true);
+  });
+
+  it('applies AAA thresholds', () => {
+    const white = parseColor('#fff')!;
+    const c = parseColor('#595959')!; // about 7:1
+    expect(meetsWcagAAANormal(c, white)).toBe(true);
+    const d = parseColor('#767676')!; // about 4.54:1
+    expect(meetsWcagAANormal(d, white)).toBe(true);
+    expect(meetsWcagAAANormal(d, white)).toBe(false);
+    expect(meetsWcagAAALarge(d, white)).toBe(true);
+  });
+
+  it('keeps misspelled aliases', () => {
+    const w = parseColor('#fff')!;
+    const k = parseColor('#000')!;
+    expect(meetsWCAAANormal(w, k)).toBe(true);
+    expect(meetsWCAAALarge(w, k)).toBe(true);
+  });
+
+  it('parses 3-digit hex, spaced rgb and hsl', () => {
+    expect(parseColor('#f00')!.hex).toBe('#ff0000');
+    expect(parseColor('rgb(0 128 255)')!.rgb).toEqual({ r: 0, g: 128, b: 255 });
+    expect(parseColor('hsl(120, 100%, 50%)')!.hex).toBe('#00ff00');
+    expect(parseColor('hsl(0, 100%, 50%)')!.rgb).toEqual({ r: 255, g: 0, b: 0 });
+    expect(parseColor('rgb(300, 0, 0)')).toBeNull();
+    expect(parseColor('nope')).toBeNull();
+  });
+
+  it('converts known colors to HSL and HSV', () => {
+    const c = parseColor('#3b82f6')!;
+    expect(Math.round(c.hsl.h)).toBe(217);
+    expect(Math.round(c.hsl.s)).toBe(91);
+    expect(Math.round(c.hsl.l)).toBe(60);
+    expect(Math.round(c.hsv.v)).toBe(96);
+  });
+});

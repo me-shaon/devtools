@@ -245,3 +245,36 @@ describe('Number Base Utils', () => {
     });
   });
 });
+
+describe('BigInt precision', () => {
+  const big64 = '18446744073709551616';
+  const big128 = '340282366920938463463374607431768211456';
+
+  it('keeps 2^64 exact across bases', () => {
+    expect(convertBase(big64, 10, 16).value).toBe('10000000000000000');
+    expect(convertBase(big64, 10, 8).value).toBe('2000000000000000000000');
+    expect(convertBase(big64, 10, 2).value).toBe('1' + '0'.repeat(64));
+    expect(convertBase('1' + '0'.repeat(64), 2, 10).value).toBe(big64);
+    expect(convertBase('10000000000000000', 16, 10).value).toBe(big64);
+  });
+
+  it('keeps 2^128 exact across bases', () => {
+    const hex = '1' + '0'.repeat(32);
+    expect(convertBase(big128, 10, 16).value).toBe(hex);
+    expect(convertBase(hex, 16, 10).value).toBe(big128);
+    const bin = convertBase(big128, 10, 2).value;
+    expect(bin).toBe('1' + '0'.repeat(128));
+    expect(convertBase(bin, 2, 8).value).toBe(convertBase(big128, 10, 8).value);
+    expect(convertBase(convertBase(big128, 10, 8).value, 8, 10).value).toBe(big128);
+  });
+
+  it('does not lose low digits of odd large numbers', () => {
+    const n = '123456789012345678901234567890123';
+    const hex = convertBase(n, 10, 16).value;
+    expect(convertBase(hex, 16, 10).value).toBe(n);
+  });
+
+  it('handles large negative numbers', () => {
+    expect(convertBase('-' + big64, 10, 16).value).toBe('-10000000000000000');
+  });
+});

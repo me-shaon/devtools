@@ -10,27 +10,27 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Development Tools
 
-- **JSON Viewer** - Format, validate, and minify JSON with syntax highlighting
+- **JSON Viewer** - Format, validate, minify, and sort JSON, run JSONPath queries, and convert to YAML or XML
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 - **Regex Generator** - Interactive regex construction with live testing
 - **JSON to TypeScript** - Generate TypeScript interfaces from JSON
 
 ### Generators
 
-- **Hash Generator** - MD5, SHA-1, SHA-256, SHA-512
-- **UUID Generator** - Generate v1/v4/v6/v7 UUIDs and ULIDs with batch support
+- **Hash Generator** - MD5, SHA-1, SHA-2, SHA-3, and Keccak-256 hashes, HMAC, and file hashing
+- **UUID Generator** - Generate v1/v3/v4/v5/v6/v7 UUIDs and ULIDs, and inspect existing IDs
 - **Password Generator** - Generate secure passwords and passphrases with strength analysis
 - **Lorem Ipsum** - Generate placeholder text
-- **QR Generator** - Generate QR codes with custom size and error correction
+- **QR Generator** - Generate scannable QR codes and save them as PNG files
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 
 ### Converters
 
-- **Base64** - Encode/decode text and files
+- **Base64** - Encode and decode text, files, and data URIs, with a URL-safe mode
 - **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
-- **Number Base** - Convert between decimal, binary, octal, hex
-- **Markdown** - Live preview and export markdown content
-- **URL Encoder** - Encode/decode URLs and URI components
+- **Number Base** - Convert between decimal, binary, octal, and hex, including very large numbers
+- **Markdown** - Live, sanitized preview and HTML export
+- **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
 
 ### Time & Date
@@ -41,13 +41,13 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Media
 
-- **Color Palette** - Create monochromatic, analogous, complementary schemes
+- **Color Palette** - Convert HEX, RGB, HSL, and HSV, check WCAG contrast, and create color schemes
 - **Image Converter & Compressor** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
 
 ### Text Tools
 
-- **Text Compare** - Diff viewer with line-by-line comparison
-- **JWT Decoder** - Decode and inspect JWT tokens
+- **Text Compare** - Line-by-line diff that can ignore whitespace and case
+- **JWT Decoder** - Decode JWT tokens and verify HS256, HS384, and HS512 signatures
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 
 ### Utilities

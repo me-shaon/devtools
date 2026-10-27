@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +12,9 @@ import {
   decodeJwt as decodeJwtToken,
   getJwtExpirationDate,
   getJwtIssuedAtDate,
+  verifyJwtSignature,
   type DecodedJwt,
+  type JwtVerifyResult,
 } from "@/utils/jwt";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
@@ -20,7 +24,7 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
   {
     q: "Does decoding a JWT prove it is authentic?",
-    a: "No. Decoding only reveals the token contents. You still need to verify the signature with the correct secret or public key before trusting it.",
+    a: "No. Decoding only reveals the token contents. To check the signature, enter the secret for an HS256, HS384, or HS512 token. For other algorithms, verify the signature with the correct public key on your server.",
   },
   {
     q: "Are JWTs encrypted by default?",
@@ -28,7 +32,7 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
   {
     q: "What does this tool actually validate?",
-    a: "This tool decodes the token locally and checks whether the `exp` claim is already in the past. It does not verify issuer, audience, signature, or key trust.",
+    a: "This tool decodes the token locally and checks whether the `exp` claim is already in the past. For HS256, HS384, and HS512 tokens it also checks the signature against the secret you enter. It does not support RS*, ES*, or `none` tokens. It does not check issuer, audience, or key trust. The secret stays on your device.",
   },
 ];
 
@@ -36,6 +40,30 @@ export function JwtDecoder() {
   const [input, setInput] = useState("");
   const [decoded, setDecoded] = useState<DecodedJwt | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [secret, setSecret] = useState("");
+  const [secretIsBase64, setSecretIsBase64] = useState(false);
+  const [verify, setVerify] = useState<JwtVerifyResult | null>(null);
+
+  useEffect(() => {
+    if (!decoded) {
+      setVerify(null);
+      return;
+    }
+    const alg = typeof decoded.header.alg === "string" ? decoded.header.alg : "";
+    if (!secret && /^HS(256|384|512)$/.test(alg)) {
+      setVerify(null);
+      return;
+    }
+    let cancelled = false;
+    verifyJwtSignature(input, secret, { secretIsBase64 }).then((result) => {
+      if (!cancelled) setVerify(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // The token is re-checked when the user decodes again (decoded changes).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decoded, secret, secretIsBase64]);
 
   const decodeJwt = () => {
     const result = decodeJwtToken(input);
@@ -112,16 +140,54 @@ export function JwtDecoder() {
               <Badge className={expirationStatus.className}>{expirationStatus.label}</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Token decoded locally. Signature not verified.
+              Token decoded locally. Enter a secret below to check an HMAC signature.
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Verification Notice</CardTitle>
+              <CardTitle className="text-base">Verify Signature</CardTitle>
+              <CardDescription>HS256, HS384 and HS512 only. The secret never leaves this device.</CardDescription>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              This tool decodes the token and checks the `exp` claim, but it does not prove the token was signed by a trusted issuer. Verify the signature and claims on the server before relying on it.
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="jwt-secret">Secret</Label>
+                <Input
+                  id="jwt-secret"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="your-256-bit-secret"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  className="font-mono"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={secretIsBase64}
+                  onChange={(e) => setSecretIsBase64(e.target.checked)}
+                />
+                Secret is Base64-encoded
+              </label>
+              {verify && (
+                <div role="status" className="flex items-center gap-3">
+                  <Badge
+                    className={
+                      verify.status === "valid"
+                        ? "bg-green-500"
+                        : verify.status === "invalid"
+                        ? "bg-red-500"
+                        : "bg-amber-500 text-black"
+                    }
+                  >
+                    {verify.message}
+                  </Badge>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                This checks the signature only. It does not check issuer, audience, or key trust.
+              </p>
             </CardContent>
           </Card>
 

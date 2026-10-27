@@ -5,11 +5,172 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import {
+  getContrastRatio,
+  meetsWcagAALarge,
+  meetsWcagAANormal,
+  meetsWcagAAALarge,
+  meetsWcagAAANormal,
+  parseColor,
+} from "@/utils/color";
 
 interface Color {
   hex: string;
   rgb: string;
   hsl: string;
+}
+
+function formatColorValues(input: string) {
+  const color = parseColor(input);
+  if (!color) return null;
+  const { rgb, hsl, hsv } = color;
+  return [
+    { label: "HEX", value: color.hex.toUpperCase() },
+    { label: "RGB", value: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` },
+    { label: "HSL", value: `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)` },
+    { label: "HSV", value: `hsv(${Math.round(hsv.h)}, ${Math.round(hsv.s)}%, ${Math.round(hsv.v)}%)` },
+  ];
+}
+
+function copyValue(value: string, label: string) {
+  navigator.clipboard.writeText(value);
+  toast.success(`${label} copied!`);
+}
+
+function ColorConverter() {
+  const [input, setInput] = useState("#3b82f6");
+  const color = parseColor(input);
+  const values = formatColorValues(input);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Color Converter</CardTitle>
+        <CardDescription>Enter a color as HEX, RGB, or HSL</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="color-convert-input">Color</Label>
+          <Input
+            id="color-convert-input"
+            placeholder="#3b82f6, rgb(59, 130, 246), hsl(217, 91%, 60%)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="font-mono"
+          />
+          {input.trim() && !color && (
+            <p className="text-xs text-destructive">Not a valid HEX, RGB, or HSL color.</p>
+          )}
+        </div>
+        {color && values && (
+          <div className="grid grid-cols-1 md:grid-cols-[6rem,1fr] gap-4">
+            <div
+              className="h-24 w-full rounded-md border"
+              style={{ backgroundColor: color.hex }}
+              aria-label="Color preview"
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {values.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{item.label}</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded bg-muted p-2 text-xs">{item.value}</code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={`Copy ${item.label}`}
+                      onClick={() => copyValue(item.value, item.label)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContrastChecker() {
+  const [fg, setFg] = useState("#777777");
+  const [bg, setBg] = useState("#ffffff");
+  const fgColor = parseColor(fg);
+  const bgColor = parseColor(bg);
+  const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
+
+  const checks =
+    fgColor && bgColor
+      ? [
+          { label: "AA normal text (4.5:1)", pass: meetsWcagAANormal(fgColor, bgColor) },
+          { label: "AA large text (3:1)", pass: meetsWcagAALarge(fgColor, bgColor) },
+          { label: "AAA normal text (7:1)", pass: meetsWcagAAANormal(fgColor, bgColor) },
+          { label: "AAA large text (4.5:1)", pass: meetsWcagAAALarge(fgColor, bgColor) },
+        ]
+      : [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Contrast Checker</CardTitle>
+        <CardDescription>Check text and background colors against WCAG 2.x</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="contrast-fg">Foreground</Label>
+            <Input
+              id="contrast-fg"
+              value={fg}
+              onChange={(e) => setFg(e.target.value)}
+              className="font-mono"
+            />
+            {fg.trim() && !fgColor && <p className="text-xs text-destructive">Invalid color.</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contrast-bg">Background</Label>
+            <Input
+              id="contrast-bg"
+              value={bg}
+              onChange={(e) => setBg(e.target.value)}
+              className="font-mono"
+            />
+            {bg.trim() && !bgColor && <p className="text-xs text-destructive">Invalid color.</p>}
+          </div>
+        </div>
+        {ratio !== null && fgColor && bgColor && (
+          <div className="space-y-4">
+            <div
+              className="rounded-md border p-4"
+              style={{ backgroundColor: bgColor.hex, color: fgColor.hex }}
+              data-testid="contrast-preview"
+            >
+              <p className="text-2xl font-bold">Large sample text</p>
+              <p className="text-sm">Normal sample text for reading.</p>
+            </div>
+            <div className="text-3xl font-semibold" data-testid="contrast-ratio">
+              {(Math.floor(ratio * 100) / 100).toFixed(2)}:1
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {checks.map((check) => (
+                <li
+                  key={check.label}
+                  className="flex items-center justify-between rounded-md border p-2 text-sm"
+                >
+                  <span>{check.label}</span>
+                  <span className={check.pass ? "font-medium text-green-600" : "font-medium text-destructive"}>
+                    {check.pass ? "Pass" : "Fail"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function ColorPalette() {
@@ -217,6 +378,8 @@ export function ColorPalette() {
 
   return (
     <div className="space-y-6">
+      <ColorConverter />
+      <ContrastChecker />
       <Card>
         <CardHeader>
           <CardTitle>Color Palette Generator</CardTitle>

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Copy, Check } from "lucide-react";
@@ -87,6 +89,8 @@ export function TextCompare() {
   const [text2, setText2] = useState("");
   const [result, setResult] = useState<ComparisonResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
+  const [ignoreCase, setIgnoreCase] = useState(false);
 
   const compareTextBlocks = () => {
     if (!text1.trim() && !text2.trim()) {
@@ -94,16 +98,17 @@ export function TextCompare() {
       return;
     }
 
-    const comparison = compareTexts(text1, text2);
-    const lineDiffs = getLineDiff(text1, text2);
+    const options = { ignoreWhitespace, ignoreCase };
+    const comparison = compareTexts(text1, text2, options);
+    const lineDiffs = getLineDiff(text1, text2, options);
 
     setResult({
       comparison,
       lineDiffs,
-      similarity: calculateSimilarity(text1, text2),
-      unifiedDiff: getUnifiedDiff(text1, text2),
+      similarity: calculateSimilarity(text1, text2, options),
+      unifiedDiff: getUnifiedDiff(text1, text2, 3, options),
       characterDetails: getCharacterDetails(lineDiffs),
-      equal: areTextsEqual(text1, text2),
+      equal: areTextsEqual(text1, text2, options),
       originalStats: getTextStats(text1),
       modifiedStats: getTextStats(text2),
     });
@@ -220,6 +225,17 @@ export function TextCompare() {
             />
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-6">
+        <div className="flex items-center gap-2">
+          <Switch id="text-compare-ignore-whitespace" checked={ignoreWhitespace} onCheckedChange={setIgnoreWhitespace} />
+          <Label htmlFor="text-compare-ignore-whitespace">Ignore whitespace</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="text-compare-ignore-case" checked={ignoreCase} onCheckedChange={setIgnoreCase} />
+          <Label htmlFor="text-compare-ignore-case">Ignore case</Label>
+        </div>
       </div>
 
       <div className="flex justify-center">

@@ -216,10 +216,24 @@ try {
 
   await step("formats JSON", async () => {
     await openTool("JSON Viewer");
-    await (await browser.$('#json-workspace-input')).setValue('{"a":1,"b":[true]}');
-    // Text selectors cannot follow a CSS selector, so find the visible panel first.
-    await (await browser.$("section.tool-panel:not([hidden])").$("button=Format")).click();
-    await waitForText(await browser.$("main"), '"b": [');
+    // The JSON workspace re-renders while it works, so drive it inside the page to avoid stale elements.
+    await browser.execute(() => {
+      const input = document.querySelector("#json-workspace-input");
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(input, '{"a":1,"b":[true]}');
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await browser.execute(() =>
+      [...document.querySelectorAll("section.tool-panel:not([hidden]) button")]
+        .find((button) => button.innerText.trim() === "Format")
+        .click(),
+    );
+    await browser.waitUntil(
+      () =>
+        browser.execute(() =>
+          document.querySelector("section.tool-panel:not([hidden])").innerText.includes('"b": ['),
+        ),
+      { timeout: 10000, timeoutMsg: "Formatted JSON did not appear" },
+    );
   });
 
   await step("saves a QR code PNG through the save_file command", async () => {
@@ -236,7 +250,8 @@ try {
     const samplePath = path.join(saveDir, "..", `sample-${Date.now()}.png`);
     fs.writeFileSync(samplePath, SAMPLE_PNG);
     await openTool("Image Converter");
-    await uploadFile('input[type="file"]', samplePath);
+    // Other open tools stay mounted in hidden panels and can have their own file inputs.
+    await uploadFile('section.tool-panel:not([hidden]) input[type="file"]', samplePath);
     const download = await browser.$("button*=Download Image");
     await download.waitForClickable({ timeout: 15000 });
     await download.click();

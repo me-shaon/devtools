@@ -32,6 +32,7 @@
     "brand:build": "node scripts/build-brand.mjs"
   },
   "dependencies": {
+    "@noble/hashes": "^2.4.0",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slider": "^1.3.5",
@@ -48,6 +49,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dompurify": "^3.4.17",
     "fflate": "^0.8.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",

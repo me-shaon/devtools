@@ -22,10 +22,30 @@ export interface LineDiff {
   oldContent?: string;
 }
 
+export interface CompareOptions {
+  ignoreWhitespace?: boolean;
+  ignoreCase?: boolean;
+}
+
+function normalizeLine(line: string, options: CompareOptions): string {
+  let result = line;
+  if (options.ignoreWhitespace) {
+    result = result.replace(/\s+/g, ' ').trim();
+  }
+  if (options.ignoreCase) {
+    result = result.toLowerCase();
+  }
+  return result;
+}
+
+function linesMatch(a: string, b: string, options: CompareOptions): boolean {
+  return normalizeLine(a, options) === normalizeLine(b, options);
+}
+
 /**
  * Compare two texts and return differences
  */
-export function compareTexts(text1: string, text2: string): TextComparison {
+export function compareTexts(text1: string, text2: string, options: CompareOptions = {}): TextComparison {
   const lines1 = text1.split('\n');
   const lines2 = text2.split('\n');
 
@@ -40,7 +60,7 @@ export function compareTexts(text1: string, text2: string): TextComparison {
     const line1 = lines1[i];
     const line2 = lines2[i];
 
-    if (line1 === line2) {
+    if (line1 !== undefined && line2 !== undefined && linesMatch(line1, line2, options)) {
       differences.push({ type: 'unchanged', value: line1 || '', lineNumber: i });
       unchangedLines++;
     } else {
@@ -66,7 +86,7 @@ export function compareTexts(text1: string, text2: string): TextComparison {
 /**
  * Get line-by-line diff with more detail
  */
-export function getLineDiff(text1: string, text2: string): LineDiff[] {
+export function getLineDiff(text1: string, text2: string, options: CompareOptions = {}): LineDiff[] {
   const lines1 = text1.split('\n');
   const lines2 = text2.split('\n');
 
@@ -77,7 +97,7 @@ export function getLineDiff(text1: string, text2: string): LineDiff[] {
     const line1 = lines1[i];
     const line2 = lines2[i];
 
-    if (line1 === line2) {
+    if (line1 !== undefined && line2 !== undefined && linesMatch(line1, line2, options)) {
       result.push({
         lineNumber: i,
         type: 'unchanged',
@@ -111,7 +131,7 @@ export function getLineDiff(text1: string, text2: string): LineDiff[] {
 /**
  * Calculate similarity percentage between two texts
  */
-export function calculateSimilarity(text1: string, text2: string): number {
+export function calculateSimilarity(text1: string, text2: string, options: CompareOptions = {}): number {
   if (!text1 && !text2) return 100;
   if (!text1 || !text2) return 0;
 
@@ -124,7 +144,7 @@ export function calculateSimilarity(text1: string, text2: string): number {
   let matchingLines = 0;
 
   for (let i = 0; i < Math.min(lines1.length, lines2.length); i++) {
-    if (lines1[i] === lines2[i]) {
+    if (linesMatch(lines1[i], lines2[i], options)) {
       matchingLines++;
     }
   }
@@ -164,9 +184,10 @@ export function getCharDiff(line1: string, line2: string): DiffResult[] {
 export function getUnifiedDiff(
   text1: string,
   text2: string,
-  contextLines = 3
+  contextLines = 3,
+  options: CompareOptions = {}
 ): string[] {
-  const lineDiffs = getLineDiff(text1, text2);
+  const lineDiffs = getLineDiff(text1, text2, options);
   const changedIndices = lineDiffs
     .map((diff, index) => (diff.type === 'unchanged' ? -1 : index))
     .filter((index) => index >= 0);
@@ -231,8 +252,13 @@ export function getUnifiedDiff(
 /**
  * Check if two texts are identical
  */
-export function areTextsEqual(text1: string, text2: string): boolean {
-  return text1 === text2;
+export function areTextsEqual(text1: string, text2: string, options: CompareOptions = {}): boolean {
+  const lines1 = text1.split('\n');
+  const lines2 = text2.split('\n');
+  if (lines1.length !== lines2.length) {
+    return false;
+  }
+  return lines1.every((line, i) => linesMatch(line, lines2[i], options));
 }
 
 /**

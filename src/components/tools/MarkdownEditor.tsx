@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, Check, Eye, Code } from "lucide-react";
 import { toast } from "sonner";
-import { convertMarkdown } from "@/utils/markdown";
+import { convertMarkdown, sanitizeHtml } from "@/utils/markdown";
 
 const defaultMarkdown = `# Welcome to Markdown Editor
 
@@ -45,7 +45,7 @@ export function MarkdownEditor() {
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState<"split" | "preview" | "source">("split");
   const deferredMarkdown = useDeferredValue(markdown);
-  const html = useMemo(() => convertMarkdown(deferredMarkdown), [deferredMarkdown]);
+  const html = useMemo(() => sanitizeHtml(convertMarkdown(deferredMarkdown)), [deferredMarkdown]);
 
   const copyHtml = () => {
     const cleanHtml = html.replace(/<br>/g, "\n");

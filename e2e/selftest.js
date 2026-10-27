@@ -144,7 +144,8 @@
       const bytes = Uint8Array.from(atob(SAMPLE_PNG), (char) => char.charCodeAt(0));
       const transfer = new DataTransfer();
       transfer.items.add(new File([bytes], "sample-image.png", { type: "image/png" }));
-      const input = document.querySelector('input[type="file"]');
+      // Other open tools stay mounted in hidden panels and can have their own file inputs.
+      const input = toolContent().querySelector('input[type="file"]');
       input.files = transfer.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
       const download = await waitFor(

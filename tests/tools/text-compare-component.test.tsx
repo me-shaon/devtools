@@ -27,3 +27,23 @@ describe("TextCompare", () => {
   });
 
 });
+
+describe("TextCompare options", () => {
+  it("ignores case and whitespace when the options are on", async () => {
+    render(<TextCompare />);
+    fireEvent.change(screen.getByPlaceholderText("Enter original text..."), {
+      target: { value: "Hello   World" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter modified text..."), {
+      target: { value: " hello world" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Compare Texts" }));
+    expect(await screen.findByText("100%", {}, { timeout: 100 }).catch(() => null)).toBeNull();
+
+    fireEvent.click(screen.getByRole("switch", { name: "Ignore whitespace" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Ignore case" }));
+    fireEvent.click(screen.getByRole("button", { name: "Compare Texts" }));
+    expect(await screen.findByText("100%")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+  });
+});
