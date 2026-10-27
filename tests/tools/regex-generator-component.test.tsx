@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RegexGenerator } from "@/components/tools/RegexGenerator";
 import { ALL_TOOLS } from "@/app/toolRegistry";
@@ -55,7 +55,7 @@ describe("RegexGenerator", () => {
     type("Replace with", "$2/$<user> [$&]");
     type("Test text", "ann@x bob@y");
     const output = await screen.findByRole("textbox", { name: "Replaced text" });
-    expect(output).toHaveValue("x/ann [ann@x] y/bob [bob@y]");
+    await waitFor(() => expect(output).toHaveValue("x/ann [ann@x] y/bob [bob@y]"));
   });
 
   it("fills the pattern and flags from a pasted literal", () => {

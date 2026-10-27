@@ -66,11 +66,12 @@ describe("JwtDecoder", () => {
     fireEvent.change(screen.getByLabelText("Payload JSON"), { target: { value: '{"sub":"tester"}' } });
 
     const output = await screen.findByLabelText("Signed token");
-    await waitFor(() => expect(output.textContent).toMatch(/^eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+$/));
+    // Wait for the token with the edited payload, not the one signed before the edit.
+    await waitFor(() => expect(output.textContent).toMatch(/^eyJ[\w-]+\.eyJzdWIiOiJ0ZXN0ZXIifQ\.[\w-]+$/));
 
     fireEvent.click(screen.getByRole("button", { name: "Decode" }));
     expect(await screen.findByText("Signature valid")).toBeInTheDocument();
-    expect(screen.getByText(/"sub": "tester"/)).toBeInTheDocument();
+    expect(await screen.findByText(/"sub": "tester"/)).toBeInTheDocument();
   });
 
   it("reports invalid payload JSON while encoding", async () => {
