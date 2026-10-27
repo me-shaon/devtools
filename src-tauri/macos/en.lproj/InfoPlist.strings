@@ -1,0 +1,3 @@
+/* Finder, the Dock, and Spotlight show this name. The bundle file stays DevToolsApp.app. */
+"CFBundleDisplayName" = "DevTools";
+"CFBundleName" = "DevTools";
