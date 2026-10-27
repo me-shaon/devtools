@@ -29,10 +29,21 @@ describe("detectPastedContent", () => {
     expect(first("curl -X POST https://api.example.com -d 'a=1'")).toBe("curl-to-code");
     expect(first("SELECT id, name FROM users WHERE id = 1")).toBe("code-formatter");
     expect(first("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----")).toBe("certificate-decoder");
+    expect(first("-----BEGIN PUBLIC KEY-----\nMCow\n-----END PUBLIC KEY-----")).toBe("key-generator");
+    expect(first("-----BEGIN OPENSSH PRIVATE KEY-----\nb3Bl\n-----END OPENSSH PRIVATE KEY-----")).toBe("key-generator");
+    expect(first("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBfYyoCo5kOuXXv58SdYgyMjzLnASszHpiVe7kzvD7mC me@laptop")).toBe("key-generator");
     expect(first('a:1:{s:4:"name";s:3:"bob";}')).toBe("php-tools");
     expect(first('user|s:3:"bob";')).toBe("php-tools");
     expect(first("<?php\nreturn [\n    'debug' => true,\n];")).toBe("php-tools");
     expect(first("array('a' => 1)")).toBe("php-tools");
+  });
+
+  it("recognises compressed data in Base64", () => {
+    expect(detectPastedContent("H4sIAAAAAAAAE6tWykvMTVWyUipKzUlNLE5V0lEqSy0qzszPU7IyrAUAtwLMOh4AAAA=", ids)[0]).toMatchObject({ toolId: "compression", label: "GZIP data" });
+    expect(first("H4sIAAAAAAAAE6tWykvMTVWyUipKzUlNLE5V0lEq\nSy0qzszPU7IyrAUAtwLMOh4AAAA=")).toBe("compression");
+    expect(first("SDRzSUFBQUFBQUFBRTZ0V3lrdk1UVld5VWlwS3pVbE5MRTVWMGxFcVN5MHF6c3pQVTdJeXJBVUF0d0xNT2g0QUFBQT0=")).toBe("compression");
+    expect(detectPastedContent("eJzLSM3JyVfIQCcBaAMIsQ==", ids)[0]).toMatchObject({ toolId: "compression", label: "zlib data" });
+    expect(first("eJustSomeWordsThatLookLikeBase64")).not.toBe("compression");
   });
 
   it("ignores plain text, hex digests, and numbers that are not timestamps", () => {
@@ -54,6 +65,12 @@ describe("detectPastedContent", () => {
     expect(detect("name: demo\nversion: 1")).toMatchObject({ toolId: "yaml-json", label: "YAML" });
     expect(first("PATH=/usr/bin")).toBeUndefined();
     expect(first("[link]\nsee the docs")).toBeUndefined();
+  });
+
+  it("sends a JSON Schema to the schema validator", () => {
+    const suggestions = detectPastedContent('{"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}', ids);
+    expect(suggestions[0]).toMatchObject({ toolId: "json-schema", label: "a JSON Schema" });
+    expect(suggestions.map((s) => s.toolId)).toContain("json-viewer");
   });
 
   it("returns at most three suggestions, surest first", () => {

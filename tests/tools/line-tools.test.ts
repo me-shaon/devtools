@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { processLines, shuffleLines, splitLines } from "@/utils/line-tools";
+import { compareLists, processLines, shuffleLines, splitLines } from "@/utils/line-tools";
 
 describe("splitLines", () => {
   it("splits on every line ending and records the trailing break", () => {
@@ -72,6 +72,86 @@ describe("processLines", () => {
     const result = processLines(text, { sort: "natural", dedupe: true });
     expect(result.outputLines).toBe(5000);
     expect(result.duplicatesRemoved).toBe(95_000);
+    expect(performance.now() - started).toBeLessThan(5000);
+  });
+});
+
+describe("processLines filter", () => {
+  const text = "api-users\nweb-admin\napi-orders\nAPI-auth\n";
+
+  it("keeps lines that contain the text and counts the matches", () => {
+    const result = processLines(text, { filter: { pattern: "api" } });
+    expect(result.output).toBe("api-users\napi-orders\n");
+    expect(result.filterMatched).toBe(2);
+  });
+
+  it("removes matching lines and ignores case with the shared option", () => {
+    const result = processLines(text, { filter: { pattern: "api", mode: "remove" }, ignoreCase: true });
+    expect(result.output).toBe("web-admin\n");
+    expect(result.filterMatched).toBe(3);
+  });
+
+  it("matches a regex", () => {
+    expect(processLines(text, { filter: { pattern: "^api-(users|auth)$", regex: true }, ignoreCase: true }).output)
+      .toBe("api-users\nAPI-auth\n");
+  });
+
+  it("filters after trim and before dedupe and sort", () => {
+    const result = processLines(" b1 \na1\nb1\nc1", { trim: true, filter: { pattern: "1$", regex: true }, dedupe: true, sort: "asc" });
+    expect(result.output).toBe("a1\nb1\nc1");
+    expect(result.filterMatched).toBe(4);
+    expect(result.duplicatesRemoved).toBe(1);
+  });
+
+  it("does nothing with an empty pattern", () => {
+    const result = processLines("a\nb", { filter: { pattern: "", mode: "remove" } });
+    expect(result.output).toBe("a\nb");
+    expect(result.filterMatched).toBeUndefined();
+  });
+
+  it("throws a readable error for an invalid regex", () => {
+    expect(() => processLines("a", { filter: { pattern: "(", regex: true } })).toThrow(/Invalid regular expression/);
+  });
+});
+
+describe("compareLists", () => {
+  it("splits two lists into only in A, only in B, in both, and the union", () => {
+    const result = compareLists("a\nb\nc\nb", "c\nd\na\n");
+    expect(result.onlyA).toEqual(["b"]);
+    expect(result.onlyB).toEqual(["d"]);
+    expect(result.both).toEqual(["a", "c"]);
+    expect(result.union).toEqual(["a", "b", "c", "d"]);
+    expect(result.uniqueA).toBe(3);
+    expect(result.uniqueB).toBe(3);
+  });
+
+  it("trims and ignores blank lines by default", () => {
+    const result = compareLists(" a \n\n  \nb", "a\n");
+    expect(result.both).toEqual(["a"]);
+    expect(result.onlyA).toEqual(["b"]);
+    const raw = compareLists(" a \n\nb", "a", { trim: false, ignoreBlank: false });
+    expect(raw.onlyA).toEqual([" a ", "", "b"]);
+  });
+
+  it("ignores case on request and keeps the spelling from A", () => {
+    expect(compareLists("Alice@x.io", "alice@X.io").both).toEqual([]);
+    const result = compareLists("Alice@x.io\nbob", "alice@X.io\nBOB\ncarol", { ignoreCase: true });
+    expect(result.both).toEqual(["Alice@x.io", "bob"]);
+    expect(result.onlyB).toEqual(["carol"]);
+  });
+
+  it("uses CRLF when either list has CRLF", () => {
+    expect(compareLists("a\r\nb", "b").eol).toBe("\r\n");
+    expect(compareLists("a", "b").eol).toBe("\n");
+  });
+
+  it("compares 100k items quickly", () => {
+    const a = Array.from({ length: 100_000 }, (_, i) => `id-${i}`).join("\n");
+    const b = Array.from({ length: 100_000 }, (_, i) => `id-${i + 50_000}`).join("\n");
+    const started = performance.now();
+    const result = compareLists(a, b);
+    expect(result.both.length).toBe(50_000);
+    expect(result.union.length).toBe(150_000);
     expect(performance.now() - started).toBeLessThan(5000);
   });
 });

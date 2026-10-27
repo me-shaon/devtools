@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ColorPalette } from "@/components/tools/ColorPalette";
+import { getContrastRatio, parseColor, simulateCvd } from "@/utils/color";
 
 const codeFor = (label: string) => screen.getByRole("button", { name: `Copy ${label}` }).parentElement!.querySelector("code")!;
 
@@ -49,5 +50,62 @@ describe("ColorPalette contrast checker", () => {
     fireEvent.change(screen.getByLabelText("Background"), { target: { value: "white" } });
     expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("1.00:1");
     expect(screen.getByText(/blends the foreground over the background/)).toBeInTheDocument();
+  });
+});
+
+describe("ColorPalette color blindness simulator", () => {
+  it("simulates the converter color for each type", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    expect(within(screen.getByTestId("cvd-row-normal")).getByText("#ff0000")).toBeInTheDocument();
+    expect(within(screen.getByTestId("cvd-row-protan")).getByText("Protanopia")).toBeInTheDocument();
+    expect(within(screen.getByTestId("cvd-row-protan")).getByText("#6d5f00")).toBeInTheDocument();
+    const achroma = within(screen.getByTestId("cvd-row-achroma")).getByText(/^#/).textContent!;
+    expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
+  });
+
+  it("shows the simulated contrast of the checker pair", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
+    const fg = parseColor("#d32f2f")!;
+    const bg = parseColor("#ffffff")!;
+    const ratio = getContrastRatio(simulateCvd(fg, "protan"), simulateCvd(bg, "protan"));
+    const expected = (Math.floor(ratio * 100) / 100).toFixed(2);
+    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.97:1");
+    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("4.97:1 AA");
+    expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent(`${expected}:1`);
+  });
+
+  it("warns when two colors look alike", () => {
+    render(<ColorPalette />);
+    const alerts = screen.getByRole("alert", { name: "Hard to tell apart" });
+    expect(within(alerts).getByText(/^Deuteranopia: #d32f2f and #388e3c look alike/)).toBeInTheDocument();
+    expect(within(alerts).queryByText(/^Normal vision/)).toBeNull();
+  });
+
+  it("says when every pair stays distinct", async () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: "black, white" } });
+    await waitFor(() => expect(screen.getByText(/Every pair stays distinct/)).toBeInTheDocument());
+  });
+
+  it("reports invalid colors in the list", async () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: "red, nope" } });
+    await waitFor(() => expect(screen.getByText("Not a valid CSS color: nope")).toBeInTheDocument());
+  });
+
+  it("switches to the anomaly forms below full severity", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "60" } });
+    expect(within(screen.getByTestId("cvd-row-deutan")).getByText("Deuteranomaly")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Severity/)).toHaveValue("60");
+  });
+
+  it("fills the compare list from a generated palette", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByPlaceholderText("#000000 or 000000"), { target: { value: "#3b82f6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#3b82f6, #/);
   });
 });

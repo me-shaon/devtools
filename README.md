@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 42 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 47 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
@@ -78,9 +78,11 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Code Playground** - Experiment with JavaScript, HTML, and CSS
 - **Regex Tester** - Test a pattern as you type, with highlighted matches, capture groups, and live replace
 - **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
+- **JSON Schema Validator** - Check JSON or YAML against a JSON Schema as you type, and click each error to find the failing value
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
+- **Semver Calculator** - Check versions against npm, Cargo, Composer, or Python ranges, see the range as plain comparators, and compare two versions
 
 ### Generators
 
@@ -91,10 +93,11 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **QR Generator** - Make QR codes for text, Wi-Fi, contacts, email, phone, SMS, locations and events, with an optional logo, and save them as PNG or SVG
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 - **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
+- **Key Pair Generator** - Generate RSA, ECDSA, and Ed25519 key pairs as PEM, JWK, and OpenSSH keys with fingerprints, or convert a key you paste
 
 ### Converters
 
-- **Base64** - Encode and decode text, files, and data URIs, with a URL-safe mode
+- **Base64** - Encode and decode Base64 and Base32 text, files, and data URIs, with a URL-safe mode
 - **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line
 - **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
 - **Markdown** - Live, sanitized preview and HTML export
@@ -105,6 +108,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
 - **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
+- **Compression** - Decompress GZIP, zlib, and raw deflate from Base64, hex, or a .gz file, and compress text back, with format detection
 - **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
 
 ### Time & Date
@@ -116,7 +120,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Media
 
-- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, and create color schemes
+- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, create color schemes, and simulate color blindness on colors and images
 - **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
@@ -126,7 +130,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
-- **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines
+- **Line Tools** - Filter, sort, reverse, dedupe, trim, and shuffle lines, and compare two lists
 
 ### AI Tools
 
