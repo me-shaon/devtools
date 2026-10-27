@@ -18,9 +18,12 @@ const MODIFIER_CODES = new Set([
   "MetaLeft", "MetaRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight", "ShiftLeft", "ShiftRight", "CapsLock", "Fn",
 ]);
 
-export function getDefaultGlobalShortcut(platform: string | undefined): GlobalShortcut {
-  const mac = platform === "darwin";
-  return { enabled: true, code: "Space", meta: mac, ctrl: !mac, alt: false, shift: true };
+/**
+ * Ctrl+Shift+Space on every platform. On macOS, Cmd+Shift+Space belongs to 1Password Quick
+ * Access, Cmd+Space to Spotlight, and Option+Space to Raycast, Alfred, and ChatGPT.
+ */
+export function getDefaultGlobalShortcut(_platform?: string): GlobalShortcut {
+  return { enabled: true, code: "Space", meta: false, ctrl: true, alt: false, shift: true };
 }
 
 /** Builds a shortcut from a key press. Returns null for a modifier alone or without a real modifier. */

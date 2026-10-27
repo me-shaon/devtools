@@ -45,9 +45,9 @@ afterEach(() => {
 });
 
 describe("DevToolsApp global shortcut", () => {
-  it("registers Cmd+Shift+Space by default and pauses it while the Shortcuts dialog is open", async () => {
+  it("registers Ctrl+Shift+Space by default and pauses it while the Shortcuts dialog is open", async () => {
     render(<DevToolsApp />);
-    await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith("Command+Shift+Space"));
+    await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith("Control+Shift+Space"));
 
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
     await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith(null));

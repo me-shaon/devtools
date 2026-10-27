@@ -13,10 +13,10 @@ const press = (code: string, mods: Partial<Record<"metaKey" | "ctrlKey" | "altKe
 });
 
 describe("global shortcut", () => {
-  it("defaults to Cmd+Shift+Space on macOS and Ctrl+Shift+Space elsewhere", () => {
-    expect(toAccelerator(getDefaultGlobalShortcut("darwin"), "darwin")).toBe("Command+Shift+Space");
+  it("defaults to Ctrl+Shift+Space everywhere, clear of 1Password's Cmd+Shift+Space on macOS", () => {
+    expect(toAccelerator(getDefaultGlobalShortcut("darwin"), "darwin")).toBe("Control+Shift+Space");
     expect(toAccelerator(getDefaultGlobalShortcut("win32"), "win32")).toBe("Control+Shift+Space");
-    expect(formatGlobalShortcut(getDefaultGlobalShortcut("darwin"), "darwin")).toBe("Cmd+Shift+Space");
+    expect(formatGlobalShortcut(getDefaultGlobalShortcut("darwin"), "darwin")).toBe("Ctrl+Shift+Space");
   });
 
   it("records the physical key, so Option+D stays D on macOS", () => {

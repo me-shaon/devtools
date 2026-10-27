@@ -101,7 +101,7 @@ Your favorites, recent tools, theme, and custom shortcuts do not move to the new
 
 - **Paste to find a tool.** Paste text outside a text field, and DevTools suggests the tool that fits: a JWT, JSON, a URL, a UUID, a timestamp, a cron expression, a certificate, a cURL command, and more. Press Enter to open the tool with the text filled in. DevTools only reads what you paste. It never reads the clipboard on its own.
 - **Menu bar and tray.** The DevTools icon in the macOS menu bar, or the Windows and Linux tray, opens the app or its tool search.
-- **Global shortcut.** Press Cmd+Shift+Space on macOS, or Ctrl+Shift+Space on Windows and Linux, in any app to open DevTools with its tool search. Press it again to hide DevTools. Change or turn off the shortcut in Shortcuts.
+- **Global shortcut.** Press Ctrl+Shift+Space in any app to open DevTools with its tool search. Press it again to hide DevTools. Change or turn off the shortcut in Shortcuts.
 
 ## Open a Tool from Other Apps
 
