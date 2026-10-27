@@ -26,33 +26,33 @@
     /* Text over the glass chrome needs a darker gray than over opaque cards. */
     --chrome-muted-foreground: 216 23% 28%;
     --chrome-input-border: 218 22% 48%;
-    --surface-editor: #fff; --surface-chrome: #e7eef9;
+    --surface-editor: #fff; --surface-chrome: #eef3fb;
     --surface-sidebar: #e9eef6; --surface-raised: #fff;
     --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
     --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   }
 
   .dark {
-    --background: 240 4% 11%; --foreground: 240 6% 92%;
-    --card: 240 4% 13%; --card-foreground: 240 6% 92%;
-    --popover: 240 4% 13%; --popover-foreground: 240 6% 92%;
+    --background: 222 32% 10%; --foreground: 220 30% 93%;
+    --card: 222 30% 13%; --card-foreground: 220 30% 93%;
+    --popover: 222 30% 13%; --popover-foreground: 220 30% 93%;
     --primary: 213 80% 66%; --primary-foreground: 222 25% 14%;
-    --secondary: 240 4% 18%; --secondary-foreground: 240 6% 92%;
-    --muted: 240 4% 18%; --muted-foreground: 240 5% 68%;
+    --secondary: 222 24% 19%; --secondary-foreground: 220 30% 93%;
+    --muted: 222 24% 19%; --muted-foreground: 220 18% 72%;
     --accent: 215 30% 26%; --accent-foreground: 213 100% 87%;
     --destructive: 0 90% 76%; --destructive-foreground: 222 25% 10%;
     --success: 142 69% 58%; --success-foreground: 222 25% 10%;
     --warning: 48 96% 53%; --warning-foreground: 222 25% 10%;
     --info: 213 94% 72%; --info-foreground: 222 25% 10%;
-    --border: 240 4% 28%; --input: 240 4% 50%; --ring: 213 91% 72%;
-    --sidebar-background: 240 4% 15%; --sidebar-foreground: 240 6% 92%;
+    --border: 222 20% 27%; --input: 220 16% 52%; --ring: 213 91% 72%;
+    --sidebar-background: 222 28% 15%; --sidebar-foreground: 220 30% 93%;
     --sidebar-primary: 213 80% 66%; --sidebar-primary-foreground: 222 25% 14%;
     --sidebar-accent: 215 30% 26%; --sidebar-accent-foreground: 213 100% 87%;
-    --sidebar-border: 240 4% 28%; --sidebar-ring: 213 91% 72%;
-    --chrome-muted-foreground: 240 6% 84%;
-    --chrome-input-border: 240 5% 58%;
-    --surface-editor: #1c1c1f; --surface-chrome: #272a31;
-    --surface-sidebar: #26262a; --surface-raised: #38383c;
+    --sidebar-border: 222 20% 27%; --sidebar-ring: 213 91% 72%;
+    --chrome-muted-foreground: 218 30% 86%;
+    --chrome-input-border: 218 18% 60%;
+    --surface-editor: #121a28; --surface-chrome: #1c2536;
+    --surface-sidebar: #1a2232; --surface-raised: #2b3750;
   }
 }
 
@@ -163,9 +163,10 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 html:has(.workspace[data-platform="darwin"]),
 body:has(.workspace[data-platform="darwin"]),
 body:has(.workspace[data-platform="darwin"]) #root,
-/* A light blue wash over the native glass. It stays low opacity so the material keeps its blur and translucency. */
-.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(170 200 250 / .10), rgb(150 185 245 / .15)); }
-.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(90 130 200 / .04), rgb(70 110 185 / .06)); }
+/* A blue wash over the native glass. The blur still shows through, and the wash keeps sidebar text
+   readable whatever is behind the window (vibrancy alone lightens over bright content). */
+.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(238 244 255 / .42), rgb(218 231 253 / .38)); }
+.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(22 34 58 / .68), rgb(16 26 46 / .74)); }
 .workspace[data-platform="darwin"] .sidebar-brand { padding-top: 28px; height: 84px; border-bottom: 0; }
 .workspace[data-platform="darwin"] .workspace-titlebar {
   background: linear-gradient(rgb(255 255 255 / .60), rgb(246 248 251 / .38));
@@ -355,9 +356,10 @@ body:has(.workspace[data-platform="darwin"]) #root,
    neutral frame instead of an imitation. */
 .workspace,
 .workspace[data-platform="darwin"] { background: var(--surface-chrome); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-/* A light blue wash over the native glass. It stays low opacity so the material keeps its blur and translucency. */
-.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(170 200 250 / .10), rgb(150 185 245 / .15)); }
-.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(90 130 200 / .04), rgb(70 110 185 / .06)); }
+/* A blue wash over the native glass. The blur still shows through, and the wash keeps sidebar text
+   readable whatever is behind the window (vibrancy alone lightens over bright content). */
+.workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(238 244 255 / .42), rgb(218 231 253 / .38)); }
+.dark .workspace[data-platform="darwin"] { background: linear-gradient(180deg, rgb(22 34 58 / .68), rgb(16 26 46 / .74)); }
 .workspace-content, .workspace-content.is-home { background: hsl(var(--card)); }
 .workspace-content { box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 2px rgb(0 0 0 / .06), 0 6px 20px rgb(0 0 0 / .06); }
 .dark .workspace-content { box-shadow: 0 0 0 1px rgb(255 255 255 / .07), 0 2px 6px rgb(0 0 0 / .3), 0 10px 30px rgb(0 0 0 / .25); }
