@@ -88,6 +88,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && isCron(text)) add("cron-calculator", "a cron expression", 85);
   if (single && /^(#[0-9a-f]{3,4}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgba?\([^)]{5,40}\)|hsla?\([^)]{5,40}\))$/i.test(text)) add("color-palette", "a color", 85);
   if (single && /^https?:\/\/\S+$/i.test(text)) add("url-encoder", "a URL", 80);
+  if (/^(a:\d+:\{|O:\d+:"|C:\d+:"|[^|:;{}"\s]+\|(a|s|i|b|d|O):)/.test(text)) add("php-tools", "PHP serialized data", 85);
+  if (/^\s*(<\?php\s+)?(return\s+|\$\w+\s*=\s*)?(\[|array\s*\()[\s\S]*=>/i.test(text)) add("php-tools", "a PHP array", 70);
   if (/^\s*(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE|ALTER)\b[\s\S]*\b(FROM|INTO|SET|TABLE|AS)\b/i.test(text)) add("code-formatter", "SQL", 75);
   if (/^\s*<(!doctype html|html|div|svg|section|body|head)\b/i.test(text)) {
     add(text.toLowerCase().includes("<svg") ? "svg-to-css" : "code-formatter", text.toLowerCase().includes("<svg") ? "SVG" : "HTML", 70);

@@ -1,6 +1,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import {
   AlignLeft,
+  Brackets,
   Barcode,
   Binary,
   Braces,
@@ -72,6 +73,7 @@ export const ALL_TOOLS = [
   { icon: CodeXml, name: "Escape Tools", id: "escape-tools", category: "Converters", keywords: ["escape", "unescape", "html entities", "backslash", "unicode", "hex"] },
   { icon: Code2, name: "HTML to JSX", id: "html-to-jsx", category: "Converters", keywords: ["jsx", "react", "html", "convert", "classname", "component", "tsx", "markup"] },
   { icon: FileImage, name: "SVG to CSS", id: "svg-to-css", category: "Converters", keywords: ["svg", "css", "data uri", "base64", "background-image", "mask", "icon", "encode"] },
+  { icon: Brackets, name: "PHP Tools", id: "php-tools", category: "Converters", keywords: ["php", "serialize", "unserialize", "wordpress", "laravel", "session", "array", "var_export", "json"] },
   { icon: Terminal, name: "cURL to Code", id: "curl-to-code", category: "Converters", keywords: ["curl", "fetch", "python requests", "go", "php", "reqwest", "httpie", "http request"] },
   { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time"] },
   { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date", keywords: ["days", "between", "duration"] },
@@ -106,6 +108,7 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   "html-preview": lazyNamed(() => import("@/components/tools/HtmlPreview"), "HtmlPreview"),
   "html-to-jsx": lazyNamed(() => import("@/components/tools/HtmlToJsx"), "HtmlToJsx"),
   "svg-to-css": lazyNamed(() => import("@/components/tools/SvgToCss"), "SvgToCss"),
+  "php-tools": lazyNamed(() => import("@/components/tools/PhpTools"), "PhpTools"),
   "curl-to-code": lazyNamed(() => import("@/components/tools/CurlToCode"), "CurlToCode"),
   "image-metadata": lazyNamed(() => import("@/components/tools/ImageMetadataCleaner"), "ImageMetadataCleaner"),
   "secret-redactor": lazyNamed(() => import("@/components/tools/SecretRedactor"), "SecretRedactor"),

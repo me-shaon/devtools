@@ -40,6 +40,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
+- **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
 - **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
 
 ### Time & Date
