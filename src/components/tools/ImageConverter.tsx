@@ -532,7 +532,7 @@ export function ImageConverter() {
 
                     <div className="space-y-2">
                       <Label>Compression Settings</Label>
-                      <div className="space-y-4 rounded-lg border p-4">
+                      <div className="space-y-4 rounded-lg bg-muted/50 p-4">
                         <div className="space-y-1.5">
                           <Label>Output Format</Label>
                           <Select
@@ -660,7 +660,7 @@ export function ImageConverter() {
                     />
                   </div>
 
-                  <div className="space-y-4 rounded-lg border p-4">
+                  <div className="space-y-4 rounded-lg bg-muted/50 p-4">
                     <div className="space-y-2">
                       <Label>Bulk Output</Label>
                       <Select

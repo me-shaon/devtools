@@ -127,9 +127,7 @@ export function PasswordGenerator() {
             <div className="flex gap-2">
               <Input value={password} readOnly className="font-mono" />
               <CopyButton value={password} label="Copy password" iconOnly />
-              <Button onClick={generatePassword} variant="outline" size="icon" aria-label="Generate new password" title="Generate new password">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              <button type="button" className="toolbar-text-button" onClick={generatePassword} aria-label="Generate new password" title="Generate new password"><RefreshCw size={14} aria-hidden="true" /></button>
             </div>
           </div>
 

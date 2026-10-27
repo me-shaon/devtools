@@ -150,7 +150,7 @@ export function TextCompare() {
   );
 
   const renderLineView = (lineDiffs: LineDiff[]) => (
-    <div className="py-2 font-mono text-[13px] leading-[22px]">
+    <div className="py-2 font-mono text-sm leading-[22px]">
       {lineDiffs.map((diff, index) => {
         const style = LINE_STYLES[diff.type];
         return (
@@ -175,7 +175,7 @@ export function TextCompare() {
 
   const renderUnifiedView = (lines: string[]) =>
     lines.length > 0 ? (
-      <div className="py-2 font-mono text-[13px] leading-[22px]">
+      <div className="py-2 font-mono text-sm leading-[22px]">
         {lines.map((line, index) => (
           <div key={`${line}-${index}`} className={`whitespace-pre px-4 ${getUnifiedDiffLineClass(line)}`}>
             {line}
@@ -192,7 +192,7 @@ export function TextCompare() {
         {details.map((detail) => (
           <div key={detail.label} className="border-b border-border/50 px-4 py-2">
             <div className="result-row-label mb-1">{detail.label}</div>
-            <div className="whitespace-pre-wrap break-words font-mono text-[13px] leading-[22px]">
+            <div className="whitespace-pre-wrap break-words font-mono text-sm leading-[22px]">
               {detail.items.map((item, index) => (
                 <span key={`${detail.label}-${item.type}-${index}`} className={`rounded px-0.5 ${getCharClassName(item.type)}`}>
                   {item.value || " "}

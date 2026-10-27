@@ -95,7 +95,7 @@ export function JwtDecoder() {
           <span className="result-row-label">{title}</span>
           <CopyButton value={json} iconOnly label={`Copy ${title.toLowerCase()}`} />
         </div>
-        <pre className="overflow-x-auto px-4 pb-3 pt-1 font-mono text-[13px] leading-[22px]">
+        <pre className="overflow-x-auto px-4 pb-3 pt-1 font-mono text-sm leading-[22px]">
           <code>{json}</code>
         </pre>
       </section>

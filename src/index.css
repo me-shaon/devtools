@@ -28,8 +28,8 @@
     --chrome-input-border: 218 22% 48%;
     --surface-editor: #fff; --surface-chrome: #eef3fb;
     --surface-sidebar: #e9eef6; --surface-raised: #fff;
-    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
-    --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", "Cantarell", sans-serif;
+    --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Cascadia Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
   }
 
   .dark {
@@ -100,7 +100,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .tool-panel[hidden] { display: none; }
 .tool-panel-editor { height: 100%; }
 .tool-panel-form { max-width: 1100px; margin: 0 auto; padding: 28px 32px; }
-.tool-heading { font-size: 20px; font-weight: 600; letter-spacing: -.025em; margin-bottom: 24px; }
+.tool-heading { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 24px; }
 .json-workspace { display: flex; flex-direction: column; height: 100%; min-height: 420px; background: var(--surface-editor); }
 .editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid hsl(var(--border)); }
 .toolbar-actions { display: flex; align-items: center; gap: 12px; }
@@ -176,16 +176,16 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .workspace[data-platform="darwin"][data-sidebar-open="false"] .workspace-titlebar { padding-left: 82px; }
 .workspace-sidebar input { background: hsl(var(--card) / .45); border-color: hsl(var(--chrome-input-border)); box-shadow: 0 1px 2px rgb(0 0 0 / .025); }
 .workspace-home { max-width: 680px; padding-top: 64px; }
-.workspace-home h1 { font-size: 23px; font-weight: 650; letter-spacing: -.6px; }
+
 .workspace-home h1 + p { font-size: 13px; }
-.workspace-home h2 { font-size: 11px; text-transform: none; letter-spacing: .02em; margin-bottom: 8px; }
+
 .home-tool-list { gap: 2px 24px; }
 .home-tool-row { display: flex; align-items: center; gap: 12px; padding: 12px 8px; text-align: left; border-radius: 7px; transition: background 120ms; }
 .home-tool-row:hover { background: hsl(var(--muted)); }
 .home-tool-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: linear-gradient(hsl(var(--card)), hsl(var(--muted))); box-shadow: inset 0 0 0 1px hsl(var(--foreground) / .07), 0 1px 2px rgb(0 0 0 / .04); }
 .release-backdrop { background: rgb(18 23 32 / .18); backdrop-filter: blur(5px); }
 .release-sheet { background: linear-gradient(hsl(var(--card) / .96), hsl(var(--background) / .94)); backdrop-filter: blur(40px) saturate(1.3); box-shadow: 0 24px 80px rgb(0 0 0 / .22), 0 2px 8px rgb(0 0 0 / .10), inset 0 1px rgb(255 255 255 / .5); border-color: hsl(var(--foreground) / .14); }
-.release-sheet h2 { letter-spacing: -.3px; }
+.release-sheet h2 { letter-spacing: -.01em; }
 .release-body { scrollbar-width: thin; }
 @media (prefers-reduced-transparency: reduce) {
   .release-sheet { background: hsl(var(--card)); backdrop-filter: none; }
@@ -227,7 +227,7 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .sidebar-footer-actions > button:first-child { width: 100%; padding: 0; border: 0; background: transparent; height: 24px; font-size: 11px; box-shadow: none; }
 .workspace-home { width: 100%; max-width: 650px; padding: clamp(36px, 7vh, 68px) 36px 36px; }
 .workspace-home > div:first-child { margin-bottom: 25px; }
-.workspace-home h1 { font-size: 25px; line-height: 1.25; letter-spacing: -.75px; font-weight: 650; }
+.workspace-home h1 { font-size: 22px; line-height: 28px; letter-spacing: -.02em; font-weight: 650; }
 .workspace-home h1 + p { font-size: 13px; line-height: 1.6; margin-top: 10px; }
 .home-search { width: 100%; height: 46px; display: flex; align-items: center; gap: 11px; padding: 0 14px; border-radius: 9px; background: hsl(var(--card)); color: hsl(var(--muted-foreground)); box-shadow: 0 2px 6px rgb(22 35 58 / .06), inset 0 0 0 1px hsl(var(--foreground) / .12); text-align: left; margin-bottom: 32px; }
 .home-search:hover { box-shadow: 0 3px 9px rgb(22 35 58 / .09), inset 0 0 0 1px hsl(var(--primary) / .4); }
@@ -255,7 +255,7 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .modal-surface { background: hsl(var(--card) / .94); border: 1px solid hsl(var(--foreground) / .14); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 70px rgb(17 30 53 / .24), 0 4px 12px rgb(17 30 53 / .12); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
 .modal-header, .modal-footer { flex-shrink: 0; padding: 18px 24px; background: linear-gradient(120deg, hsl(var(--card) / .85), hsl(var(--accent) / .35)); }
 .modal-header { border-bottom: 1px solid hsl(var(--foreground) / .08); box-shadow: inset 0 1px rgb(255 255 255 / .45); }
-.modal-header h2 { font-size: 18px; letter-spacing: -.3px; }
+.modal-header h2 { font-size: 17px; letter-spacing: -.01em; }
 .modal-header p { font-size: 12px; line-height: 1.5; }
 .modal-footer { border-top: 1px solid hsl(var(--foreground) / .08); padding-top: 12px; padding-bottom: 12px; }
 .modal-body { background: hsl(var(--card)); scrollbar-width: thin; }
@@ -288,6 +288,9 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .desktop-button, .desktop-input, .desktop-select-trigger { font-size: 13px; }
 .tool-panel-form { padding: 24px; }
 .tool-panel-form label { font-size: 12px; font-weight: 600; }
+/* A label that sits beside its own switch or checkbox names an option, not a field: body weight. */
+.tool-panel-form label:has(+ button[role="switch"]), .tool-panel-form label:has(+ button[role="checkbox"]),
+.tool-panel-form button[role="switch"] + label, .tool-panel-form button[role="checkbox"] + label { font-size: 13px; font-weight: 400; }
 .tool-panel-form textarea { border-color: hsl(var(--input)); background-color: var(--surface-editor); border-radius: 7px; line-height: 1.6; }
 .tool-panel-form textarea[readonly] { background-color: hsl(var(--muted) / .45); }
 .desktop-input, .desktop-select-trigger { background: hsl(var(--card)); border-color: hsl(var(--input)); box-shadow: inset 0 1px 2px rgb(18 30 50 / .025); }
@@ -375,3 +378,21 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .dark .workspace-sidebar input { background: hsl(var(--foreground) / .045); border-color: hsl(var(--chrome-input-border)); box-shadow: none; }
 .sidebar-search-kbd { background: hsl(var(--foreground) / .06); border-color: hsl(var(--foreground) / .12); }
 .sidebar-footer { border-color: hsl(var(--foreground) / .1); }
+
+/* Typography roles. Headings balance their lines, prose avoids lone last words, and
+   numbers that change in place (sizes, counts, times) use tabular figures. */
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
+.dark body { line-height: 1.55; }
+.editor-status, .sidebar-footer, .result-row-value, .line-numbers, .output-line-number, kbd,
+.workspace-tab, [data-numeric], table { font-variant-numeric: tabular-nums; }
+code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-settings: "calt" 0; }
+
+/* Full-pane editors. The text area is the pane, so a focus box around it reads as a stray
+   border. The pane shows focus with an accent rule under its header, and the caret marks
+   the spot. Text starts a gutter's width from the line numbers. */
+.code-input-wrap textarea { padding-left: 12px; }
+.code-input-wrap textarea:focus-visible, .code-textarea:not(.result-row-value):focus-visible { outline: none; }
+.editor-pane-header { position: relative; }
+.editor-pane:focus-within > .editor-pane-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: hsl(var(--ring)); }
+.result-row-value.code-textarea:focus-visible { outline-offset: 2px; }

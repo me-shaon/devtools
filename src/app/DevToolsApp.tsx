@@ -570,7 +570,7 @@ const DevToolsApp = () => {
       }`}>
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px]"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 py-2 text-sm"
           aria-current={isSelected ? "page" : undefined}
           onClick={() => selectTool(tool)}
         >
@@ -606,7 +606,7 @@ const DevToolsApp = () => {
       >
         <tool.icon className="w-4 h-4 text-primary" />
       </div>
-      <span className={`font-medium ${theme.text} text-[13px]`}>
+      <span className={`font-medium ${theme.text} text-sm`}>
         {tool.name}
       </span>
       <ChevronRight size={14} className="home-tool-arrow" aria-hidden="true" />
@@ -699,7 +699,7 @@ const DevToolsApp = () => {
                   <Star className="w-3 h-3" />
                   <span>Favorites</span>
                 </div>
-                <span className="text-[11px]" aria-label={`${favoriteTools.length} of ${MAX_FAVORITES} favorites`}>
+                <span className="text-2xs" aria-label={`${favoriteTools.length} of ${MAX_FAVORITES} favorites`}>
                   {favoriteTools.length}/{MAX_FAVORITES}
                 </span>
               </div>
@@ -756,7 +756,7 @@ const DevToolsApp = () => {
               {desktop ? `Version ${appVersion ? `v${appVersion}` : "Loading…"}` : "Browser preview"}
             </p>
             {updateStatusLabel && updateState.status !== "unsupported" && (
-              <p className={`text-center text-[11px] leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
+              <p className={`text-center text-2xs leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
             )}
             <div className="sidebar-footer-actions">
               <Button
@@ -780,7 +780,7 @@ const DevToolsApp = () => {
                 <button
                   type="button"
                   onClick={openWhatsNew}
-                  className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                  className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
                 >
                   <span>What's New</span>
                   {hasUnreadWhatsNew && (
@@ -791,7 +791,7 @@ const DevToolsApp = () => {
               <button
                 type="button"
                 onClick={openShortcutSettings}
-                className={`inline-flex items-center justify-center gap-1 text-[11px] ${theme.textMuted} transition-colors hover:${theme.text}`}
+                className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
               >
                 <Command className="h-3.5 w-3.5" />
                 <span>Shortcuts</span>
@@ -954,7 +954,7 @@ const DevToolsApp = () => {
             </div>
 
             <div
-              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-[13px] [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-[13px] [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
+              className={`modal-body release-body min-h-0 overflow-y-auto px-6 py-4 prose prose-sm prose-neutral max-w-none text-sm dark:prose-invert prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-code:text-inherit prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-blockquote:text-muted-foreground [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:tracking-wide [&_h2]:text-foreground [&_p]:my-1 [&_p]:text-sm [&_p]:leading-5 [&_ul]:my-1 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_li]:pl-0.5 [&_li]:text-sm [&_li]:leading-5 [&_li::marker]:text-primary ${theme.textMuted}`}
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
