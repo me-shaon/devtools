@@ -76,7 +76,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 - **JSON Viewer** - Format, validate, minify, and sort JSON, run JSONPath queries, and convert to YAML or XML
 - **Code Playground** - Experiment with JavaScript, HTML, and CSS
-- **Regex Generator** - Interactive regex construction with live testing
+- **Regex Tester** - Test a pattern as you type, with highlighted matches, capture groups, and live replace
 - **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app

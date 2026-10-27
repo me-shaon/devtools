@@ -51,7 +51,7 @@ const lazyNamed = <T extends Record<string, ComponentType>>(
 export const ALL_TOOLS = [
   { icon: FileJson, name: "JSON Viewer", id: "json-viewer", category: "Development Tools", keywords: ["json", "format", "pretty", "minify", "validate", "jsonpath", "query"] },
   { icon: Code, name: "Code Playground", id: "code-playground", category: "Development Tools", keywords: ["javascript", "js", "html", "css", "run", "editor"] },
-  { icon: Terminal, name: "Regex Generator", id: "regex-generator", category: "Development Tools", keywords: ["regex", "regexp", "pattern", "match"] },
+  { icon: Terminal, name: "Regex Tester", id: "regex-generator", category: "Development Tools", keywords: ["regex", "regexp", "pattern", "match", "replace", "capture group", "regex generator"] },
   { icon: Type, name: "JSON to Code", id: "json-typescript", category: "Development Tools", keywords: ["typescript", "ts", "interface", "types", "go", "golang", "struct", "rust", "serde", "python", "dataclass", "pydantic", "swift", "codable", "kotlin", "json schema", "codegen", "model"] },
   { icon: FileBadge, name: "X.509 Certificate Decoder", id: "certificate-decoder", category: "Development Tools", keywords: ["x509", "certificate", "pem", "der", "ssl", "tls", "csr", "fingerprint", "chain", "san"] },
   { icon: MonitorPlay, name: "HTML Preview", id: "html-preview", category: "Development Tools", keywords: ["html", "preview", "render", "live", "sandbox", "iframe", "responsive", "viewport"] },

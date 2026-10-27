@@ -145,7 +145,7 @@ describe("DevToolsApp navigation", () => {
       within(quickAccessSection).getByRole("button", { name: /code playground/i })
     ).toBeInTheDocument();
     expect(
-      within(quickAccessSection).getByRole("button", { name: /regex generator/i })
+      within(quickAccessSection).getByRole("button", { name: /regex tester/i })
     ).toBeInTheDocument();
   });
 
@@ -186,7 +186,7 @@ describe("DevToolsApp navigation", () => {
     }
 
     const recentButtons = within(recentSection).getAllByRole("button", {
-      name: /code playground|regex generator|json to code|hash generator|uuid generator|password generator/i,
+      name: /code playground|regex tester|json to code|hash generator|uuid generator|password generator/i,
     });
 
     expect(recentButtons).toHaveLength(6);

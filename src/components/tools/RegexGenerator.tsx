@@ -1,240 +1,384 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type UIEvent } from "react";
+import { Regex } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
-import { Check } from "lucide-react";
-import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  MATCH_LIMIT,
+  REGEX_FLAGS,
+  compileRegex,
+  highlightSegments,
+  parseRegexLiteral,
+  toggleFlag,
+  type RegexFlag,
+  type RegexMatch,
+  type RegexResult,
+} from "@/utils/regex";
+import { runRegexInWorker } from "@/utils/regex-runner";
+
+type Mode = "match" | "replace";
 
 interface Preset {
   name: string;
   pattern: string;
-  description: string;
+  sample: string;
 }
 
-const presets: Preset[] = [
-  { name: "Email", pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", description: "Validate email addresses" },
-  { name: "URL", pattern: "^https?:\\/\\/[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$", description: "Match HTTP/HTTPS URLs" },
-  { name: "IPv4", pattern: "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$", description: "Validate IPv4 addresses" },
-  { name: "Hex Color", pattern: "^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$", description: "Match hex color codes" },
-  { name: "Date (YYYY-MM-DD)", pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", description: "Validate ISO date format" },
-  { name: "Username", pattern: "^[a-zA-Z0-9_]{3,16}$", description: "3-16 chars, alphanumeric + underscore" },
-  { name: "Password (Strong)", pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$", description: "At least 8 chars with uppercase, lowercase, number, and special char" },
-  { name: "Credit Card", pattern: "^\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}$", description: "Match common credit card formats" },
-  { name: "Phone (US)", pattern: "^\\+1\\s?\\(\\d{3}\\)\\s?\\d{3}[- ]?\\d{4}$", description: "US phone number format" },
-  { name: "Time (24h)", pattern: "^([01]?\\d|2[0-3]):[0-5]\\d$", description: "24-hour time format (HH:MM)" },
+// Presets match whole lines, so applying one also turns on g and m.
+const PRESETS: Preset[] = [
+  { name: "Email", pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", sample: "ann@example.com\nnot-an-email\nbob.smith+tag@mail.co" },
+  { name: "URL", pattern: "^https?:\\/\\/[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$", sample: "https://example.com/path?q=1\nftp://example.com\nhttp://localhost" },
+  { name: "IPv4", pattern: "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}$", sample: "192.168.0.1\n256.1.1.1\n10.0.0.255" },
+  { name: "Hex color", pattern: "^#?([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$", sample: "#1e90ff\n#abc\n#12345g" },
+  { name: "Date (YYYY-MM-DD)", pattern: "^(?<year>\\d{4})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12]\\d|3[01])$", sample: "2024-05-17\n2024-13-01\n1999-12-31" },
+  { name: "Username", pattern: "^[a-zA-Z0-9_]{3,16}$", sample: "dev_user\nab\nthis_name_is_far_too_long" },
+  { name: "Strong password", pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$", sample: "Secr3t!pass\npassword\nSHORT1!a" },
+  { name: "Credit card", pattern: "^\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}$", sample: "4111 1111 1111 1111\n4111-1111-1111-1111\n1234" },
+  { name: "Phone (US)", pattern: "^\\+1\\s?\\(\\d{3}\\)\\s?\\d{3}[- ]?\\d{4}$", sample: "+1 (555) 123-4567\n555-1234" },
+  { name: "Time (24h)", pattern: "^([01]?\\d|2[0-3]):[0-5]\\d$", sample: "09:30\n23:59\n24:00" },
+];
+
+const FLAG_LABELS: Record<RegexFlag, string> = {
+  g: "Global: find every match",
+  i: "Ignore case",
+  m: "Multiline: ^ and $ match at each line",
+  s: "Dot all: . also matches line breaks",
+  u: "Unicode: read code points and allow \\p{…}",
+};
+
+const CHEAT_SHEET: [string, string][] = [
+  [".", "Any character except a line break"],
+  ["\\d \\w \\s", "Digit, word character, whitespace"],
+  ["\\D \\W \\S", "Not a digit, word character, whitespace"],
+  ["[abc] [^abc]", "One of a, b, c / none of them"],
+  ["^ $", "Start / end of text (of line with m)"],
+  ["\\b", "Word boundary"],
+  ["* + ?", "0 or more, 1 or more, 0 or 1"],
+  ["{2,5}", "2 to 5 times"],
+  ["*? +?", "As few as possible (lazy)"],
+  ["(…)", "Capture group"],
+  ["(?<name>…)", "Named capture group"],
+  ["(?:…)", "Group without capture"],
+  ["a|b", "a or b"],
+  ["(?=…) (?!…)", "Followed by / not followed by"],
+  ["(?<=…) (?<!…)", "Preceded by / not preceded by"],
+  ["\\1 \\k<name>", "Same text as a group again"],
+  ["$1 $<name>", "Replace: text of a group"],
+  ["$&", "Replace: the whole match"],
+  ["$` $'", "Replace: text before / after the match"],
+  ["$$", "Replace: a literal $"],
 ];
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
-    q: "What do the g, i, and m flags mean?",
-    a: "This tester uses JavaScript regular expression flags. g finds all matches, i ignores letter case, and m lets ^ and $ match the start and end of each line instead of only the whole string.",
+    q: "Which regex syntax does this use?",
+    a: "It uses the JavaScript RegExp engine, the same one browsers and Node.js use. Syntax from PCRE, Python, or Go mostly works. Features such as possessive quantifiers and inline flags like (?i) do not.",
   },
   {
-    q: "Why do I only get one match sometimes?",
-    a: "If the global g flag is off, the tool stops after the first match and shows only that result. Turn on g when you want every match in the input.",
+    q: "What do the flags mean?",
+    a: "g finds every match instead of only the first. i ignores letter case. m makes ^ and $ match at each line. s lets the dot match line breaks. u reads the text as code points and allows \\p{…} classes.",
   },
   {
-    q: "Are the preset patterns guaranteed validators?",
-    a: "No. The presets are practical starting points for common formats, but many real-world inputs have edge cases. Treat them as helpers you can adjust for your own rules.",
+    q: "How do I use groups in the replacement?",
+    a: "Write $1 for the text of group 1 and $<name> for a named group. $& is the whole match, and $$ is a literal dollar sign. Without the g flag, only the first match is replaced.",
   },
   {
-    q: "Does this tool run my regex locally?",
-    a: "Yes. The pattern is evaluated locally in your browser with JavaScript's RegExp engine. It tests pattern matching only and does not execute arbitrary code.",
+    q: "Why does a group show as not matched?",
+    a: "The group is in an optional or alternative part of the pattern that the match did not use. JavaScript reports such a group as undefined, and the replacement inserts nothing for it.",
+  },
+  {
+    q: "What happens with a very slow pattern?",
+    a: "The tester runs the pattern in the background and stops it after 2 seconds. It also stops after 1,000 matches. Nested quantifiers such as (a+)+ cause most slow patterns.",
+  },
+  {
+    q: "Can I paste a regex literal?",
+    a: "Yes. Paste a literal such as /\\d+/gi into the empty pattern field. The tester puts the pattern in the field and turns on the flags. The Copy button gives you the literal back.",
+  },
+  {
+    q: "Are the presets guaranteed validators?",
+    a: "No. They are starting points for common formats. Each preset matches whole lines, so it turns on the g and m flags and tests every line of the text.",
   },
 ];
 
-export function RegexGenerator() {
-  const [pattern, setPattern] = useState("");
-  const [testString, setTestString] = useState("");
-  const [matches, setMatches] = useState<RegExpMatchArray[]>([]);
-  const [flags, setFlags] = useState("g");
+const plural = (count: number, word: string) => `${count.toLocaleString()} ${word}${count === 1 ? "" : "es"}`;
 
-  const testRegex = () => {
-    if (!pattern) {
-      toast.error("Please enter a regex pattern");
-      return;
-    }
-
-    try {
-      const regex = new RegExp(pattern, flags);
-      const found: RegExpMatchArray[] = [];
-      let match;
-
-      if (flags.includes("g")) {
-        while ((match = regex.exec(testString)) !== null) {
-          found.push(match);
-        }
-      } else {
-        match = regex.exec(testString);
-        if (match) found.push(match);
-      }
-
-      setMatches(found);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Invalid regex pattern");
-      setMatches([]);
-    }
-  };
-
-  const applyPreset = (preset: Preset) => {
-    setPattern(preset.pattern);
-    setMatches([]);
-  };
-
-
-  const toggleFlag = (flag: string) => {
-    if (flags.includes(flag)) {
-      setFlags(flags.replace(flag, ""));
-    } else {
-      setFlags(flags + flag);
-    }
-    setMatches([]);
-  };
-
+function MatchList({ matches }: { matches: RegexMatch[] }) {
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Regex Tester</CardTitle>
-          <CardDescription>Test and validate regular expressions</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Pattern</Label>
-            <div className="flex gap-2">
-              <span className="text-muted-foreground self-center">/</span>
-              <Input
-                value={pattern}
-                onChange={(e) => setPattern(e.target.value)}
-                placeholder="Enter regex pattern"
-                className="font-mono flex-1"
-              />
-              <span className="text-muted-foreground self-center">/</span>
-              <Input
-                value={flags}
-                onChange={(e) => setFlags(e.target.value)}
-                placeholder="flags"
-                className="font-mono w-20 text-center"
-              />
-              <CopyButton value={`/${pattern}/${flags}`} label="Copy pattern" iconOnly />
-            </div>
+    <ol className="regex-matches" aria-label="Matches">
+      {matches.map((match, i) => (
+        <li key={`${match.index}-${i}`}>
+          <div className="regex-match-head">
+            <span>Match {i + 1}</span>
+            <span>{match.index === match.end ? `at ${match.index}` : `${match.index}–${match.end}`}</span>
           </div>
-
-          <div className="flex gap-2">
-            <Badge
-              variant={flags.includes("g") ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => toggleFlag("g")}
-            >
-              g (global)
-            </Badge>
-            <Badge
-              variant={flags.includes("i") ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => toggleFlag("i")}
-            >
-              i (ignore case)
-            </Badge>
-            <Badge
-              variant={flags.includes("m") ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => toggleFlag("m")}
-            >
-              m (multiline)
-            </Badge>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Test String</Label>
-            <Textarea
-              value={testString}
-              onChange={(e) => setTestString(e.target.value)}
-              placeholder="Enter text to test against the pattern"
-              className="min-h-[120px] font-mono"
-            />
-          </div>
-
-          <Button onClick={testRegex}>
-            Test Pattern
-          </Button>
-        </CardContent>
-      </Card>
-
-      {matches.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Matches ({matches.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {matches.map((match, index) => (
-                <div key={index} className="p-3 bg-success/10 border border-success/30 rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-1">Match {index + 1}</div>
-                  <code className="text-success">{match[0]}</code>
-                  {match.index !== undefined && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Position: {match.index}
-                    </div>
-                  )}
+          <code className="regex-match-value">{match.value || <span className="regex-empty-value">empty</span>}</code>
+          {match.groups.length > 0 && (
+            <dl className="regex-groups">
+              {match.groups.map((group) => (
+                <div key={group.number} className="contents">
+                  <dt>{group.name ? `${group.number} ${group.name}` : group.number}</dt>
+                  <dd>
+                    {group.value === undefined ? (
+                      <span className="regex-empty-value">not matched</span>
+                    ) : (
+                      group.value || <span className="regex-empty-value">empty</span>
+                    )}
+                  </dd>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </dl>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Common Patterns</CardTitle>
-          <CardDescription>Click to use a preset pattern</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {presets.map((preset) => (
-              <Button
-                key={preset.name}
-                variant="outline"
-                onClick={() => applyPreset(preset)}
-                className="justify-start"
+function CheatSheet() {
+  return (
+    <details className="tool-help">
+      <summary>Cheat sheet</summary>
+      <dl className="tool-help-content regex-cheatsheet">
+        {CHEAT_SHEET.map(([token, meaning]) => (
+          <div key={token}>
+            <dt>{token}</dt>
+            <dd>{meaning}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+export function RegexGenerator() {
+  const [pattern, setPattern] = useState("");
+  const [flags, setFlags] = useState("g");
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState<Mode>("match");
+  const [replacement, setReplacement] = useState("");
+  const [result, setResult] = useState<RegexResult | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  const livePattern = useDebouncedValue(pattern);
+  const text = useDebouncedValue(input);
+  const liveReplacement = useDebouncedValue(replacement);
+  const replacing = mode === "replace";
+
+  useEffect(() => {
+    if (!livePattern) {
+      setResult(null);
+      return;
+    }
+    let current = true;
+    runRegexInWorker({ pattern: livePattern, flags, text, replacement: replacing ? liveReplacement : undefined }).then((next) => {
+      if (current && next) setResult(next);
+    });
+    return () => {
+      current = false;
+    };
+  }, [livePattern, flags, text, replacing, liveReplacement]);
+
+  const matches = useMemo(() => (result && "matches" in result ? result.matches : []), [result]);
+  const error = result && "error" in result ? result.error : "";
+  const segments = useMemo(() => highlightSegments(input, matches), [input, matches]);
+  const groupCount = matches[0]?.groups.length ?? 0;
+
+  // The copied literal escapes "/" so it works in source code.
+  const compiled = compileRegex(pattern, flags);
+  const literal = `/${compiled.ok ? compiled.regex.source : pattern}/${flags}`;
+
+  const applyPreset = (name: string) => {
+    const preset = PRESETS.find((p) => p.name === name);
+    if (!preset) return;
+    setPattern(preset.pattern);
+    setFlags("gm");
+    if (!input) setInput(preset.sample);
+  };
+
+  // A pasted literal such as /\d+/gi fills the pattern and the flags.
+  const pastePattern = (event: ClipboardEvent<HTMLInputElement>) => {
+    const field = event.currentTarget;
+    if (field.selectionStart !== 0 || field.selectionEnd !== field.value.length) return;
+    const parsed = parseRegexLiteral(event.clipboardData.getData("text"));
+    if (!parsed) return;
+    event.preventDefault();
+    setPattern(parsed.pattern);
+    setFlags(parsed.flags);
+  };
+
+  const syncScroll = (event: UIEvent<HTMLTextAreaElement>) => {
+    if (!highlightRef.current) return;
+    highlightRef.current.scrollTop = event.currentTarget.scrollTop;
+    highlightRef.current.scrollLeft = event.currentTarget.scrollLeft;
+  };
+
+  const truncatedNotice =
+    result?.ok && result.truncated === "limit"
+      ? `Showing the first ${MATCH_LIMIT.toLocaleString()} matches. Highlights and the list stop there.`
+      : result?.ok && result.truncated === "time"
+        ? `Matching took more than 1 second, so it stopped after ${plural(matches.length, "match")}.`
+        : "";
+
+  const notice = error ? (
+    <div className="workspace-notice" data-tone="error" role="alert">{error}</div>
+  ) : truncatedNotice ? (
+    <div className="workspace-notice" role="status">{truncatedNotice}</div>
+  ) : undefined;
+
+  const matchesText = matches.map((m) => m.value).join("\n");
+
+  let second;
+  if (!pattern) {
+    second = <PaneEmpty icon={<Regex size={20} aria-hidden="true" />} title="Enter a pattern" hint="Matches and groups appear here as you type." />;
+  } else if (replacing) {
+    second = result?.ok && result.replaced !== undefined ? (
+      <CodeTextarea id="regex-output" value={result.replaced} readOnly />
+    ) : (
+      <PaneEmpty title="Replaced text appears here" />
+    );
+  } else if (result?.ok && matches.length > 0) {
+    second = <MatchList matches={matches} />;
+  } else {
+    second = <PaneEmpty title={error ? "Fix the pattern to see matches" : "No matches"} />;
+  }
+
+  return (
+    <ToolWorkspace
+      id="regex-generator"
+      toolbar={
+        <>
+          <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+            <TabsList aria-label="Mode">
+              <TabsTrigger value="match">Match</TabsTrigger>
+              <TabsTrigger value="replace">Replace</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="layout-switch" role="group" aria-label="Flags">
+            {REGEX_FLAGS.map((flag) => (
+              <button
+                key={flag}
+                type="button"
+                className="font-mono"
+                aria-pressed={flags.includes(flag)}
+                aria-label={FLAG_LABELS[flag]}
+                title={FLAG_LABELS[flag]}
+                onClick={() => setFlags(toggleFlag(flags, flag))}
               >
-                <span className="font-medium">{preset.name}</span>
-                <span className="text-xs text-muted-foreground ml-auto truncate max-w-[150px]">
-                  {preset.description}
-                </span>
-              </Button>
+                {flag}
+              </button>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Regex Flags</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <dt className="font-medium">g</dt>
-              <dd className="text-muted-foreground">Global - find all matches</dd>
+          <label className="indent-control">
+            Preset
+            <select aria-label="Preset" value="" onChange={(e) => applyPreset(e.target.value)}>
+              <option value="" disabled>Choose…</option>
+              {PRESETS.map((p) => (
+                <option key={p.name} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+        </>
+      }
+      secondaryToolbar={
+        <div className="regex-fields">
+          <div className="regex-field">
+            <label htmlFor="regex-pattern" className="sr-only">Pattern</label>
+            <span aria-hidden="true">/</span>
+            <Input
+              id="regex-pattern"
+              className="h-7 text-xs font-mono"
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
+              onPaste={pastePattern}
+              placeholder="Enter regex pattern, e.g. (\d+)-(\w+)"
+              aria-invalid={Boolean(error)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <span aria-hidden="true">/{flags}</span>
+            <CopyButton value={pattern ? literal : ""} label="Copy" ariaLabel="Copy pattern as a regex literal" iconOnly />
+          </div>
+          {replacing && (
+            <label className="regex-field" htmlFor="regex-replacement">
+              <span className="whitespace-nowrap">Replace with</span>
+              <Input
+                id="regex-replacement"
+                className="h-7 text-xs font-mono"
+                value={replacement}
+                onChange={(e) => setReplacement(e.target.value)}
+                placeholder="e.g. $2: $1 or $<name>"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          )}
+        </div>
+      }
+      notice={notice}
+      first={
+        <EditorPane
+          title="Test text"
+          htmlFor="regex-input"
+          scroll={false}
+          actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}
+        >
+          <div className="regex-editor">
+            <div ref={highlightRef} className="code-textarea regex-highlights" aria-hidden="true" data-testid="regex-highlights">
+              {segments.map((segment, i) =>
+                segment.match === undefined ? (
+                  segment.text
+                ) : (
+                  <mark key={i} className="regex-mark" data-alt={segment.match % 2 === 1}>{segment.text}</mark>
+                ),
+              )}
+              {/* A trailing line break needs a character after it to take up a line. */}
+              {"​"}
             </div>
-            <div>
-              <dt className="font-medium">i</dt>
-              <dd className="text-muted-foreground">Ignore case</dd>
-            </div>
-            <div>
-              <dt className="font-medium">m</dt>
-              <dd className="text-muted-foreground">Multiline mode</dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-
-      <ToolFaqSection items={FAQ_ITEMS} />
-    </div>
+            <CodeTextarea
+              id="regex-input"
+              placeholder="Enter text to test against the pattern"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onScroll={syncScroll}
+            />
+          </div>
+        </EditorPane>
+      }
+      second={
+        <EditorPane
+          title={replacing ? "Replaced text" : `Matches${result?.ok ? ` (${matches.length.toLocaleString()})` : ""}`}
+          htmlFor={replacing && result?.ok ? "regex-output" : undefined}
+          scroll={!replacing}
+          actions={
+            replacing ? (
+              <CopyButton value={result?.ok ? (result.replaced ?? "") : ""} label="Copy" ariaLabel="Copy replaced text" />
+            ) : (
+              <CopyButton value={matchesText} label="Copy" ariaLabel="Copy matches, one per line" />
+            )
+          }
+        >
+          {second}
+        </EditorPane>
+      }
+      status={
+        pattern && result?.ok ? (
+          <span>
+            {plural(matches.length, "match")}
+            {groupCount > 0 && ` · ${groupCount} ${groupCount === 1 ? "group" : "groups"}`}
+          </span>
+        ) : (
+          <span>Ready</span>
+        )
+      }
+      help={
+        <>
+          <CheatSheet />
+          <ToolFaqSection items={FAQ_ITEMS} />
+        </>
+      }
+    />
   );
 }
