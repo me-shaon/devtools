@@ -1,10 +1,32 @@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/tools/CopyButton";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
-import { csvToObjects, detectDelimiter, jsonToCsv, parseCSV } from "@/utils/csv";
+import { saveFile } from "@/lib/desktop";
+import { csvToObjects, detectDelimiter, jsonToCsv, parseCSV, withBom } from "@/utils/csv";
+
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "How are nested objects written to CSV?",
+    a: "With Flatten nested objects on, each nested value gets its own column with a dot key, such as user.address.city. Array items use their index, such as tags.0 and tags.1. Every cell then holds one plain value that a spreadsheet can sort and filter. Turn the option off to write nested values as JSON text in one cell.",
+  },
+  {
+    q: "How do I get nested JSON back from a flattened CSV?",
+    a: "Turn on Nest dot keys. Columns such as user.name become nested objects, and columns such as tags.0 become arrays. Empty cells under an array index are dropped, so shorter arrays do not get blank items.",
+  },
+  {
+    q: "What does Detect types convert?",
+    a: "It converts numbers, true, false, null, and cells that hold a JSON array or object. Numbers with leading zeros, such as 007, stay as text. Integers too large for JavaScript to store exactly also stay as text.",
+  },
+  {
+    q: "Why does Excel show broken characters in my CSV file?",
+    a: "Excel reads a CSV file as a legacy encoding unless the file starts with a UTF-8 byte order mark (BOM). Turn on Add BOM for Excel before you save the file. The option changes only the saved file. Copied text never gets a BOM, because some tools read it as part of the first header.",
+  },
+];
 
 type Direction = "csv-to-json" | "json-to-csv";
 
@@ -32,7 +54,14 @@ export function CsvToJsonConverter() {
   const [direction, setDirection] = useState<Direction>("csv-to-json");
   const [input, setInput] = useState("");
   const [delimiterChoice, setDelimiterChoice] = useState("auto");
-  const [options, setOptions] = useState({ hasHeader: true, pretty: true, typed: false });
+  const [options, setOptions] = useState({
+    hasHeader: true,
+    pretty: true,
+    typed: false,
+    nest: false,
+    flatten: true,
+    bom: false,
+  });
 
   // Debounce input and direction together so a direction change never runs on stale text
   const job = useMemo(() => ({ input, direction }), [input, direction]);
@@ -48,7 +77,12 @@ export function CsvToJsonConverter() {
       delimiterChoice === "auto" ? (parsesCsv ? detectDelimiter(text) : ",") : DELIMITERS[delimiterChoice].value;
     try {
       if (parsesCsv) {
-        const rows = csvToObjects(text, { delimiter, hasHeader: options.hasHeader, typed: options.typed });
+        const rows = csvToObjects(text, {
+          delimiter,
+          hasHeader: options.hasHeader,
+          typed: options.typed,
+          nest: options.nest,
+        });
         return {
           output: options.pretty ? JSON.stringify(rows, null, 2) : JSON.stringify(rows),
           error: "",
@@ -62,7 +96,7 @@ export function CsvToJsonConverter() {
       } catch (error) {
         throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : "check the syntax."}`);
       }
-      const csv = jsonToCsv(data, { delimiter, hasHeader: options.hasHeader });
+      const csv = jsonToCsv(data, { delimiter, hasHeader: options.hasHeader, flatten: options.flatten });
       const table = parseCSV(csv, { delimiter });
       return {
         output: csv,
@@ -87,6 +121,17 @@ export function CsvToJsonConverter() {
 
   const inputName = toJson ? "CSV" : "JSON";
   const outputName = toJson ? "JSON" : "CSV";
+
+  const saveOutput = async () => {
+    const fileName = toJson ? "data.json" : "data.csv";
+    const text = !toJson && options.bom ? withBom(current.output) : current.output;
+    const type = toJson ? "application/json" : "text/csv;charset=utf-8";
+    try {
+      if (await saveFile(new Blob([text], { type }), fileName)) toast.success(`Saved ${fileName}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the file.");
+    }
+  };
 
   return (
     <ToolWorkspace
@@ -123,11 +168,27 @@ export function CsvToJsonConverter() {
               {toJson ? "First row is header" : "Write header row"}
               <Switch id="csv-has-header" checked={options.hasHeader} onCheckedChange={(checked) => setOptions({ ...options, hasHeader: checked })} />
             </label>
+            {!toJson && (
+              <>
+                <label className="option-switch" htmlFor="csv-flatten">
+                  Flatten nested objects
+                  <Switch id="csv-flatten" checked={options.flatten} onCheckedChange={(checked) => setOptions({ ...options, flatten: checked })} />
+                </label>
+                <label className="option-switch" htmlFor="csv-bom">
+                  Add BOM for Excel
+                  <Switch id="csv-bom" checked={options.bom} onCheckedChange={(checked) => setOptions({ ...options, bom: checked })} />
+                </label>
+              </>
+            )}
             {toJson && (
               <>
                 <label className="option-switch" htmlFor="csv-typed">
-                  Convert numbers
+                  Detect types
                   <Switch id="csv-typed" checked={options.typed} onCheckedChange={(checked) => setOptions({ ...options, typed: checked })} />
+                </label>
+                <label className="option-switch" htmlFor="csv-nest">
+                  Nest dot keys
+                  <Switch id="csv-nest" checked={options.nest} onCheckedChange={(checked) => setOptions({ ...options, nest: checked })} />
                 </label>
                 <label className="option-switch" htmlFor="csv-pretty">
                   Pretty print
@@ -146,7 +207,16 @@ export function CsvToJsonConverter() {
       }
       second={
         <EditorPane title={`${outputName} output`} htmlFor={current.output ? "csv-output" : undefined} scroll={false}
-          actions={<CopyButton value={current.output} label={`Copy ${outputName}`} />}>
+          actions={
+            <>
+              {current.output && (
+                <button type="button" className="toolbar-text-button" onClick={() => void saveOutput()}>
+                  Save {outputName}
+                </button>
+              )}
+              <CopyButton value={current.output} label={`Copy ${outputName}`} />
+            </>
+          }>
           {current.output ? (
             <CodeTextarea id="csv-output" value={current.output} readOnly />
           ) : (
@@ -163,6 +233,7 @@ export function CsvToJsonConverter() {
           <span>Ready</span>
         )
       }
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
     />
   );
 }

@@ -99,7 +99,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
-- **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
+- **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters and nested key flattening
 - **YAML to JSON** - Convert YAML to JSON and back, including multi-document YAML
 - **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
 - **HTML to JSX** - Convert HTML markup into React JSX
@@ -121,7 +121,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Text Tools
 
-- **Text Compare** - Line-by-line diff that can ignore whitespace and case
+- **Text Compare** - Aligned line, word and character diff with change navigation that can ignore whitespace and case
 - **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
