@@ -14,6 +14,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
 - **Regex Generator** - Interactive regex construction with live testing
 - **JSON to TypeScript** - Generate TypeScript interfaces from JSON
+- **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 
 ### Generators
 
@@ -23,6 +24,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Lorem Ipsum** - Generate placeholder text
 - **QR Generator** - Generate scannable QR codes and save them as PNG files
 - **Bcrypt Generator** - Generate bcrypt hashes locally
+- **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
 
 ### Converters
 
@@ -32,6 +34,8 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
+- **YAML to JSON** - Convert YAML to JSON and back, including multi-document YAML
+- **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
 
 ### Time & Date
 
@@ -43,12 +47,15 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 - **Color Palette** - Convert HEX, RGB, HSL, and HSV, check WCAG contrast, and create color schemes
 - **Image Converter & Compressor** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
+- **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
 ### Text Tools
 
 - **Text Compare** - Line-by-line diff that can ignore whitespace and case
 - **JWT Decoder** - Decode JWT tokens and verify HS256, HS384, and HS512 signatures
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
+- **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
+- **Line Tools** - Sort, reverse, dedupe, trim, and shuffle lines
 
 ### Utilities
 
@@ -112,7 +119,7 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librs
 ```
 src/
 ├── components/
-│   └── tools/       # Tool implementations (25 React components)
+│   └── tools/       # Tool implementations (32 React components)
 ├── app/
 │   └── DevToolsApp.tsx   # Main app with sidebar navigation
 └── main.tsx         # React entry point

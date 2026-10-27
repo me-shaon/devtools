@@ -283,7 +283,12 @@ try {
     await paletteInput.waitForDisplayed({ timeout: 5000 });
     await paletteInput.setValue("UUID");
     await browser.keys("Enter");
-    await (await browser.$("label=Count")).waitForDisplayed({ timeout: 10000 });
+    // Every opened tool stays in the page, so check the selected tab rather than a label that
+    // more than one tool can have.
+    await browser.waitUntil(async () => {
+      const selected = await browser.$('[role="tab"][aria-selected="true"][id^="tab-"]');
+      return await selected.isExisting() && (await selected.getProperty("textContent")) === "UUID Generator";
+    }, { timeout: 10000, timeoutMsg: "The command palette did not open UUID Generator" });
     await browser.saveScreenshot(path.join(screenshotDir, "command-palette.png"));
   });
 

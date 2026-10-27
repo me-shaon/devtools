@@ -173,10 +173,7 @@
       setValue(input, "UUID");
       await delay(200);
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-      await waitFor(
-        () => [...document.querySelectorAll("label")].some((label) => text(label) === "Count"),
-        "UUID Generator",
-      );
+      await waitFor(() => isToolOpen("UUID Generator"), "UUID Generator");
     });
 
     await step("has no uncaught errors in the page", async () => {
