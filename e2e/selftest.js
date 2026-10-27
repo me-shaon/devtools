@@ -81,7 +81,7 @@
         buttons("What's New")[0].click();
       }
       const dialog = await waitFor(() => document.querySelector('[role="dialog"]'), "What's New dialog");
-      await waitFor(() => text(dialog).includes(`DevToolsApp v${version}`), "dialog version");
+      await waitFor(() => text(dialog).includes(`DevTools v${version}`), "dialog version");
       buttons("Got it")[0].click();
       await waitFor(() => !document.querySelector('[role="dialog"]'), "dialog closes");
     });

@@ -224,12 +224,14 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }}
 
       # The e2e build saves files to a test folder instead of the native dialog.
-      # On Windows it also opens a WebView2 debugging port for msedgedriver.
+      # On Windows, e2e/tauri.e2e.conf.json also opens a WebView2 debugging port for msedgedriver.
+      # Other platforms keep the shipped window configuration.
       - name: Build app for end-to-end test
         if: matrix.e2e
+        shell: bash
         run: >
-          npx tauri build --target ${{ matrix.target }} --no-bundle
-          --features e2e --config e2e/tauri.e2e.conf.json
+          npx tauri build --target ${{ matrix.target }} --no-bundle --features e2e
+          ${{ runner.os == 'Windows' && '--config e2e/tauri.e2e.conf.json' || '' }}
 
       - name: Install tauri-driver
         if: matrix.e2e && runner.os == 'Linux'

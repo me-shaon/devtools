@@ -12,7 +12,7 @@ import { remote } from "webdriverio";
 //   Set NATIVE_DRIVER to an msedgedriver.exe that matches the WebView2 version.
 //
 // Build the app with the e2e feature first, so file saves skip the native dialog:
-//   npx tauri build --no-bundle --features e2e --config e2e/tauri.e2e.conf.json
+//   npx tauri build --no-bundle --features e2e   (Windows: add --config e2e/tauri.e2e.conf.json)
 //
 // Usage: node e2e/smoke.mjs [path-to-app-binary]
 
@@ -163,7 +163,7 @@ try {
   await step("shows What's New for the installed version through the Tauri API", async () => {
     const dialog = await browser.$('[role="dialog"]');
     await dialog.waitForDisplayed({ timeout: 20000 });
-    await waitForText(dialog, `DevToolsApp v${expectedVersion}`);
+    await waitForText(dialog, `DevTools v${expectedVersion}`);
     await browser.saveScreenshot(path.join(screenshotDir, "whats-new.png"));
     await (await browser.$("button=Got it")).click();
     await dialog.waitForDisplayed({ reverse: true, timeout: 5000 });

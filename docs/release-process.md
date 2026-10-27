@@ -97,7 +97,7 @@ The agent must not create or push a release tag if:
 Use this prompt when you want an AI agent to prepare a release and you only want to provide the version tag:
 
 ```text
-Prepare release v1.2.0 for DevToolsApp.
+Prepare release v1.2.0 for DevTools.
 
 Follow docs/release-process.md exactly and complete the full release-preparation workflow.
 
@@ -120,7 +120,7 @@ Important:
 If you want the agent to also create and push the tag, use this variant instead:
 
 ```text
-Prepare and ship release v1.2.0 for DevToolsApp.
+Prepare and ship release v1.2.0 for DevTools.
 
 Follow docs/release-process.md exactly and complete the full release workflow.
 
