@@ -75,7 +75,7 @@ export const ALL_TOOLS = [
   { icon: FileImage, name: "SVG to CSS", id: "svg-to-css", category: "Converters", keywords: ["svg", "css", "data uri", "base64", "background-image", "mask", "icon", "encode"] },
   { icon: Brackets, name: "PHP Tools", id: "php-tools", category: "Converters", keywords: ["php", "serialize", "unserialize", "wordpress", "laravel", "session", "array", "var_export", "json"] },
   { icon: Terminal, name: "cURL to Code", id: "curl-to-code", category: "Converters", keywords: ["curl", "fetch", "python requests", "go", "php", "reqwest", "httpie", "http request"] },
-  { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time"] },
+  { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time", "milliseconds", "iso 8601", "time zone", "utc"] },
   { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date", keywords: ["days", "between", "duration"] },
   { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule"] },
   { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["color", "colour", "hex", "rgb", "hsl", "contrast", "wcag"] },

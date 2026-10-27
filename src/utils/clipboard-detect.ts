@@ -57,8 +57,9 @@ const isPrintableBase64 = (text: string) => {
 };
 
 const isTimestamp = (text: string) => {
-  if (!/^\d{10}(\d{3})?$/.test(text)) return false;
-  const ms = text.length === 13 ? Number(text) : Number(text) * 1000;
+  // Seconds, milliseconds, microseconds, or nanoseconds.
+  if (!/^\d{10}(\d{3}|\d{6}|\d{9})?$/.test(text)) return false;
+  const ms = Number(text.slice(0, 13).padEnd(13, "0"));
   return ms > Date.UTC(2000, 0, 1) && ms < Date.UTC(2100, 0, 1);
 };
 

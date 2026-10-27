@@ -12,6 +12,8 @@ describe("detectPastedContent", () => {
     expect(first("550e8400-e29b-41d4-a716-446655440000")).toBe("uuid-generator");
     expect(first("1761562800")).toBe("timestamp");
     expect(first("1761562800123")).toBe("timestamp");
+    expect(first("1761562800123456")).toBe("timestamp");
+    expect(first("1761562800123456789")).toBe("timestamp");
     expect(first("*/5 * * * *")).toBe("cron-calculator");
     expect(first("#3b82f6")).toBe("color-palette");
     expect(first("https://example.com/search?q=dev%20tools")).toBe("url-encoder");

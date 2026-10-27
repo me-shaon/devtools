@@ -45,7 +45,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Time & Date
 
-- **Timestamp** - Unix timestamp conversion with multiple formats
+- **Timestamp** - Convert Unix timestamps (seconds to nanoseconds) and date strings as you type, with offsets such as now - 1d and extra time zones
 - **Date Difference** - Calculate the difference between two dates
 - **Cron Calculator** - Build cron expressions with plain English descriptions
 
