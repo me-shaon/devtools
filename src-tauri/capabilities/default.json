@@ -11,7 +11,6 @@
     "os:default",
     "process:allow-restart",
     "updater:default",
-    "core:window:allow-start-dragging",
-    "core:window:allow-set-theme"
+    "core:window:allow-start-dragging"
   ]
 }

@@ -1,6 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform as getOsPlatform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -117,7 +116,16 @@ function createTauriBridge(): DesktopBridge {
     }, UPDATE_CHECK_DELAY_MS);
   };
 
+  const setWindowTheme = async (theme: "light" | "dark" | null) => {
+    try {
+      await invoke("set_window_theme", { theme });
+    } catch (error) {
+      console.error("Failed to set the window theme:", error);
+    }
+  };
+
   return {
+    setWindowTheme,
     platform: toNodePlatform(getOsPlatform()),
     getVersion,
     getUpdateState: async () => {

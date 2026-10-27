@@ -43,6 +43,18 @@ fn choose_save_path(app: &AppHandle, file_name: &str) -> Result<Option<PathBuf>,
 
 /// Asks the user where to save a file and writes the raw request body there.
 /// Returns the saved path, or `None` when the user cancels the dialog.
+/// Sets the native window appearance. On macOS the sidebar material follows it,
+/// so it must match the app theme. `None` follows the system.
+#[tauri::command]
+fn set_window_theme(window: tauri::WebviewWindow, theme: Option<String>) -> Result<(), String> {
+    let theme = match theme.as_deref() {
+        Some("dark") => Some(tauri::Theme::Dark),
+        Some("light") => Some(tauri::Theme::Light),
+        _ => None,
+    };
+    window.set_theme(theme).map_err(|error| error.to_string())
+}
+
 #[tauri::command]
 async fn save_file(app: AppHandle, request: Request<'_>) -> Result<Option<String>, String> {
     let InvokeBody::Raw(bytes) = request.body() else {
@@ -69,12 +81,13 @@ fn main() {
     let builder = tauri::Builder::default();
 
     #[cfg(not(feature = "e2e"))]
-    let builder = builder.invoke_handler(tauri::generate_handler![save_file]);
+    let builder = builder.invoke_handler(tauri::generate_handler![save_file, set_window_theme]);
 
     #[cfg(feature = "e2e")]
     let builder = builder
         .invoke_handler(tauri::generate_handler![
             save_file,
+            set_window_theme,
             e2e::e2e_report,
             e2e::e2e_saved_files,
             e2e::e2e_tool_names
