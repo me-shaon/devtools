@@ -87,7 +87,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(text)) add("uuid-generator", "a ULID", 85);
   if (single && isTimestamp(text)) add("timestamp", "a Unix timestamp", 85);
   if (single && isCron(text)) add("cron-calculator", "a cron expression", 85);
-  if (single && /^(#[0-9a-f]{3,4}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgba?\([^)]{5,40}\)|hsla?\([^)]{5,40}\))$/i.test(text)) add("color-palette", "a color", 85);
+  if (single && /^(#[0-9a-f]{3,4}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgba?\([^)]{5,40}\)|hsla?\([^)]{5,40}\)|(hwb|oklch|oklab)\([^)]{5,40}\))$/i.test(text)) add("color-palette", "a color", 85);
+  if (single && /^-?0(x[0-9a-f_]+|o[0-7_]+|b[01_]+)$/i.test(text)) add("number-base", "a number literal", 80);
   if (single && /^https?:\/\/\S+$/i.test(text)) add("url-encoder", "a URL", 80);
   if (/^(a:\d+:\{|O:\d+:"|C:\d+:"|[^|:;{}"\s]+\|(a|s|i|b|d|O):)/.test(text)) add("php-tools", "PHP serialized data", 85);
   if (/^\s*(<\?php\s+)?(return\s+|\$\w+\s*=\s*)?(\[|array\s*\()[\s\S]*=>/i.test(text)) add("php-tools", "a PHP array", 70);

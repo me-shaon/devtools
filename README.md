@@ -32,7 +32,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 - **Base64** - Encode and decode text, files, and data URIs, with a URL-safe mode
 - **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line
-- **Number Base** - Convert between decimal, binary, octal, and hex, including very large numbers
+- **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters
@@ -51,7 +51,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Media
 
-- **Color Palette** - Convert HEX, RGB, HSL, and HSV, check WCAG contrast, and create color schemes
+- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, and create color schemes
 - **Image Converter & Compressor** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 

@@ -314,3 +314,108 @@ describe('Contrast and parsing', () => {
     expect(Math.round(c.hsv.v)).toBe(96);
   });
 });
+
+import { compositeOver, formatColor, rgbToOklch, colorName } from '@/utils/color';
+
+const near = (actual: { r: number; g: number; b: number }, expected: { r: number; g: number; b: number }) => {
+  expect(Math.abs(actual.r - expected.r)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.g - expected.g)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.b - expected.b)).toBeLessThanOrEqual(1);
+};
+
+describe('CSS color parsing', () => {
+  it('reads alpha from 4 and 8 digit hex', () => {
+    const c = parseColor('#3b82f680')!;
+    expect(c.rgb).toEqual({ r: 59, g: 130, b: 246 });
+    expect(c.alpha).toBeCloseTo(128 / 255, 5);
+    expect(parseColor('#f008')!.alpha).toBeCloseTo(0x88 / 255, 5);
+    expect(parseColor('ff000080')!.hex).toBe('#ff0000');
+    expect(parseColor('#3b82f6')!.alpha).toBe(1);
+  });
+
+  it('reads rgb and rgba in legacy and modern syntax', () => {
+    expect(parseColor('rgba(59, 130, 246, 0.5)')!.alpha).toBe(0.5);
+    const modern = parseColor('rgb(59 130 246 / 50%)')!;
+    expect(modern.rgb).toEqual({ r: 59, g: 130, b: 246 });
+    expect(modern.alpha).toBe(0.5);
+    expect(parseColor('rgb(100% 0% 0%)')!.hex).toBe('#ff0000');
+    expect(parseColor('rgb(59, 130)')).toBeNull();
+  });
+
+  it('reads hsl with alpha and angle units', () => {
+    expect(parseColor('hsla(217, 91%, 60%, 0.25)')!.alpha).toBe(0.25);
+    expect(parseColor('hsl(217deg 91% 60% / .25)')!.alpha).toBe(0.25);
+    expect(parseColor('hsl(0.5turn 100% 50%)')!.hex).toBe('#00ffff');
+  });
+
+  it('reads hwb', () => {
+    expect(parseColor('hwb(0 0% 0%)')!.hex).toBe('#ff0000');
+    expect(parseColor('hwb(120 50% 50%)')!.rgb).toEqual({ r: 128, g: 128, b: 128 });
+    expect(parseColor('hwb(217 23% 4% / 0.5)')!.alpha).toBe(0.5);
+  });
+
+  it('reads oklch and oklab', () => {
+    near(parseColor('oklch(62.31% 0.188 259.81)')!.rgb, { r: 59, g: 130, b: 246 });
+    near(parseColor('oklch(0.6231 0.188 259.81)')!.rgb, { r: 59, g: 130, b: 246 });
+    expect(parseColor('oklch(100% 0 0)')!.hex).toBe('#ffffff');
+    expect(parseColor('oklab(0 0 0)')!.hex).toBe('#000000');
+  });
+
+  it('clips oklch colors outside sRGB', () => {
+    const c = parseColor('oklch(70% 0.4 150)')!;
+    for (const v of [c.rgb.r, c.rgb.g, c.rgb.b]) {
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(255);
+    }
+  });
+
+  it('reads named colors and transparent', () => {
+    expect(parseColor('rebeccapurple')!.hex).toBe('#663399');
+    expect(parseColor('RED')!.hex).toBe('#ff0000');
+    expect(parseColor('transparent')!.alpha).toBe(0);
+    expect(parseColor('notacolor')).toBeNull();
+  });
+});
+
+describe('formatColor', () => {
+  it('formats an opaque color in every format', () => {
+    const values = Object.fromEntries(formatColor(parseColor('#3b82f6')!).map((v) => [v.label, v.value]));
+    expect(values).toEqual({
+      HEX: '#3B82F6',
+      RGB: 'rgb(59, 130, 246)',
+      HSL: 'hsl(217, 91%, 60%)',
+      HWB: 'hwb(217 23% 4%)',
+      OKLCH: 'oklch(62.3% 0.188 259.8)',
+      HSV: 'hsv(217, 76%, 96%)',
+    });
+  });
+
+  it('includes alpha where the format supports it', () => {
+    const values = Object.fromEntries(formatColor(parseColor('rgb(59 130 246 / 0.5)')!).map((v) => [v.label, v.value]));
+    expect(values.HEX).toBe('#3B82F680');
+    expect(values.RGB).toBe('rgba(59, 130, 246, 0.5)');
+    expect(values.HSL).toBe('hsla(217, 91%, 60%, 0.5)');
+    expect(values.HWB).toBe('hwb(217 23% 4% / 0.5)');
+    expect(values.OKLCH).toBe('oklch(62.3% 0.188 259.8 / 0.5)');
+  });
+
+  it('adds the CSS name when one matches', () => {
+    const name = formatColor(parseColor('#663399')!).find((v) => v.label === 'Name');
+    expect(name?.value).toBe('rebeccapurple');
+    expect(colorName(parseColor('#3b82f6')!)).toBeNull();
+  });
+
+  it('uses hue 0 for grays in oklch', () => {
+    expect(rgbToOklch(128, 128, 128).c).toBeLessThan(0.0001);
+    const values = Object.fromEntries(formatColor(parseColor('#808080')!).map((v) => [v.label, v.value]));
+    expect(values.OKLCH).toMatch(/^oklch\([\d.]+% 0 0\)$/);
+  });
+});
+
+describe('compositeOver', () => {
+  it('blends a translucent color over a background', () => {
+    const c = compositeOver(parseColor('rgba(0, 0, 0, 0.5)')!, parseColor('#ffffff')!);
+    expect(c.rgb).toEqual({ r: 128, g: 128, b: 128 });
+    expect(c.alpha).toBe(1);
+  });
+});

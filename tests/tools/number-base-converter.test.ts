@@ -10,7 +10,10 @@ import {
   getBasePrefix,
   formatWithPrefix,
   getBaseName,
-  type NumberBase,
+  parseNumber,
+  toBase,
+  groupDigits,
+  fixedWidth,
 } from '@/utils/number-base';
 
 describe('Number Base Utils', () => {
@@ -276,5 +279,88 @@ describe('BigInt precision', () => {
 
   it('handles large negative numbers', () => {
     expect(convertBase('-' + big64, 10, 16).value).toBe('-10000000000000000');
+  });
+});
+
+describe('parseNumber', () => {
+  it('detects prefixes in auto mode', () => {
+    expect(parseNumber('0xff')).toEqual({ ok: true, value: 255n, base: 16 });
+    expect(parseNumber('0B1010')).toEqual({ ok: true, value: 10n, base: 2 });
+    expect(parseNumber('0o17')).toEqual({ ok: true, value: 15n, base: 8 });
+    expect(parseNumber('42')).toEqual({ ok: true, value: 42n, base: 10 });
+  });
+
+  it('reads bare hex digits as hex in auto mode', () => {
+    expect(parseNumber('deadBEEF')).toEqual({ ok: true, value: 0xdeadbeefn, base: 16 });
+  });
+
+  it('handles signs, underscores and spaces', () => {
+    expect(parseNumber('-0x10')).toEqual({ ok: true, value: -16n, base: 16 });
+    expect(parseNumber('+1_000_000')).toEqual({ ok: true, value: 1000000n, base: 10 });
+    expect(parseNumber('0b1111 0000')).toEqual({ ok: true, value: 240n, base: 2 });
+  });
+
+  it('uses an explicit base and strips only its own prefix', () => {
+    expect(parseNumber('0b1', 16)).toEqual({ ok: true, value: 0xb1n, base: 16 });
+    expect(parseNumber('0x1f', 16)).toEqual({ ok: true, value: 31n, base: 16 });
+    expect(parseNumber('zz', 36)).toEqual({ ok: true, value: 1295n, base: 36 });
+  });
+
+  it('rejects invalid digits with a clear message', () => {
+    const r = parseNumber('102', 2);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('"2"');
+    expect(parseNumber('12xyz').ok).toBe(false);
+    expect(parseNumber('0x').ok).toBe(false);
+    expect(parseNumber('   ').ok).toBe(false);
+  });
+
+  it('keeps big numbers exact', () => {
+    const big = '340282366920938463463374607431768211456';
+    const r = parseNumber(big);
+    expect(r.ok && r.value.toString()).toBe(big);
+    expect(r.ok && toBase(r.value, 16)).toBe('1' + '0'.repeat(32));
+  });
+});
+
+describe('toBase and groupDigits', () => {
+  it('formats in any base 2 to 36 in upper case', () => {
+    expect(toBase(255n, 16)).toBe('FF');
+    expect(toBase(-255n, 2)).toBe('-11111111');
+    expect(toBase(1295n, 36)).toBe('ZZ');
+  });
+
+  it('groups digits from the right and keeps the sign', () => {
+    expect(groupDigits('11110000', 4)).toBe('1111 0000');
+    expect(groupDigits('1234567', 3)).toBe('1 234 567');
+    expect(groupDigits('-101010', 4)).toBe('-10 1010');
+    expect(groupDigits('12', 3)).toBe('12');
+  });
+});
+
+describe('fixedWidth', () => {
+  it("shows a negative number as two's complement", () => {
+    expect(fixedWidth(-1n, 8)).toEqual({ fits: true, signed: -1n, unsigned: 255n, hex: 'FF', binary: '11111111' });
+  });
+
+  it('reads a large unsigned value as a negative signed value', () => {
+    const r = fixedWidth(0xffffffffn, 32);
+    expect(r.fits).toBe(true);
+    expect(r.signed).toBe(-1n);
+    expect(r.unsigned).toBe(4294967295n);
+  });
+
+  it('pads small values to the full width', () => {
+    const r = fixedWidth(5n, 16);
+    expect(r.hex).toBe('0005');
+    expect(r.binary).toBe('0000000000000101');
+    expect(r.signed).toBe(5n);
+  });
+
+  it('reports values that do not fit', () => {
+    expect(fixedWidth(256n, 8).fits).toBe(false);
+    expect(fixedWidth(-129n, 8).fits).toBe(false);
+    expect(fixedWidth(-128n, 8).fits).toBe(true);
+    expect(fixedWidth(2n ** 64n - 1n, 64).fits).toBe(true);
   });
 });

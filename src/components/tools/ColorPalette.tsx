@@ -6,7 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
+  compositeOver,
+  formatColor,
   getContrastRatio,
   meetsWcagAALarge,
   meetsWcagAANormal,
@@ -21,50 +25,88 @@ interface Color {
   hsl: string;
 }
 
-function formatColorValues(input: string) {
-  const color = parseColor(input);
-  if (!color) return null;
-  const { rgb, hsl, hsv } = color;
-  return [
-    { label: "HEX", value: color.hex.toUpperCase() },
-    { label: "RGB", value: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` },
-    { label: "HSL", value: `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)` },
-    { label: "HSV", value: `hsv(${Math.round(hsv.h)}, ${Math.round(hsv.s)}%, ${Math.round(hsv.v)}%)` },
-  ];
-}
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "Which color formats can I enter?",
+    a: "Enter any sRGB CSS color: HEX with 3, 4, 6, or 8 digits, rgb(), rgba(), hsl(), hsla(), hwb(), oklch(), oklab(), a named color such as tomato, or transparent. Both the comma syntax and the space syntax work.",
+  },
+  {
+    q: "Why does the tool show OKLCH?",
+    a: "OKLCH is a modern CSS color format. Equal changes in lightness look equal to the eye, so it is good for design tokens and color scales. Colors outside sRGB are clipped to the nearest sRGB color.",
+  },
+  {
+    q: "Why is there no CMYK?",
+    a: "CMYK depends on the printer, the ink, and the paper. A simple formula gives numbers that do not match real print output, so the tool does not show them.",
+  },
+  {
+    q: "How does the tool handle alpha?",
+    a: "HEX, RGB, HSL, HWB, and OKLCH include the alpha value when the color is not opaque. HSV has no standard alpha syntax, so it shows only the color.",
+  },
+  {
+    q: "How does the contrast checker handle transparent colors?",
+    a: "The checker blends a transparent foreground over the background, as a browser does. It treats the background as opaque.",
+  },
+];
 
+/** A checkerboard under the color, so transparency is visible. */
+const swatchStyle = (css: string) => ({
+  background: `linear-gradient(${css}, ${css}), repeating-conic-gradient(#d4d4d4 0 25%, #ffffff 0 50%) 0 0 / 16px 16px`,
+});
 
 function ColorConverter() {
   const [input, setInput] = useState("#3b82f6");
   const color = parseColor(input);
-  const values = formatColorValues(input);
+  const values = color ? formatColor(color) : null;
+  // Wait until typing stops before the error shows, so a half-typed color does not flash an error.
+  const settledInput = useDebouncedValue(input, 400);
+  const showError = settledInput === input && input.trim() !== "" && !color;
+  const cssValue = values?.find((v) => v.label === "RGB")?.value ?? "transparent";
+
+  const pick = (hex: string) => {
+    const alpha = color && color.alpha < 1 ? Math.round(color.alpha * 255).toString(16).padStart(2, "0") : "";
+    setInput(hex + alpha);
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Color Converter</CardTitle>
-        <CardDescription>Enter a color as HEX, RGB, or HSL</CardDescription>
+        <CardDescription>Enter or paste any CSS color, or pick one</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="color-convert-input">Color</Label>
-          <Input
-            id="color-convert-input"
-            placeholder="#3b82f6, rgb(59, 130, 246), hsl(217, 91%, 60%)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="font-mono"
-          />
-          {input.trim() && !color && (
-            <p className="text-xs text-destructive">Not a valid HEX, RGB, or HSL color.</p>
+          <div className="flex gap-2">
+            <Input
+              id="color-convert-input"
+              placeholder="#3b82f6, rgb(59 130 246 / 50%), oklch(62% 0.19 260), tomato"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="font-mono"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <input
+              type="color"
+              aria-label="Pick a color"
+              value={color ? color.hex : "#000000"}
+              onChange={(e) => pick(e.target.value)}
+              className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-transparent p-1"
+            />
+          </div>
+          {showError && (
+            <p className="text-xs text-destructive" role="alert">
+              Not a valid CSS color.
+            </p>
           )}
         </div>
         {color && values && (
           <div className="grid grid-cols-1 md:grid-cols-[6rem,1fr] gap-4">
             <div
               className="h-24 w-full rounded-md border"
-              style={{ backgroundColor: color.hex }}
+              style={swatchStyle(cssValue)}
               aria-label="Color preview"
+              data-testid="color-preview"
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {values.map((item) => (
@@ -87,8 +129,11 @@ function ColorConverter() {
 function ContrastChecker() {
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
-  const fgColor = parseColor(fg);
-  const bgColor = parseColor(bg);
+  const fgInput = parseColor(fg);
+  const bgInput = parseColor(bg);
+  // The page behind is unknown, so the background counts as opaque. A transparent foreground is blended over it.
+  const bgColor = bgInput && bgInput.alpha < 1 ? parseColor(bgInput.hex) : bgInput;
+  const fgColor = fgInput && bgColor && fgInput.alpha < 1 ? compositeOver(fgInput, bgColor) : fgInput;
   const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
 
   const checks =
@@ -140,6 +185,11 @@ function ContrastChecker() {
               <p className="text-2xl font-bold">Large sample text</p>
               <p className="text-sm">Normal sample text for reading.</p>
             </div>
+            {((fgInput?.alpha ?? 1) < 1 || (bgInput?.alpha ?? 1) < 1) && (
+              <p className="text-xs text-muted-foreground" role="status">
+                The check blends the foreground over the background and treats the background as opaque.
+              </p>
+            )}
             <div className="text-3xl font-semibold" data-testid="contrast-ratio">
               {(Math.floor(ratio * 100) / 100).toFixed(2)}:1
             </div>
@@ -411,6 +461,7 @@ export function ColorPalette() {
           ))}
         </div>
       )}
+      <ToolFaqSection items={FAQ_ITEMS} />
     </div>
   );
 }

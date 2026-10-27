@@ -16,6 +16,9 @@ describe("detectPastedContent", () => {
     expect(first("1761562800123456789")).toBe("timestamp");
     expect(first("*/5 * * * *")).toBe("cron-calculator");
     expect(first("#3b82f6")).toBe("color-palette");
+    expect(first("oklch(62.3% 0.188 259.8)")).toBe("color-palette");
+    expect(first("0xDEADBEEF")).toBe("number-base");
+    expect(first("0b1010_1010")).toBe("number-base");
     expect(first("https://example.com/search?q=dev%20tools")).toBe("url-encoder");
     expect(first("SGVsbG8sIERldlRvb2xzIHVzZXJzIQ==")).toBe("base64");
     expect(first("curl -X POST https://api.example.com -d 'a=1'")).toBe("curl-to-code");
