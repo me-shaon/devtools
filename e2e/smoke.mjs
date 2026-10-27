@@ -243,7 +243,7 @@ try {
   await step("saves a QR code PNG through the save_file command", async () => {
     await openTool("QR Generator");
     await (await browser.$("#qr-text")).setValue("https://example.com");
-    await (await browser.$("button*=Download QR Code")).click();
+    await (await browser.$("button*=Save PNG")).click();
     const png = await waitForSavedFile(/^qr-code-\d+\.png$/);
     if (!png.subarray(0, 4).equals(PNG_SIGNATURE)) {
       throw new Error("The saved QR code is not a PNG file.");
