@@ -15,6 +15,10 @@ import {
   toUpperCase,
   convertCase,
   convertToAllCases,
+  convertLines,
+  splitWords,
+  toTrainCase,
+  toDotCase,
 } from '@/utils/case';
 
 describe('Case Converter Utils', () => {
@@ -190,6 +194,85 @@ describe('Case Converter Utils', () => {
       expect(result.UPPER_SNAKE_CASE).toBe('HELLO_WORLD');
       expect(result.lowercase).toBe('helloworld');
       expect(result.UPPERCASE).toBe('HELLOWORLD');
+    });
+  });
+
+  describe('splitWords', () => {
+    it('splits acronym runs before a capitalized word', () => {
+      expect(splitWords('HTTPServerID')).toEqual(['HTTP', 'Server', 'ID']);
+      expect(splitWords('XMLHttpRequest')).toEqual(['XML', 'Http', 'Request']);
+      expect(splitWords('getURLForID')).toEqual(['get', 'URL', 'For', 'ID']);
+    });
+
+    it('keeps a plural acronym together', () => {
+      expect(splitWords('userIDs')).toEqual(['user', 'IDs']);
+      expect(splitWords('PDFsToHTML')).toEqual(['PDFs', 'To', 'HTML']);
+    });
+
+    it('keeps digits with the word before them', () => {
+      expect(splitWords('base64Encode')).toEqual(['base64', 'Encode']);
+      expect(splitWords('HTTP2Server')).toEqual(['HTTP2', 'Server']);
+      expect(splitWords('3dModel')).toEqual(['3d', 'Model']);
+    });
+
+    it('splits on any separator', () => {
+      expect(splitWords('  app.server/port--name__x ')).toEqual(['app', 'server', 'port', 'name', 'x']);
+      expect(splitWords('USER_ID')).toEqual(['USER', 'ID']);
+    });
+
+    it('keeps accented and uncased letters', () => {
+      expect(splitWords('caféAuLait')).toEqual(['café', 'Au', 'Lait']);
+      expect(splitWords('日本_語')).toEqual(['日本', '語']);
+    });
+  });
+
+  describe('acronym runs', () => {
+    it('converts HTTPServerID without splitting the acronym into letters', () => {
+      expect(toSnakeCase('HTTPServerID')).toBe('http_server_id');
+      expect(toCamelCase('HTTPServerID')).toBe('httpServerId');
+      expect(toKebabCase('userIDs')).toBe('user-ids');
+    });
+
+    it('keeps acronyms in upper case when asked', () => {
+      const keep = { keepAcronyms: true };
+      expect(toCamelCase('HTTPServerID', keep)).toBe('httpServerID');
+      expect(toPascalCase('user_ID', keep)).toBe('UserID');
+      expect(toCamelCase('userIDs', keep)).toBe('userIDs');
+      expect(toTitleCase('api_URL', keep)).toBe('Api URL');
+      expect(toSentenceCase('getURL', keep)).toBe('Get URL');
+      expect(toTrainCase('contentMD5', keep)).toBe('Content-MD5');
+    });
+
+    it('keeps a final capital S in an acronym', () => {
+      expect(toPascalCase('useHTTPS', { keepAcronyms: true })).toBe('UseHTTPS');
+    });
+
+    it('does not treat words as acronyms when the whole line is upper case', () => {
+      expect(toPascalCase('USER_ID', { keepAcronyms: true })).toBe('UserId');
+    });
+  });
+
+  describe('toTrainCase and toDotCase', () => {
+    it('converts to Train-Case', () => {
+      expect(toTrainCase('content_type')).toBe('Content-Type');
+    });
+
+    it('converts to dot.case', () => {
+      expect(toDotCase('appServerPort')).toBe('app.server.port');
+    });
+  });
+
+  describe('convertLines', () => {
+    it('converts each line on its own and keeps blank lines', () => {
+      expect(convertLines('userId\n\nHTTPServer', 'snake_case')).toBe('user_id\n\nhttp_server');
+    });
+
+    it('trims each line and handles CRLF', () => {
+      expect(convertLines('  first name \r\nlast-name', 'camelCase')).toBe('firstName\nlastName');
+    });
+
+    it('keeps raw text for lowercase and UPPERCASE', () => {
+      expect(convertLines('Hello, World', 'UPPERCASE')).toBe('HELLO, WORLD');
     });
   });
 });

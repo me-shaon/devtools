@@ -23,7 +23,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 - **Hash Generator** - MD5, SHA-1, SHA-2, SHA-3, and Keccak-256 hashes, HMAC, and file hashing
 - **UUID Generator** - Generate v1/v3/v4/v5/v6/v7 UUIDs and ULIDs, and inspect existing IDs
 - **Password Generator** - Generate secure passwords and passphrases with strength analysis
-- **Lorem Ipsum** - Generate placeholder text
+- **Lorem Ipsum** - Generate placeholder text and fake names, emails, URLs, and titles as text or a JSON array
 - **QR Generator** - Generate scannable QR codes and save them as PNG files
 - **Bcrypt Generator** - Generate bcrypt hashes locally
 - **Random String** - Generate Nano IDs, hex and Base64URL tokens, and strings from a custom alphabet
@@ -31,7 +31,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ### Converters
 
 - **Base64** - Encode and decode text, files, and data URIs, with a URL-safe mode
-- **Case Converter** - Transform between camelCase, snake_case, kebab-case, and more
+- **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line
 - **Number Base** - Convert between decimal, binary, octal, and hex, including very large numbers
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters

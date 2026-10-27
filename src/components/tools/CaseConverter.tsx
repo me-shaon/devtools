@@ -1,152 +1,103 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
+import { CodeTextarea, EditorPane, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { CASE_TYPES, convertToAllCases } from "@/utils/case";
 
-type CaseType = "camelCase" | "PascalCase" | "snake_case" | "kebab-case" | "UPPER_SNAKE_CASE" | "Sentence case" | "lowercase" | "UPPERCASE" | "Title Case";
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "How does the tool find the words?",
+    a: "Spaces, underscores, hyphens, dots, and other symbols separate words. A capital letter starts a new word. A run of capitals is one word, so `HTTPServerID` becomes `http`, `server`, and `id`.",
+  },
+  {
+    q: "How are plurals and numbers handled?",
+    a: "A capital run that ends in a lowercase s is one plural word, so `userIDs` becomes `user_ids`. Digits stay with the word before them, so `base64Encode` becomes `base64_encode`.",
+  },
+  {
+    q: "What does Keep acronyms do?",
+    a: "It keeps words that you wrote in capitals, such as `ID` or `URL`, in capitals. This applies to camelCase, PascalCase, Train-Case, Title Case, and Sentence case. `user_ID` becomes `UserID` instead of `UserId`. If the whole line is in capitals, no word counts as an acronym.",
+  },
+  {
+    q: "Can I convert many names at once?",
+    a: "Yes. Put one name on each line. The tool converts each line on its own and keeps blank lines.",
+  },
+  {
+    q: "Why do lowercase and UPPERCASE keep my punctuation?",
+    a: "These two cases change only the letter case of your text. The other cases rebuild the text from its words, so they drop symbols.",
+  },
+];
+
+// Lets a read-only result grow to show every line of a multi-line result.
+const fitHeight = (el: HTMLTextAreaElement | null) => {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+};
 
 export function CaseConverter() {
   const [input, setInput] = useState("");
-  const [outputs, setOutputs] = useState<Record<CaseType, string>>({
-    camelCase: "",
-    PascalCase: "",
-    snake_case: "",
-    "kebab-case": "",
-    UPPER_SNAKE_CASE: "",
-    "Sentence case": "",
-    lowercase: "",
-    UPPERCASE: "",
-    "Title Case": "",
-  });
+  const [keepAcronyms, setKeepAcronyms] = useState(false);
+  const text = useDebouncedValue(input);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const toCamelCase = (str: string) => {
-    return str
-      .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""))
-      .replace(/^(.)/, (c) => c.toLowerCase());
-  };
+  const outputs = useMemo(() => (text.trim() ? convertToAllCases(text, { keepAcronyms }) : null), [text, keepAcronyms]);
+  const lineCount = text.split(/\r?\n/).filter((line) => line.trim()).length;
 
-  const toPascalCase = (str: string) => {
-    return str
-      .replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ""))
-      .replace(/^(.)/, (c) => c.toUpperCase());
-  };
-
-  const toSnakeCase = (str: string) => {
-    return str
-      .replace(/([A-Z])/g, "_$1")
-      .replace(/^_/, "")
-      .replace(/[-\s]+/g, "_")
-      .toLowerCase();
-  };
-
-  const toKebabCase = (str: string) => {
-    return str
-      .replace(/([A-Z])/g, "-$1")
-      .replace(/^-/, "")
-      .replace(/[\s_]+/g, "-")
-      .toLowerCase();
-  };
-
-  const toUpperSnakeCase = (str: string) => {
-    return str
-      .replace(/([A-Z])/g, "_$1")
-      .replace(/^_/, "")
-      .replace(/[-\s]+/g, "_")
-      .toUpperCase();
-  };
-
-  const toSentenceCase = (str: string) => {
-    return str
-      .replace(/[-_]+(.)?/g, (_, c) => (c ? " " + c.toLowerCase() : " "))
-      .replace(/^\s/, "")
-      .replace(/([.!?]\s*)(.)/g, (_, prefix, c) => prefix + c.toUpperCase())
-      .replace(/^(.)/, (c) => c.toUpperCase());
-  };
-
-  const toTitleCase = (str: string) => {
-    return str
-      .replace(/[-_\s]+(.)?/g, (_, c) => (c ? " " + c.toUpperCase() : " "))
-      .replace(/^\s/, "")
-      .replace(/^./, (c) => c.toUpperCase());
-  };
-
-  const convert = () => {
-    if (!input.trim()) {
-      toast.error("Please enter text to convert");
-      return;
-    }
-
-    const converted = {
-      camelCase: toCamelCase(input),
-      PascalCase: toPascalCase(input),
-      snake_case: toSnakeCase(input),
-      "kebab-case": toKebabCase(input),
-      UPPER_SNAKE_CASE: toUpperSnakeCase(input),
-      "Sentence case": toSentenceCase(input),
-      lowercase: input.toLowerCase(),
-      UPPERCASE: input.toUpperCase(),
-      "Title Case": toTitleCase(input),
-    };
-
-    setOutputs(converted);
-  };
-
-
-  const caseLabels: { key: CaseType; label: string; description: string }[] = [
-    { key: "camelCase", label: "camelCase", description: "First word lowercase, subsequent words capitalized" },
-    { key: "PascalCase", label: "PascalCase", description: "Every word capitalized" },
-    { key: "snake_case", label: "snake_case", description: "Words separated by underscores, all lowercase" },
-    { key: "kebab-case", label: "kebab-case", description: "Words separated by hyphens, all lowercase" },
-    { key: "UPPER_SNAKE_CASE", label: "UPPER_SNAKE_CASE", description: "Words separated by underscores, all uppercase" },
-    { key: "Sentence case", label: "Sentence case", description: "First letter capitalized, spaces between words" },
-    { key: "lowercase", label: "lowercase", description: "All letters lowercase" },
-    { key: "UPPERCASE", label: "UPPERCASE", description: "All letters uppercase" },
-    { key: "Title Case", label: "Title Case", description: "First letter of each word capitalized" },
-  ];
+  useEffect(() => {
+    listRef.current?.querySelectorAll("textarea").forEach(fitHeight);
+  }, [outputs]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Enter Text</CardTitle>
-          <CardDescription>Type or paste text to convert to different cases</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Enter text to convert..."
+    <ToolWorkspace
+      id="case-converter"
+      toolbar={
+        <label className="option-switch" htmlFor="case-keep-acronyms">
+          Keep acronyms
+          <Switch id="case-keep-acronyms" checked={keepAcronyms} onCheckedChange={setKeepAcronyms} />
+        </label>
+      }
+      first={
+        <EditorPane
+          title="Input"
+          htmlFor="case-input"
+          scroll={false}
+          actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}
+        >
+          <CodeTextarea
+            id="case-input"
+            placeholder={"Enter a name or phrase, one per line (e.g., HTTPServerID, user_name)"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="min-h-[120px] font-mono"
           />
-          <Button onClick={convert} className="mt-4" size="lg">
-            Convert Text
-          </Button>
-        </CardContent>
-      </Card>
-
-      {outputs.camelCase && (
-        <div className="space-y-3">
-          {caseLabels.map(({ key, label, description }) => (
-            <Card key={key}>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-sm">{label}</h3>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  </div>
-                  <CopyButton value={outputs[key]} label="Copy" />
+        </EditorPane>
+      }
+      second={
+        <EditorPane title="Cases">
+          <div className="result-list" ref={listRef}>
+            {CASE_TYPES.map((type) => {
+              const value = outputs?.[type] ?? "";
+              return (
+                <div key={type} className="result-row">
+                  <label className="result-row-label" htmlFor={`case-out-${type}`}>{type}</label>
+                  <textarea
+                    id={`case-out-${type}`}
+                    className="result-row-value code-textarea"
+                    value={value}
+                    readOnly
+                    rows={1}
+                    ref={fitHeight}
+                  />
+                  <CopyButton value={value} iconOnly label={`Copy ${type}`} />
                 </div>
-                <div className="p-3 rounded-md bg-muted font-mono text-sm break-all">
-                  {outputs[key] || "(empty)"}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        </EditorPane>
+      }
+      status={<span>{lineCount ? `${lineCount.toLocaleString()} ${lineCount === 1 ? "line" : "lines"}` : "Ready"}</span>}
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

@@ -8,8 +8,79 @@ import {
   generateSentences,
   generateParagraphs,
   generateLorem,
-  type LoremOptions,
+  generateItems,
+  formatItems,
+  MAX_COUNT,
 } from '@/utils/lorem';
+
+// A seeded random source, so tests that need many values stay repeatable.
+const seeded = (seed = 1) => () => {
+  seed = (seed * 16807) % 2147483647;
+  return (seed - 1) / 2147483646;
+};
+
+describe('fake data', () => {
+  it('makes full names from the built-in lists', () => {
+    const names = generateItems('names', 20, { random: seeded() });
+    expect(names).toHaveLength(20);
+    for (const name of names) expect(name).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
+  });
+
+  it('makes unique emails on reserved example domains', () => {
+    const emails = generateItems('emails', MAX_COUNT, { random: seeded(7) });
+    expect(new Set(emails).size).toBe(MAX_COUNT);
+    for (const email of emails) expect(email).toMatch(/^[a-z]+\.[a-z]+\d*@example\.(com|org|net)$/);
+  });
+
+  it('makes https URLs on example domains', () => {
+    const urls = generateItems('urls', 10, { random: seeded(3) });
+    for (const url of urls) {
+      expect(url).toMatch(/^https:\/\/(www\.)?example\.(com|org|net)\/[a-z]+(-[a-z]+)*(\/[a-z]+(-[a-z]+)*)*$/);
+      expect(() => new URL(url)).not.toThrow();
+    }
+  });
+
+  it('makes titles in title case without a final period', () => {
+    const titles = generateItems('titles', 10, { random: seeded(5) });
+    for (const title of titles) {
+      const words = title.split(' ');
+      expect(words.length).toBeGreaterThanOrEqual(3);
+      expect(words.length).toBeLessThanOrEqual(7);
+      for (const word of words) expect(word).toMatch(/^[A-Z][a-z]*$/);
+    }
+  });
+
+  it('is repeatable with the same random source', () => {
+    expect(generateItems('emails', 5, { random: seeded(9) })).toEqual(generateItems('emails', 5, { random: seeded(9) }));
+  });
+});
+
+describe('generateItems for lorem text', () => {
+  it('starts the first item with Lorem ipsum only when asked', () => {
+    expect(generateItems('sentences', 3, { startWithLorem: true, random: seeded() })[0]).toMatch(/^Lorem ipsum /);
+    expect(generateItems('words', 3, { startWithLorem: true, random: seeded() })).toEqual(['Lorem', 'ipsum', expect.any(String)]);
+  });
+
+  it('clamps the count to the allowed range', () => {
+    expect(generateItems('names', 0)).toHaveLength(1);
+    expect(generateItems('words', MAX_COUNT + 50)).toHaveLength(MAX_COUNT);
+  });
+});
+
+describe('formatItems', () => {
+  it('joins text by kind', () => {
+    expect(formatItems(['a', 'b'], 'paragraphs', 'text')).toBe('a\n\nb');
+    expect(formatItems(['A.', 'B.'], 'sentences', 'text')).toBe('A. B.');
+    expect(formatItems(['a', 'b'], 'words', 'text')).toBe('a b');
+    expect(formatItems(['x@example.com', 'y@example.com'], 'emails', 'text')).toBe('x@example.com\ny@example.com');
+  });
+
+  it('writes a JSON array of strings', () => {
+    const json = formatItems(['Ann Lee', 'Bo "B" Ray'], 'names', 'json');
+    expect(JSON.parse(json)).toEqual(['Ann Lee', 'Bo "B" Ray']);
+    expect(json).toBe('[\n  "Ann Lee",\n  "Bo \\"B\\" Ray"\n]');
+  });
+});
 
 describe('Lorem Utils', () => {
   describe('generateWords', () => {
