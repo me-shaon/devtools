@@ -48,7 +48,10 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "files": {
+        "Resources/en.lproj/InfoPlist.strings": "macos/en.lproj/InfoPlist.strings"
+      }
     },
     "windows": {
       "nsis": {

@@ -2,10 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- The bundle is DevToolsApp.app, but the Dock and the menu bar show the brand name. -->
+  <!-- The bundle is DevToolsApp.app, but the Dock, Finder, and the menu bar show "DevTools".
+       Finder and the Dock show a localized name only when the base CFBundleDisplayName matches
+       the file name, so the base stays "DevToolsApp" and en.lproj/InfoPlist.strings (bundled
+       through tauri.conf.json) supplies "DevTools". -->
+  <key>LSHasLocalizedDisplayName</key>
+  <true/>
   <key>CFBundleName</key>
   <string>DevTools</string>
   <key>CFBundleDisplayName</key>
-  <string>DevTools</string>
+  <string>DevToolsApp</string>
 </dict>
 </plist>
