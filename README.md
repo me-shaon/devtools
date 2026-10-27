@@ -1,17 +1,81 @@
-# DevTools Desktop
+# DevTools
 
-Offline-first developer utilities for macOS, Windows, and Linux. No cloud dependencies, no data collection.
+A desktop workspace with 42 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
-![DevTools](assets/brand/svg/logo-horizontal-primary.svg)
+![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
-![DevTools Desktop](assets/app-screenshot.png)
+[Download](#download) · [Tools](#tools) · [Workspace and shortcuts](#workspace-and-shortcuts) · [Development](#development)
 
-## Features
+![DevTools in light mode with JSON Viewer, formatted output, and multiple open tool tabs](assets/app-screenshot.png)
+
+<details>
+<summary>See dark mode</summary>
+
+![DevTools in dark mode with the JSON Viewer workspace](assets/app-screenshot-dark.png)
+
+</details>
+
+Screenshots show the current web UI in browser preview. The installed desktop app adds native window integration, tray access, global shortcuts, deep links, and automatic updates.
+
+The utilities work offline without an account or an AI API key. DevTools includes no analytics or telemetry. The AI tools process your content locally; they do not call an AI service. App updates use the network.
+
+## Download
+
+Get the latest release for your platform:
+
+- **[macOS (Intel)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-x64.dmg)**
+- **[macOS (Apple Silicon)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-arm64.dmg)**
+- **[Windows](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-windows-setup.exe)**
+- **[Linux — .deb (Debian, Ubuntu, Mint) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-amd64.deb)**
+- **[Linux — .deb (Debian, Ubuntu, Mint) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.deb)**
+- **[Linux — .rpm (Fedora, RHEL, openSUSE) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.rpm)**
+- **[Linux — .rpm (Fedora, RHEL, openSUSE) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-aarch64.rpm)**
+- **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.AppImage)**
+- **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
+
+### Automatic updates
+
+DevTools checks for updates on startup and every six hours, downloads new versions in the background, and installs them when you quit. Use **Restart now** to install a downloaded update immediately, or turn off **Update automatically** in the sidebar to manage updates yourself. Update checks and downloads require an internet connection.
+
+### Upgrading from v1.3.0 or earlier
+
+Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron version updates to the Tauri version through its usual update button.
+
+- On macOS, the app closes after the update. Open DevTools again to start the new version.
+- On Windows, the new installer removes the Electron version.
+- On Linux, the new `.deb` and `.rpm` packages replace the old `devtools` package. An AppImage is replaced in place.
+
+Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after the update.
+
+## Workspace and shortcuts
+
+- **Keep tools open in tabs.** Switch between tools without losing their current inputs. Close a tab when you are finished.
+- **Search by name or keyword.** Open the command palette with Cmd+K on macOS or Ctrl+K on Windows and Linux. Search for terms such as `sha`, `yml`, or `diff`.
+- **Favorites and recents.** Pin up to five tools and return to recently used tools from Home. Cmd/Ctrl+1 through 5 opens your favorites. Customize these bindings in **Shortcuts**.
+- **Light and dark appearance.** DevTools follows the system theme initially; use the appearance button to switch between light and dark.
+
+- **Paste to find a tool.** Paste text outside a text field, and DevTools suggests the tool that fits: a JWT, JSON, a URL, a UUID, a timestamp, a cron expression, a certificate, a cURL command, and more. Press Enter to open the tool with the text filled in. DevTools only reads what you paste. It never reads the clipboard on its own.
+- **Menu bar and tray.** The DevTools icon in the macOS menu bar, or the Windows and Linux tray, opens the app or its tool search.
+- **Global shortcut.** Press Ctrl+Shift+Space in any app to open DevTools with its tool search. Press it again to hide DevTools. Change or turn off the shortcut in Shortcuts.
+
+### Open a tool from other apps
+
+DevTools registers the `devtoolsapp://` link scheme, so Raycast, Alfred, Shortcuts, a terminal, or a browser can open a tool directly. A link reuses the running window.
+
+| Link | Result |
+|---|---|
+| `devtoolsapp://open/<tool-id>` | Opens a tool, for example `devtoolsapp://open/json-viewer`. The tool IDs are in [the tool registry](src/app/toolRegistry.ts). |
+| `devtoolsapp://search?q=<text>` | Opens the command palette with the text. |
+| `devtoolsapp://home` | Shows the home page. |
+
+From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Linux, run `xdg-open` with the same link. On Windows, run `start` with the link.
+
+## Tools
 
 ### Development Tools
 
 - **JSON Viewer** - Format, validate, minify, and sort JSON, run JSONPath queries, and convert to YAML or XML
-- **Code Playground** - Multi-language editor (JS, HTML, CSS, JSON, Markdown)
+- **Code Playground** - Experiment with JavaScript, HTML, and CSS
 - **Regex Generator** - Interactive regex construction with live testing
 - **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
@@ -52,7 +116,7 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 ### Media
 
 - **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, and create color schemes
-- **Image Converter & Compressor** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
+- **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
 ### Text Tools
@@ -72,170 +136,99 @@ Offline-first developer utilities for macOS, Windows, and Linux. No cloud depend
 
 ### Utilities
 
-- **Unit Converter** - Convert length, weight, temperature, and currency units
+- **Unit Converter** - Convert length, weight, temperature, and data units
 
-## Download
+## Development
 
-Get the latest release for your platform:
+### Prerequisites
 
-- **[macOS (Intel)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-x64.dmg)**
-- **[macOS (Apple Silicon)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-macos-arm64.dmg)**
-- **[Windows](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-windows-setup.exe)**
-- **[Linux — .deb (Debian, Ubuntu, Mint) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-amd64.deb)**
-- **[Linux — .deb (Debian, Ubuntu, Mint) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.deb)**
-- **[Linux — .rpm (Fedora, RHEL, openSUSE) (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.rpm)**
-- **[Linux — .rpm (Fedora, RHEL, openSUSE) (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-aarch64.rpm)**
-- **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.AppImage)**
-- **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
+- Node.js 22+ and npm.
+- Stable Rust, installed with [rustup](https://rustup.rs).
+- The [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
-### Upgrading from v1.3.0 or earlier
-
-Version 1.3.0 and earlier used Electron. Later versions use Tauri. The Electron version updates to the Tauri version through its usual update button.
-
-- On macOS, the app closes after the update. Open DevTools again to start the new version.
-- On Windows, the new installer removes the Electron version.
-- On Linux, the new `.deb` and `.rpm` packages replace the old `devtools` package. An AppImage is replaced in place.
-
-Your favorites, recent tools, theme, and custom shortcuts do not move to the new version. Set them again after the update.
-
-## Work Faster
-
-- **Paste to find a tool.** Paste text outside a text field, and DevTools suggests the tool that fits: a JWT, JSON, a URL, a UUID, a timestamp, a cron expression, a certificate, a cURL command, and more. Press Enter to open the tool with the text filled in. DevTools only reads what you paste. It never reads the clipboard on its own.
-- **Menu bar and tray.** The DevTools icon in the macOS menu bar, or the Windows and Linux tray, opens the app or its tool search.
-- **Global shortcut.** Press Ctrl+Shift+Space in any app to open DevTools with its tool search. Press it again to hide DevTools. Change or turn off the shortcut in Shortcuts.
-
-## Open a Tool from Other Apps
-
-DevTools registers the `devtoolsapp://` link scheme, so Raycast, Alfred, Shortcuts, a terminal, or a browser can open a tool directly. A link reuses the running window.
-
-| Link | Result |
-|---|---|
-| `devtoolsapp://open/<tool-id>` | Opens a tool, for example `devtoolsapp://open/json-viewer`. The tool IDs are in `src/app/toolRegistry.ts`. |
-| `devtoolsapp://search?q=<text>` | Opens the command palette with the text. |
-| `devtoolsapp://home` | Shows the home page. |
-
-From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Linux, run `xdg-open` with the same link. On Windows, run `start` with the link.
-
-## Quick Start
-
-```bash
-# Clone and install
-git clone https://github.com/me-shaon/devtools.git
-cd devtools
-npm install
-
-# Run locally (development mode)
-npm run dev
-
-# Build for distribution
-npm run build
-```
-
-## Requirements
-
-- Node.js 22+
-- npm
-- Rust (stable). Install it with [rustup](https://rustup.rs).
-- The Tauri system dependencies for your platform. Refer to the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
-
-On Debian or Ubuntu, install the Linux dependencies with this command:
+On Debian or Ubuntu, install the native build dependencies:
 
 ```bash
 sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
   libxdo-dev libssl-dev patchelf file rpm
 ```
 
-## Architecture
-
-```
-src/
-├── components/
-│   └── tools/       # Tool implementations (41 React components)
-├── app/
-│   └── DevToolsApp.tsx   # Main app with sidebar navigation
-└── main.tsx         # React entry point
-
-src/lib/
-└── desktop.ts       # Bridge to the Tauri runtime (version, updates, file saving)
-
-src-tauri/
-├── src/main.rs      # Tauri app entry point and native commands
-├── tauri.conf.json  # Window, bundle, and updater configuration
-└── capabilities/    # Permissions for the app window
-```
-
-### Tech Stack
-
-- **Tauri** 2 for the desktop runtime (system webview and a Rust backend)
-- **React** 18+ with TypeScript
-- **Vite** for fast builds and hot reload
-- **Tailwind CSS** for styling
-- **shadcn/ui** for UI components
-- No analytics or telemetry
-
-## Development
-
-The installers go to `src-tauri/target/release/bundle/`. Each platform builds only its own installers. CI builds all platforms.
-
-### End-to-End Test
-
-The `e2e/smoke.mjs` script starts the built app with [tauri-driver](https://v2.tauri.app/develop/tests/webdriver/) and checks the main flows. It runs on Linux and in CI:
+### Run locally
 
 ```bash
+git clone https://github.com/me-shaon/devtools.git
+cd devtools
+npm ci
+npm run dev
+```
+
+For UI-only development, run `npm run dev:web` and open the URL printed by Vite. Browser preview does not provide native desktop integrations or the updater.
+
+### Commands
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start Vite and the Tauri desktop app with hot reload |
+| `npm run dev:web` | Run the web UI in a browser |
+| `npm run build:web` | Build the frontend into `dist/` |
+| `npm run build` | Build the desktop app and installers for the current platform |
+| `npm test` | Run the Vitest suite |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run lint` | Run ESLint |
+| `npm run dist:mac` | Build macOS `.app` and `.dmg` packages |
+| `npm run dist:win` | Build the Windows NSIS installer |
+| `npm run dist:linux` | Build Linux AppImage, Debian, and RPM packages |
+| `npm run brand:build` | Rebuild logos, favicons, and desktop icons |
+
+Installers are written to `src-tauri/target/release/bundle/`. Each platform builds its own installers; CI builds the supported platforms. See the [release process](docs/release-process.md) for versioning, signing, and publishing.
+
+### Desktop smoke test
+
+The [smoke test](e2e/smoke.mjs) launches the built app through `tauri-driver` and checks the main flows on Linux. In addition to the build dependencies, install `xvfb` and `webkit2gtk-driver`:
+
+```bash
+sudo apt-get install -y xvfb webkit2gtk-driver
 cargo install tauri-driver --locked
 npm run build
 xvfb-run node e2e/smoke.mjs
 ```
 
-### Running in Development
+### Project structure
 
-```bash
-npm run dev    # Starts the Vite dev server and the Tauri app
+```text
+src/
+├── app/
+│   ├── DevToolsApp.tsx     # Workspace, tabs, navigation, and app settings
+│   └── toolRegistry.ts    # Tool names, categories, keywords, and lazy imports
+├── components/
+│   ├── app/               # Command palette, paste suggestions, and shortcuts
+│   └── tools/             # Tool interfaces and shared workspace components
+├── lib/desktop.ts         # Bridge to native desktop capabilities
+├── utils/                 # Conversion, parsing, generation, and validation logic
+└── main.tsx               # React entry point
+src-tauri/                 # Rust backend, native integration, and bundle config
+tests/                     # Unit and component tests
+e2e/                       # Desktop smoke tests
+scripts/                   # Release and brand asset tooling
 ```
 
-### Build Scripts
+Built with Tauri 2, React 18, TypeScript, Vite, Tailwind CSS, and shadcn/ui. Tauri uses the system webview with a Rust backend.
 
-```bash
-npm run dev              # Development mode with hot reload
-npm run dev:web          # Run only the web UI in a browser
-npm run build            # Build the app and the installers for the current platform
-npm run test             # Run the test suite
-npm run lint             # Run ESLint
-npm run dist:mac         # Build macOS packages (.app, .dmg)
-npm run dist:win         # Build the Windows installer (NSIS .exe)
-npm run dist:linux       # Build Linux packages (.AppImage, .deb, .rpm)
-npm run brand:build      # Rebuild logos, PNG exports, favicons, and desktop icons
-```
+### Add a tool
 
-## Adding a Tool
-
-1. Create component in `src/components/tools/YourTool.tsx`
-2. Add tool definition to `ALL_TOOLS` array in `src/app/toolRegistry.ts`
-3. Register the lazy-loaded component in `TOOL_COMPONENTS` in `src/app/toolRegistry.ts`
-4. Add tests if the new tool has non-trivial behavior
-5. That's it! The tool will appear in the sidebar automatically
+1. Create the interface in `src/components/tools/YourTool.tsx` and put reusable logic in `src/utils/`.
+2. Add its name, unique ID, category, icon, and search keywords to `ALL_TOOLS` in [toolRegistry.ts](src/app/toolRegistry.ts).
+3. Register its lazy-loaded component in `TOOL_COMPONENTS` in the same file. The registry supplies sidebar navigation and tool search.
+4. Add tests for non-trivial behavior, run the relevant checks, and update the tool list in this README.
 
 ## Contributing
 
-We welcome contributions! This project is continuously being improved by user feedback and contributions.
-
-### Pull Requests
-
-Pull requests welcome. For major changes, open an issue first to discuss the proposed changes.
-
-### Development Setup
-
-```bash
-git clone https://github.com/me-shaon/devtools.git
-cd devtools
-npm install
-npm run dev  # Run in development mode
-```
-
-## License
-
-MIT
+Pull requests are welcome. For major changes, open an issue first to discuss the proposal. Include a description of the change and the checks you ran; include current screenshots for UI changes.
 
 ## Brand assets
 
 The [brand asset guide](assets/brand/README.md) includes SVG and PNG logos, desktop icons, social artwork, colors, and usage rules. The approved brand name is **DevTools**.
+
+## License
+
+MIT
