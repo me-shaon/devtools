@@ -248,3 +248,97 @@ export function getBaseName(base: NumberBase): string {
   };
   return names[base];
 }
+
+/** Count the set bits of a non-negative value. */
+export function popcount(value: bigint): number {
+  let count = 0;
+  for (let v = value; v > 0n; v &= v - 1n) count++;
+  return count;
+}
+
+/** Index of the highest set bit of a non-negative value, or null for zero. */
+export function highestSetBit(value: bigint): number | null {
+  return value > 0n ? value.toString(2).length - 1 : null;
+}
+
+/** Index of the lowest set bit of a non-negative value, or null for zero. */
+export function lowestSetBit(value: bigint): number | null {
+  if (value <= 0n) return null;
+  let index = 0;
+  for (let v = value; (v & 1n) === 0n; v >>= 1n) index++;
+  return index;
+}
+
+/** Reverse the byte order of an unsigned value of `bits` width, to change its endianness. */
+export function byteSwap(value: bigint, bits: number): bigint {
+  let source = BigInt.asUintN(bits, value);
+  let result = 0n;
+  for (let i = 0; i < bits / 8; i++) {
+    result = (result << 8n) | (source & 0xffn);
+    source >>= 8n;
+  }
+  return result;
+}
+
+/**
+ * Flip one bit of a value at a fixed width.
+ * A negative value stays signed and a non-negative value stays unsigned, so -1 with bit 0 flipped is -2.
+ */
+export function toggleBit(value: bigint, bit: number, bits: number): bigint {
+  const flipped = BigInt.asUintN(bits, value) ^ (1n << BigInt(bit));
+  return value < 0n ? BigInt.asIntN(bits, flipped) : flipped;
+}
+
+const ROMAN_SYMBOLS: [string, number][] = [
+  ['M', 1000],
+  ['CM', 900],
+  ['D', 500],
+  ['CD', 400],
+  ['C', 100],
+  ['XC', 90],
+  ['L', 50],
+  ['XL', 40],
+  ['X', 10],
+  ['IX', 9],
+  ['V', 5],
+  ['IV', 4],
+  ['I', 1],
+];
+
+// The standard subtractive form: each decimal digit has exactly one spelling.
+const ROMAN_PATTERN = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+
+/** Write a value from 1 to 3999 as a Roman numeral. Returns null for other values. */
+export function toRoman(value: bigint): string | null {
+  if (value < 1n || value > 3999n) return null;
+  let rest = Number(value);
+  let result = '';
+  for (const [symbol, amount] of ROMAN_SYMBOLS) {
+    while (rest >= amount) {
+      result += symbol;
+      rest -= amount;
+    }
+  }
+  return result;
+}
+
+/** Strictly parse a Roman numeral in standard form, in any case. IIII, VX and IC are errors. */
+export function parseRoman(input: string): { ok: true; value: bigint } | { ok: false; error: string } {
+  const text = input.trim().toUpperCase();
+  if (!text) return { ok: false, error: 'Enter a Roman numeral.' };
+  if (!/^[MDCLXVI]+$/.test(text) || !ROMAN_PATTERN.test(text)) {
+    return {
+      ok: false,
+      error: `"${input.trim()}" is not a valid Roman numeral. Use the standard form from I to MMMCMXCIX, such as IV for 4.`,
+    };
+  }
+  let value = 0;
+  let i = 0;
+  for (const [symbol, amount] of ROMAN_SYMBOLS) {
+    while (text.startsWith(symbol, i)) {
+      value += amount;
+      i += symbol.length;
+    }
+  }
+  return { ok: true, value: BigInt(value) };
+}
