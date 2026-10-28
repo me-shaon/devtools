@@ -6,6 +6,10 @@
   "author": "Ahmed Shamim",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
@@ -19,7 +23,7 @@
     "dist:linux:deb": "tauri build --bundles deb",
     "dist:linux:rpm": "tauri build --bundles rpm",
     "tauri": "tauri",
-    "icon": "npm run brand:build",
+    "icon": "pnpm run brand:build",
     "clean": "rm -rf node_modules/.vite dist src-tauri/target",
     "lint": "eslint .",
     "preview": "vite preview",

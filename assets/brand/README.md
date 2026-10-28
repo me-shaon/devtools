@@ -36,7 +36,7 @@ Use `logo-horizontal-primary.svg` on light backgrounds and `logo-horizontal-reve
 
 ## Regenerate and integrate
 
-Run `npm ci`, then `npm run brand:build` (also available as `npm run icon`). The generator reads the two SVG masters, creates all exports using Sharp, and invokes the installed Tauri icon CLI for the platform formats. SVG logo exports contain paths, not live text.
+Run `pnpm install`, then `pnpm run brand:build` (also available as `pnpm run icon`). The generator reads the two SVG masters, creates all exports using Sharp, and invokes the installed Tauri icon CLI for the platform formats. SVG logo exports contain paths, not live text.
 
 Generated runtime copies live in `public/brand/`, `public/app-icon.png`, `public/favicon.*`, `public/apple-touch-icon.png`, `public/og-image.png`, `src-tauri/app-icon.png`, and `src-tauri/icons/`. Edit the masters and regenerate instead of modifying copies.
 

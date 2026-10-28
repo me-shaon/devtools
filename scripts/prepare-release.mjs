@@ -88,5 +88,5 @@ console.log("");
 console.log("Next steps:");
 console.log(`1. Review the version ${version} in package.json, package-lock.json, and src-tauri/Cargo.toml.`);
 console.log(`2. Edit release-notes/${tag}.md with human-readable release notes.`);
-console.log(`3. Run: npm run release:check -- ${tag}`);
+console.log(`3. Run: pnpm run release:check -- ${tag}`);
 console.log(`4. Commit, tag ${tag}, and push.`);

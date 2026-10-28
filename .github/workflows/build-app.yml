@@ -53,11 +53,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
-          cache: npm
+          node-version: "24"
+          cache: pnpm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -78,7 +81,7 @@ jobs:
             libxdo-dev libssl-dev patchelf file rpm xvfb webkit2gtk-driver
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Configure signing
         shell: bash
@@ -130,7 +133,7 @@ jobs:
 
       - name: Build app
         shell: bash
-        run: npx tauri build $BUILD_ARGS
+        run: pnpm exec tauri build $BUILD_ARGS
 
       - name: Collect release assets
         shell: bash
@@ -252,7 +255,7 @@ jobs:
         if: matrix.e2e
         shell: bash
         run: >
-          npx tauri build --target ${{ matrix.target }} --no-bundle --features e2e
+          pnpm exec tauri build --target ${{ matrix.target }} --no-bundle --features e2e
           ${{ runner.os == 'Windows' && '--config e2e/tauri.e2e.conf.json' || '' }}
 
       - name: Install tauri-driver
