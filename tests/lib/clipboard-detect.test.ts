@@ -46,6 +46,12 @@ describe("detectPastedContent", () => {
     expect(first("eJustSomeWordsThatLookLikeBase64")).not.toBe("compression");
   });
 
+  it("sends pasted HAR JSON to the HAR viewer", () => {
+    const har = '{"log": {"version": "1.2", "creator": {"name": "WebInspector"}, "entries": [{"request": {"method": "GET", "url": "https://example.com/"}}]}}';
+    expect(detectPastedContent(har, ids)[0]).toMatchObject({ toolId: "har-viewer", label: "a HAR file" });
+    expect(first('{"log": "just a message"}')).toBe("json-viewer");
+  });
+
   it("sends IP blocks and IPv6 addresses to the CIDR calculator", () => {
     expect(detectPastedContent("10.0.0.0/8", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "a CIDR block" });
     expect(detectPastedContent("fe80::1", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv6 address" });

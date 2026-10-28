@@ -117,6 +117,7 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521)) AAAA[A-Za-z0-9+/]+=*( .*)?$/.test(text)) add("key-generator", "an SSH public key", 95);
   if (/^curl\s/i.test(text)) add("curl-to-code", "a cURL command", 95);
   if (isJson(text)) {
+    if (/^\{\s*"log"\s*:/.test(text) && /"entries"\s*:\s*\[/.test(text)) add("har-viewer", "a HAR file", 98);
     if (/"\$schema"\s*:\s*"https?:\/\/json-schema\.org\//.test(text)) add("json-schema", "a JSON Schema", 95);
     add("json-viewer", "JSON", 90);
     add("json-typescript", "JSON", 40);

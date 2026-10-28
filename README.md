@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 49 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 50 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
@@ -115,6 +115,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 ### Network
 
 - **IP / CIDR Calculator** - Get the network, broadcast, host range, masks, and address type for IPv4 and IPv6 blocks, and split, merge, or check ranges
+- **HAR Viewer** - Filter, sort, and inspect the requests in a .har file from the browser, copy a request as cURL, and save a sanitized copy without credentials and cookies
 
 ### Time & Date
 
