@@ -31,6 +31,7 @@ import {
   ListOrdered,
   Lock,
   MonitorPlay,
+  Network,
   Palette,
   Quote,
   RefreshCw,
@@ -86,6 +87,7 @@ export const ALL_TOOLS = [
   { icon: Brackets, name: "PHP Tools", id: "php-tools", category: "Converters", keywords: ["php", "serialize", "unserialize", "wordpress", "laravel", "session", "array", "var_export", "json"] },
   { icon: FileArchive, name: "Compression", id: "compression", category: "Converters", keywords: ["gzip", "gunzip", "zlib", "deflate", "inflate", "compress", "decompress", "helm", "gz"] },
   { icon: Terminal, name: "cURL to Code", id: "curl-to-code", category: "Converters", keywords: ["curl", "fetch", "python requests", "go", "php", "reqwest", "httpie", "http request"] },
+  { icon: Network, name: "IP / CIDR Calculator", id: "ip-cidr", category: "Network", keywords: ["ip", "ipv4", "ipv6", "cidr", "subnet", "netmask", "subnet mask", "wildcard mask", "prefix", "network address", "broadcast", "host range", "reverse dns", "in-addr.arpa", "ip6.arpa", "rfc 1918", "cgnat", "supernet", "summarize"] },
   { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time", "milliseconds", "iso 8601", "time zone", "utc"] },
   { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date", keywords: ["days", "between", "duration"] },
   { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule"] },
@@ -178,5 +180,6 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   "jwt-decoder": lazyNamed(() => import("@/components/tools/JwtDecoder"), "JwtDecoder"),
   "api-formatter": lazyNamed(() => import("@/components/tools/ApiFormatter"), "ApiFormatter"),
   "json-diff": lazyNamed(() => import("@/components/tools/JsonDiff"), "JsonDiff"),
+  "ip-cidr": lazyNamed(() => import("@/components/tools/IpCidrCalculator"), "IpCidrCalculator"),
   "unit-converter": lazyNamed(() => import("@/components/tools/UnitConverter"), "UnitConverter"),
 };

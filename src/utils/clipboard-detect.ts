@@ -1,3 +1,4 @@
+import { failed, parseCidr } from "@/utils/ip-cidr";
 import { readJson } from "@/utils/json-repair";
 
 /** A tool suggestion for pasted text. Higher scores are surer matches. */
@@ -75,6 +76,15 @@ const compressedBase64 = (text: string): "GZIP data" | "zlib data" | null => {
   return null;
 };
 
+/** A CIDR block, an IPv4 address with a netmask, or an IPv6 address. A bare IPv4 address could be a version number, so it is skipped. */
+const ipPaste = (text: string): string | null => {
+  const v4 = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2}|\s+255\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.test(text);
+  const v6 = /^[0-9a-f:.]+(\/\d{1,3})?$/i.test(text) && (text.includes("::") || text.split(":").length === 8);
+  if ((!v4 && !v6) || failed(parseCidr(text))) return null;
+  if (v6 && !text.includes("/")) return "an IPv6 address";
+  return /\s/.test(text) ? "an IPv4 address and netmask" : "a CIDR block";
+};
+
 const isTimestamp = (text: string) => {
   // Seconds, milliseconds, microseconds, or nanoseconds.
   if (!/^\d{10}(\d{3}|\d{6}|\d{9})?$/.test(text)) return false;
@@ -119,6 +129,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && isCron(text)) add("cron-calculator", "a cron expression", 85);
   if (single && /^(#[0-9a-f]{3,4}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgba?\([^)]{5,40}\)|hsla?\([^)]{5,40}\)|(hwb|oklch|oklab)\([^)]{5,40}\))$/i.test(text)) add("color-palette", "a color", 85);
   if (single && /^-?0(x[0-9a-f_]+|o[0-7_]+|b[01_]+)$/i.test(text)) add("number-base", "a number literal", 80);
+  const ip = single ? ipPaste(text) : null;
+  if (ip) add("ip-cidr", ip, 85);
   if (single && /^https?:\/\/\S+$/i.test(text)) add("url-encoder", "a URL", 80);
   if (/^(a:\d+:\{|O:\d+:"|C:\d+:"|[^|:;{}"\s]+\|(a|s|i|b|d|O):)/.test(text)) add("php-tools", "PHP serialized data", 85);
   if (/^\s*(<\?php\s+)?(return\s+|\$\w+\s*=\s*)?(\[|array\s*\()[\s\S]*=>/i.test(text)) add("php-tools", "a PHP array", 70);

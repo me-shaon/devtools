@@ -46,6 +46,15 @@ describe("detectPastedContent", () => {
     expect(first("eJustSomeWordsThatLookLikeBase64")).not.toBe("compression");
   });
 
+  it("sends IP blocks and IPv6 addresses to the CIDR calculator", () => {
+    expect(detectPastedContent("10.0.0.0/8", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "a CIDR block" });
+    expect(detectPastedContent("fe80::1", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv6 address" });
+    expect(detectPastedContent("192.168.1.10 255.255.255.0", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv4 address and netmask" });
+    expect(first("1.2.3.4")).toBeUndefined();
+    expect(first("12:30:45")).toBeUndefined();
+    expect(first("300.0.0.0/8")).toBeUndefined();
+  });
+
   it("ignores plain text, hex digests, and numbers that are not timestamps", () => {
     expect(first("hello world")).toBeUndefined();
     expect(first("d41d8cd98f00b204e9800998ecf8427e")).toBeUndefined();
