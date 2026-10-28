@@ -1,4 +1,4 @@
-import { Findings } from "@/utils/image-metadata";
+import { Findings, readXmp, type FindingKind } from "@/utils/image-metadata";
 import type { ByteSource, Patch } from "@/utils/byte-source";
 import { VideoError, type ScanResult, type VideoCleanOptions, type VideoFormat } from "@/utils/video-format";
 
@@ -78,6 +78,8 @@ export function* children(buf: Uint8Array, base: number, from: number, to: numbe
 const childrenOf = (buf: Uint8Array, base: number, box: Box, skip = 0) =>
   children(buf, base, box.start - base + box.headerSize + skip, box.start - base + box.size);
 
+const payload = (buf: Uint8Array, base: number, box: Box) => buf.subarray(box.start - base + box.headerSize, box.start - base + box.size);
+
 /** Turns a box into a "free" box of the same size with zero content. */
 export function blankBox(box: Box): Patch {
   const bytes = new Uint8Array(box.size);
@@ -124,6 +126,150 @@ function readDates(buf: Uint8Array, base: number, box: Box, ctx: Ctx, blanked: b
   if (ctx.options.clearDates && !blanked) ctx.patches.push({ offset: box.start + box.headerSize + 4, bytes: new Uint8Array(wide ? 16 : 8) });
 }
 
+const UDTA_TEXT: Record<string, [string, FindingKind]> = {
+  "\u00a9xyz": ["GPS position", "location"],
+  "\u00a9mak": ["Camera make", "camera"],
+  "\u00a9mod": ["Camera model", "camera"],
+  "\u00a9swr": ["Software", "other"],
+  "\u00a9too": ["Encoder", "other"],
+  "\u00a9enc": ["Encoded by", "other"],
+  "\u00a9day": ["Creation date", "camera"],
+  "\u00a9nam": ["Title", "text"],
+  "\u00a9cmt": ["Comment", "text"],
+  "\u00a9des": ["Description", "text"],
+  "\u00a9inf": ["Information", "text"],
+  "\u00a9ART": ["Artist", "provenance"],
+  "\u00a9aut": ["Author", "provenance"],
+  "\u00a9cpy": ["Copyright", "provenance"],
+  "\u00a9prd": ["Producer", "provenance"],
+};
+
+const META_KEYS: Record<string, [string, FindingKind]> = {
+  "com.apple.quicktime.location.ISO6709": ["GPS position", "location"],
+  "com.apple.quicktime.location.name": ["Location name", "location"],
+  "com.apple.quicktime.make": ["Camera make", "camera"],
+  "com.apple.quicktime.model": ["Camera model", "camera"],
+  "com.apple.quicktime.software": ["Software", "other"],
+  "com.apple.quicktime.creationdate": ["Creation date", "camera"],
+  "com.apple.quicktime.author": ["Author", "provenance"],
+  "com.apple.quicktime.title": ["Title", "text"],
+  "com.apple.quicktime.description": ["Description", "text"],
+  "com.apple.quicktime.content.identifier": ["Content identifier", "other"],
+  "com.android.version": ["Android version", "camera"],
+  "com.android.capture.fps": ["Capture frame rate", "camera"],
+};
+
+const kindForKey = (key: string): FindingKind =>
+  /location|gps|latitude|longitude/i.test(key)
+    ? "location"
+    : /make|model|camera|lens|device|serial/i.test(key)
+      ? "camera"
+      : /author|artist|copyright|creator|publisher|owner/i.test(key)
+        ? "provenance"
+        : "text";
+
+/** Writes "+37.3349-122.0090+010.000/" as "37.3349, -122.009". */
+export function iso6709(text: string): string {
+  const match = /^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/.exec(text.trim());
+  return match ? `${Number(match[1])}, ${Number(match[2])}` : text;
+}
+
+const typeName = (type: string) => type.replace(/[^\x20-\x7e\u00a9]/g, "?");
+
+function addValue(ctx: Ctx, key: string, value: string, source: string) {
+  const [label, kind] = UDTA_TEXT[key] ?? META_KEYS[key] ?? [key, kindForKey(key)];
+  ctx.out.addText(label, kind === "location" && /^[+-]\d/.test(value) ? iso6709(value) : value, source, kind);
+}
+
+/** Text in a QuickTime text atom (length, language, text) or an iTunes "data" box. */
+function atomText(p: Uint8Array): string {
+  if (p.length >= 16 && fourcc(p, 4) === "data") return utf8(p.subarray(16, Math.min(p.length, u32(p, 0))));
+  if (p.length >= 4) {
+    const length = (p[0] << 8) | p[1];
+    if (length > 0 && 4 + length <= p.length) return utf8(p.subarray(4, 4 + length));
+  }
+  return printable(p);
+}
+
+function readLoci(p: Uint8Array, ctx: Ctx) {
+  // Version and flags (4), language (2), name (ends with 0), role (1), then longitude, latitude, and altitude as 16.16 fixed point.
+  const nameEnd = p.indexOf(0, 6);
+  if (nameEnd < 0 || nameEnd + 10 > p.length) {
+    ctx.out.add({ kind: "location", label: "Location", detail: printable(p) || `${p.length} bytes`, source: "3GPP location" });
+    return;
+  }
+  const name = utf8(p.subarray(6, nameEnd));
+  const fixed = (o: number) => (u32(p, o) | 0) / 65536;
+  const lon = fixed(nameEnd + 2);
+  const lat = fixed(nameEnd + 6);
+  ctx.out.add({ kind: "location", label: "GPS position", detail: `${lat.toFixed(5)}, ${lon.toFixed(5)}${name ? ` (${name})` : ""}`, source: "3GPP location" });
+}
+
+function readKeys(p: Uint8Array): string[] {
+  const keys: string[] = [];
+  const count = u32(p, 4);
+  let o = 8;
+  for (let i = 0; i < count && o + 8 <= p.length; i++) {
+    const size = u32(p, o);
+    if (size < 8) break;
+    keys.push(utf8(p.subarray(o + 8, o + size)));
+    o += size;
+  }
+  return keys;
+}
+
+function readIlst(buf: Uint8Array, base: number, ilst: Box, keys: string[], ctx: Ctx, source: string) {
+  for (const item of childrenOf(buf, base, ilst)) {
+    // In QuickTime "mdta" lists, the item type is a 1-based index into the keys.
+    const index = u32(buf, item.start - base + 4);
+    const key = index >= 1 && index <= keys.length ? keys[index - 1] : item.type;
+    for (const data of childrenOf(buf, base, item)) {
+      if (data.type !== "data") continue;
+      const p = payload(buf, base, data);
+      if (p.length < 8) continue;
+      const value = (u32(p, 0) & 0xffffff) === 1 ? utf8(p.subarray(8)) : printable(p.subarray(8));
+      if (value) addValue(ctx, key, value, source);
+    }
+  }
+}
+
+function readMeta(buf: Uint8Array, base: number, meta: Box, ctx: Ctx, source: string) {
+  // In MP4, "meta" is a full box with 4 bytes of version and flags. In QuickTime it is not.
+  const skip = u32(buf, meta.start - base + meta.headerSize) === 0 ? 4 : 0;
+  const kids = [...childrenOf(buf, base, meta, skip)];
+  const keysBox = kids.find((k) => k.type === "keys");
+  const keys = keysBox ? readKeys(payload(buf, base, keysBox)) : [];
+  for (const child of kids) {
+    const p = payload(buf, base, child);
+    if (child.type === "ilst") readIlst(buf, base, child, keys, ctx, source);
+    else if (child.type === "XMP_") readXmp(utf8(p), ctx.out, source);
+    else if (child.type === "xml ") {
+      const xml = utf8(p.subarray(4));
+      if (/xmpmeta|xap\/1\.0/.test(xml)) readXmp(xml, ctx.out, source);
+      else ctx.out.addText("XML metadata", xml, source, "other");
+    }
+  }
+}
+
+function readUdta(buf: Uint8Array, base: number, udta: Box, ctx: Ctx) {
+  const source = "QuickTime user data";
+  for (const child of childrenOf(buf, base, udta)) {
+    const p = payload(buf, base, child);
+    if (child.type === "meta") readMeta(buf, base, child, ctx, "MP4 metadata");
+    else if (child.type === "XMP_") readXmp(utf8(p), ctx.out, "QuickTime XMP");
+    else if (child.type === "loci") readLoci(p, ctx);
+    else if (child.type.startsWith("\u00a9") || UDTA_TEXT[child.type]) {
+      const text = atomText(p);
+      if (text) addValue(ctx, child.type, text, source);
+    } else {
+      const text = printable(p);
+      const label = `User data box ${typeName(child.type)}`;
+      if (text.length >= 4) ctx.out.addText(label, text, source, "other");
+      else ctx.out.add({ kind: "other", label, detail: `${p.length} bytes`, source });
+    }
+  }
+}
+
 /** Reads the boxes inside `parent`. `blanked` is true when a parent box is already being removed. */
 function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, blanked: boolean) {
   for (const box of childrenOf(buf, base, parent)) {
@@ -135,6 +281,14 @@ function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, bla
         break;
       case "trak":
         scanContainer(buf, base, box, ctx, blanked);
+        break;
+      case "udta":
+        readUdta(buf, base, box, ctx);
+        if (!blanked) ctx.patches.push(blankBox(box));
+        break;
+      case "meta":
+        readMeta(buf, base, box, ctx, "QuickTime metadata");
+        if (!blanked) ctx.patches.push(blankBox(box));
         break;
       default:
         if (CONTAINERS.has(box.type)) scanContainer(buf, base, box, ctx, blanked);

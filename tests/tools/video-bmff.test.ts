@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyPatches, bytesSource } from "@/utils/byte-source";
 import { DEFAULT_VIDEO_OPTIONS } from "@/utils/video-format";
 import { blankBox, children, headerAt, scanBmff } from "@/utils/video-bmff";
-import { box, cat, latin, sampleMp4, u32 } from "./video-fixtures";
+import { box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8 } from "./video-fixtures";
 
 const scan = (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => scanBmff(bytesSource(bytes), options);
 const clean = async (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => applyPatches(bytes, (await scan(bytes, options)).patches);
@@ -71,5 +71,51 @@ describe("scanBmff dates and format", () => {
     const cleaned = await clean(bytes);
     expect(cleaned.length).toBe(bytes.length);
     expect(Array.from(cleaned.subarray(video.offset, video.offset + video.length))).toEqual(Array.from(bytes.subarray(video.offset, video.offset + video.length)));
+  });
+});
+
+describe("scanBmff user data and QuickTime metadata", () => {
+  it("reads QuickTime text atoms and removes the udta box", async () => {
+    const udta = box("udta", qtText("\u00a9xyz", "+52.5200+013.4050/"), qtText("\u00a9mak", "Apple"), qtText("\u00a9too", "Lavf60.16.100"));
+    const { bytes, moovStart } = sampleMp4({ moovExtra: [udta] });
+    const result = await scan(bytes);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "location", label: "GPS position", detail: "52.52, 13.405", removable: true }),
+        expect.objectContaining({ kind: "camera", label: "Camera make", detail: "Apple" }),
+        expect.objectContaining({ kind: "other", label: "Encoder", detail: "Lavf60.16.100" }),
+      ]),
+    );
+    const cleaned = await clean(bytes);
+    const after = await scan(cleaned);
+    expect(after.findings.filter((f) => f.removable)).toEqual([]);
+    expect(new TextDecoder().decode(cleaned.subarray(moovStart, cleaned.length))).toContain("free");
+  });
+
+  it("reads Apple mdta keys and values", async () => {
+    const keys = fullBox("keys", 0, u32(2), box("mdta", utf8("com.apple.quicktime.location.ISO6709")), box("mdta", utf8("com.apple.quicktime.model")));
+    const ilst = box("ilst", indexBox(1, dataBox("+37.3349-122.0090+010.000/")), indexBox(2, dataBox("iPhone 16 Pro")));
+    const meta = box("meta", hdlr("mdta"), keys, ilst);
+    const result = await scan(sampleMp4({ moovExtra: [meta] }).bytes);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "location", label: "GPS position", detail: "37.3349, -122.009" }),
+        expect.objectContaining({ kind: "camera", label: "Camera model", detail: "iPhone 16 Pro" }),
+      ]),
+    );
+  });
+
+  it("reads iTunes-style tags in an MP4 meta full box and marks AI tools", async () => {
+    const udta = box("udta", fullBox("meta", 0, hdlr("mdir"), box("ilst", box("\u00a9too", dataBox("Sora")))));
+    const result = await scan(sampleMp4({ moovExtra: [udta] }).bytes);
+    expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "ai", label: "Encoder (mentions OpenAI Sora)" })]));
+  });
+
+  it("reads a 3GPP location box", async () => {
+    // Version and flags, language, name "Home", role, longitude 13.405, latitude 52.52, altitude 0.
+    const fixed = (n: number) => u32(Math.round(n * 65536) >>> 0);
+    const loci = box("loci", [0, 0, 0, 0], [0x15, 0xc7], utf8("Home"), [0], [0], fixed(13.405), fixed(52.52), fixed(0));
+    const result = await scan(sampleMp4({ moovExtra: [box("udta", loci)] }).bytes);
+    expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "location", label: "GPS position", detail: "52.52000, 13.40500 (Home)" })]));
   });
 });
