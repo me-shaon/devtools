@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyPatches, bytesSource } from "@/utils/byte-source";
 import { DEFAULT_VIDEO_OPTIONS } from "@/utils/video-format";
 import { blankBox, children, headerAt, sampleRanges, scanBmff } from "@/utils/video-bmff";
-import { UUID_C2PA, UUID_XMP, box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8, uuidBox } from "./video-fixtures";
+import { UUID_C2PA, UUID_XMP, trak, mvhd, box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8, uuidBox } from "./video-fixtures";
 
 const scan = (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => scanBmff(bytesSource(bytes), options);
 const clean = async (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => applyPatches(bytes, (await scan(bytes, options)).patches);
@@ -212,4 +212,39 @@ describe("scanBmff metadata tracks", () => {
     const [stblBox] = [...children(stbl, 0, 0, stbl.length)];
     expect(sampleRanges(stbl, 0, stblBox)).toEqual([{ offset: 100, length: 30 }, { offset: 500, length: 70 }]);
   });
+});
+
+describe("fragmented metadata tracks", () => {
+  it.each(["mvex", "moof"])("rejects removal when %s signals fragments", async (type) => {
+    const fixture = sampleMp4({
+      withGpmd: true,
+      moovExtra: type === "mvex" ? [box("mvex")] : [],
+      topExtra: type === "moof" ? [box("moof")] : [],
+    });
+    await expect(scan(fixture.bytes)).rejects.toThrow(/Turn off Remove metadata tracks/);
+    const options = { ...DEFAULT_VIDEO_OPTIONS, removeMetadataTracks: false };
+    const result = await scan(fixture.bytes, options);
+    expect(result.findings.find((f) => f.label === "GoPro telemetry track")?.removable).toBe(false);
+    const cleaned = applyPatches(fixture.bytes, result.patches);
+    expect(cleaned.slice(fixture.gps.offset, fixture.gps.offset + fixture.gps.length)).toEqual(fixture.bytes.slice(fixture.gps.offset, fixture.gps.offset + fixture.gps.length));
+  });
+
+  it("still cleans fragmented video without metadata tracks", async () => {
+    const bytes = sampleMp4({ moovExtra: [box("mvex")], topExtra: [box("moof")] }).bytes;
+    expect((await scan(await clean(bytes))).findings).toEqual([]);
+  });
+});
+
+it("rejects fragmented telemetry with empty initialization sample tables", async () => {
+  const gps = latin("GPS5:52.5200,13.4050");
+  const init = cat(box("ftyp", latin("isom"), u32(0)), box("moov", mvhd(0), trak("meta", "gpmd", 2, []),
+    box("mvex", fullBox("trex", 0, u32(2), u32(1), u32(1000), u32(gps.length), u32(0)))));
+  const fragment = (offset: number) => box("moof", fullBox("mfhd", 0, u32(1)), box("traf",
+    box("tfhd", [0, 2, 0, 0], u32(2)), fullBox("tfdt", 0, u32(0)), box("trun", [0, 0, 0, 1], u32(1), u32(offset))));
+  const bytes = cat(init, fragment(fragment(0).length + 8), box("mdat", gps));
+  await expect(scan(bytes)).rejects.toThrow(/fragmented video/);
+  const options = { ...DEFAULT_VIDEO_OPTIONS, removeMetadataTracks: false };
+  const cleaned = await clean(bytes, options);
+  expect(cleaned.slice(init.length)).toEqual(bytes.slice(init.length));
+  expect((await scan(cleaned, options)).findings).toContainEqual(expect.objectContaining({ label: "GoPro telemetry track", removable: false }));
 });

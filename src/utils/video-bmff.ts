@@ -110,6 +110,8 @@ interface Ctx {
   patches: Patch[];
   options: VideoCleanOptions;
   dates: { value: string; count: number } | null;
+  removesMetadataTrack?: boolean;
+  fragmented?: boolean;
 }
 
 const macDate = (seconds: number) => {
@@ -353,6 +355,7 @@ function scanTrack(buf: Uint8Array, base: number, trak: Box, ctx: Ctx, blanked: 
     const remove = ctx.options.removeMetadataTracks;
     ctx.out.add({ kind, label, detail, source: "Track" }, remove || blanked);
     if (remove && !blanked) {
+      ctx.removesMetadataTrack = true;
       ctx.patches.push(blankBox(trak));
       if (stbl) for (const range of sampleRanges(buf, base, stbl)) ctx.patches.push({ offset: range.offset, bytes: new Uint8Array(range.length) });
     }
@@ -369,6 +372,9 @@ function scanTrack(buf: Uint8Array, base: number, trak: Box, ctx: Ctx, blanked: 
 function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, blanked: boolean) {
   for (const box of childrenOf(buf, base, parent)) {
     switch (box.type) {
+      case "mvex":
+        ctx.fragmented = true;
+        break;
       case "mvhd":
       case "tkhd":
       case "mdhd":
@@ -410,6 +416,7 @@ export async function scanBmff(source: ByteSource, options: VideoCleanOptions): 
   let offset = 0;
   while (source.size - offset >= 8) {
     const box = headerAt(await source.read(offset, 32), offset, source.size);
+    if (box.type === "moof") ctx.fragmented = true;
     if (box.type === "ftyp") {
       const brand = fourcc(await source.read(offset + box.headerSize, 4), 0).trim();
       if (HEIF_BRANDS.has(brand)) throw new VideoError("This file is a HEIF or AVIF image. Use Image Metadata Cleaner for images.");
@@ -429,6 +436,9 @@ export async function scanBmff(source: ByteSource, options: VideoCleanOptions): 
     offset += box.size;
   }
   if (!sawMoov) throw new VideoError("The file has no movie header (moov box). It may be cut off, or the recording did not finish.");
+  if (ctx.fragmented && ctx.removesMetadataTrack) {
+    throw new VideoError("This fragmented video stores metadata samples in movie fragments, which this tool cannot remove. Turn off Remove metadata tracks to clean the rest.");
+  }
   if (ctx.dates) {
     const { value, count } = ctx.dates;
     ctx.out.add({ kind: "camera", label: "Recording date", detail: count > 1 ? `${value}, in ${count} headers` : value, source: "Movie and track headers" }, options.clearDates);

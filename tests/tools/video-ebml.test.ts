@@ -129,3 +129,35 @@ describe("scanEbml Tags, Attachments, and seek index", () => {
     expect(labels(result.findings)).toContain("Comment (mentions Pika)");
   });
 });
+
+describe("incomplete scans and nested checksums", () => {
+  it("warns when unindexed GPS tags follow an unknown-size cluster", async () => {
+    const bytes = sampleMkv([elUnknown(ID.Cluster, el(0xe7, [0])), el(ID.Tags, el(ID.Tag, simpleTag("LOCATION", "+52.5200+013.4050/")))]).bytes;
+    const result = await scan(bytes);
+    expect(result.warnings.join(" ")).toMatch(/scan is incomplete.*Metadata not listed in the seek index may remain/);
+    expect((await scan(await clean(bytes))).warnings).toEqual(result.warnings);
+  });
+
+  it("repairs TrackEntry CRCs before the containing Tracks CRC", async () => {
+    const checked = (id: number, body: Uint8Array) => {
+      const crc = crc32(body);
+      return el(id, el(ID.Crc32, [crc & 255, crc >>> 8 & 255, crc >>> 16 & 255, crc >>> 24]), body);
+    };
+    const original = sampleMkv([checked(ID.Tracks, cat(
+      checked(ID.TrackEntry, elText(ID.Name, "Private camera")),
+      checked(ID.TrackEntry, elText(ID.Name, "Microphone")),
+    ))]).bytes;
+    const cleaned = await clean(original);
+    expect(cleaned.length).toBe(original.length);
+    const verify = (start: number) => {
+      const parent = elementAt(cleaned.subarray(start, start + 12), start, cleaned.length);
+      const stored = new DataView(cleaned.buffer, cleaned.byteOffset).getUint32(parent.dataStart + 2, true);
+      expect(stored).toBe(crc32(cleaned.subarray(parent.dataStart + 6, parent.end)));
+      return parent;
+    };
+    const tracks = verify(indexOfSeq(cleaned, [0x16, 0x54, 0xae, 0x6b]));
+    const first = verify(tracks.dataStart + 6);
+    verify(first.end);
+    expect((await scan(cleaned)).findings).toEqual([]);
+  });
+});

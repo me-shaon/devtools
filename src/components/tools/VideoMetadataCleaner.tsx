@@ -123,7 +123,9 @@ export function VideoMetadataCleaner() {
     if (!result) return undefined;
     return (
       <div className="workspace-notice" role="status">
-        {left.length
+        {result.after.warnings.length
+          ? `Removed ${plural(result.removedCount, "item")}. The scan is incomplete; metadata may remain in the clean copy. ${result.after.warnings.join(" ")}`
+          : left.length
           ? `The clean copy still has ${plural(left.length, "item")}: ${left.map((f) => f.label).join(", ")}.`
           : `Removed ${plural(result.removedCount, "item")}. The clean copy has no metadata left to remove. The audio and video data did not change.`}
       </div>

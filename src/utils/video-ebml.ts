@@ -152,12 +152,19 @@ class ElementEdit {
 
   finish(): Patch | null {
     if (!this.changed) return null;
-    const first = ebmlChildren(this.bytes, this.element.start, this.element).next().value as EbmlElement | undefined;
-    if (first && first.id === EBML_ID.Crc32 && first.size === 4) {
-      // The CRC-32 covers the data of the parent after the CRC element. It is stored little-endian.
-      const crc = crc32(this.bytes.subarray(first.end - this.element.start));
-      this.bytes.set([crc & 255, (crc >>> 8) & 255, (crc >>> 16) & 255, crc >>> 24], first.dataStart - this.element.start);
-    }
+    // Repair children first: a parent's checksum includes its children's CRC bytes.
+    const repair = (parent: EbmlElement) => {
+      const children = [...ebmlChildren(this.bytes, this.element.start, parent)];
+      for (const child of children) {
+        if (child.id === EBML_ID.TrackEntry || child.id === EBML_ID.AttachedFile) repair(child);
+      }
+      const first = children[0];
+      if (first?.id === EBML_ID.Crc32 && first.size === 4) {
+        const crc = crc32(this.bytes.subarray(first.end - this.element.start, parent.end - this.element.start));
+        this.bytes.set([crc & 255, (crc >>> 8) & 255, (crc >>> 16) & 255, crc >>> 24], first.dataStart - this.element.start);
+      }
+    };
+    repair(this.element);
     return { offset: this.element.start, bytes: this.bytes };
   }
 }
@@ -347,7 +354,10 @@ export async function scanEbml(source: ByteSource, options: VideoCleanOptions): 
     }
     await visit(element);
     // After an element of unknown size (a live recording), the rest of the segment cannot be walked.
-    if (element.size === null) break;
+    if (element.size === null) {
+      warnings.push(`The scan is incomplete after an unknown-size element at byte ${element.start}. Metadata not listed in the seek index may remain in the clean copy.`);
+      break;
+    }
     o = element.end;
   }
   for (let i = 0; i < pending.length; i++) {

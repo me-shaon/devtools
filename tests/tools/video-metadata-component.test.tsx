@@ -6,7 +6,7 @@ vi.mock("@/lib/desktop", () => ({ saveFile: mocks.saveFile }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 import { VideoMetadataCleaner } from "@/components/tools/VideoMetadataCleaner";
-import { box, qtText, sampleMp4 } from "./video-fixtures";
+import { ID, el, elText, elUnknown, sampleMkv, simpleTag, box, qtText, sampleMp4 } from "./video-fixtures";
 
 const gpsVideo = () => sampleMp4({ moovExtra: [box("udta", qtText("©xyz", "+52.5200+013.4050/"))] }).bytes;
 
@@ -57,4 +57,20 @@ describe("VideoMetadataCleaner", () => {
     open(new TextEncoder().encode("not a video at all"), "notes.mp4");
     expect(await screen.findByRole("alert")).toHaveTextContent("This file is not an MP4, MOV, M4V, 3GP, MKV, or WebM video.");
   });
+});
+
+it("does not claim all metadata was removed after an incomplete scan", async () => {
+  mocks.saveFile.mockResolvedValue(true);
+  render(<VideoMetadataCleaner />);
+  const bytes = sampleMkv([
+    el(ID.Info, elText(ID.Title, "Holiday")),
+    elUnknown(ID.Cluster, el(0xe7, [0])),
+    el(ID.Tags, el(ID.Tag, simpleTag("LOCATION", "+52.5200+013.4050/"))),
+  ]).bytes;
+  open(bytes, "clip.mkv");
+  await screen.findByText("Title");
+  fireEvent.click(screen.getByRole("button", { name: "Save clean copy" }));
+  await waitFor(() => expect(mocks.saveFile).toHaveBeenCalledTimes(1));
+  expect(screen.getByText(/Removed 1 item. The scan is incomplete/)).toBeInTheDocument();
+  expect(screen.queryByText(/The clean copy has no metadata left to remove/)).not.toBeInTheDocument();
 });
