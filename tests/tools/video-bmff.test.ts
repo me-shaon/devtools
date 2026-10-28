@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyPatches, bytesSource } from "@/utils/byte-source";
 import { DEFAULT_VIDEO_OPTIONS } from "@/utils/video-format";
 import { blankBox, children, headerAt, scanBmff } from "@/utils/video-bmff";
-import { box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8 } from "./video-fixtures";
+import { UUID_C2PA, UUID_XMP, box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8, uuidBox } from "./video-fixtures";
 
 const scan = (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => scanBmff(bytesSource(bytes), options);
 const clean = async (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => applyPatches(bytes, (await scan(bytes, options)).patches);
@@ -117,5 +117,48 @@ describe("scanBmff user data and QuickTime metadata", () => {
     const loci = box("loci", [0, 0, 0, 0], [0x15, 0xc7], utf8("Home"), [0], [0], fixed(13.405), fixed(52.52), fixed(0));
     const result = await scan(sampleMp4({ moovExtra: [box("udta", loci)] }).bytes);
     expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "location", label: "GPS position", detail: "52.52000, 13.40500 (Home)" })]));
+  });
+});
+
+describe("scanBmff uuid boxes and free space", () => {
+  const aiXmp = '<x:xmpmeta><rdf:Description Iptc4xmpExt:DigitalSourceType="http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"/></x:xmpmeta>';
+
+  it("removes top-level XMP and C2PA boxes and reports the AI labels", async () => {
+    const c2pa = uuidBox(UUID_C2PA, latin("c2pa jumb claim_generator\u0000\u000bOpenAI Sora"));
+    const { bytes } = sampleMp4({ topExtra: [uuidBox(UUID_XMP, utf8(aiXmp)), c2pa] });
+    const result = await scan(bytes);
+    expect(result.findings.some((f) => f.kind === "ai" && f.source === "XMP box")).toBe(true);
+    expect(labels(result.findings)).toContain("Content Credentials (C2PA)");
+    const after = await scan(await clean(bytes));
+    expect(after.findings.filter((f) => f.removable)).toEqual([]);
+    expect(labels(after.findings)).not.toContain("Content Credentials (C2PA)");
+  });
+
+  it("removes camera vendor boxes, including Garmin GPS data in the movie header", async () => {
+    const sony = uuidBox("55534d5421d24fcebb88695cfac9c740", latin("<Device manufacturer=\"Sony\" modelName=\"ILCE-7M4\"/>"));
+    const garmin = uuidBox("9b630f8d637440ec8204bc5ff5091728", new Uint8Array(24).fill(3));
+    const { bytes } = sampleMp4({ topExtra: [sony], moovExtra: [garmin] });
+    const result = await scan(bytes);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "camera", label: "Sony camera metadata", removable: true }),
+        expect.objectContaining({ kind: "location", label: "Garmin GPS data", removable: true }),
+      ]),
+    );
+    expect((await scan(await clean(bytes))).findings.filter((f) => f.removable)).toEqual([]);
+  });
+
+  it("keeps an unknown uuid box and says so", async () => {
+    const { bytes } = sampleMp4({ topExtra: [uuidBox("00112233445566778899aabbccddeeff", [1, 2, 3])] });
+    const result = await scan(bytes);
+    expect(result.findings).toEqual([expect.objectContaining({ label: "Unknown vendor box", removable: false }), expect.objectContaining({ label: "Recording date" })]);
+  });
+
+  it("zeros leftover data in free space and reads old AI tags in it", async () => {
+    const { bytes } = sampleMp4({ topExtra: [box("free", latin("old \u00a9too Runway Gen-3"))] });
+    const result = await scan(bytes);
+    expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "ai", label: "Leftover data in free space (mentions Runway)" })]));
+    const after = await scan(await clean(bytes));
+    expect(labels(after.findings)).not.toContain("Leftover data in free space (mentions Runway)");
   });
 });

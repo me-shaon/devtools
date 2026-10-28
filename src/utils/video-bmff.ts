@@ -1,4 +1,4 @@
-import { Findings, readXmp, type FindingKind } from "@/utils/image-metadata";
+import { Findings, readC2pa, readXmp, type FindingKind } from "@/utils/image-metadata";
 import type { ByteSource, Patch } from "@/utils/byte-source";
 import { VideoError, type ScanResult, type VideoCleanOptions, type VideoFormat } from "@/utils/video-format";
 
@@ -270,6 +270,37 @@ function readUdta(buf: Uint8Array, base: number, udta: Box, ctx: Ctx) {
   }
 }
 
+/** Metadata boxes identified by their UUID. The values are from the ExifTool QuickTime tables. */
+const METADATA_UUIDS: Record<string, string> = {
+  be7acfcb97a942e89c71999491e3afac: "XMP",
+  d8fec3d61b0e483c92975828877ec481: "C2PA",
+  "85c0b687820f11e08111f4ce462b6a48": "Canon",
+  "55534d5421d24fcebb88695cfac9c740": "Sony",
+  "9b630f8d637440ec8204bc5ff5091728": "Garmin",
+};
+
+/** Adds findings for a uuid box. Returns true when cleaning removes the box. */
+function readUuid(box: Box, p: Uint8Array, ctx: Ctx): boolean {
+  const vendor = METADATA_UUIDS[box.uuid ?? ""];
+  if (vendor === "XMP") readXmp(utf8(p), ctx.out, "XMP box");
+  else if (vendor === "C2PA") readC2pa(p, ctx.out, "C2PA box");
+  else if (vendor === "Garmin") ctx.out.add({ kind: "location", label: "Garmin GPS data", detail: `GPS track from a Garmin camera, ${p.length} bytes`, source: "Garmin box" });
+  else if (vendor) ctx.out.addText(`${vendor} camera metadata`, printable(p) || `${p.length} bytes`, `${vendor} box`, "camera");
+  else {
+    ctx.out.add({ kind: "other", label: "Unknown vendor box", detail: `uuid ${box.uuid}, ${p.length} bytes. Kept, because some players need it.`, source: "uuid box" }, false);
+    return false;
+  }
+  return true;
+}
+
+/** Old metadata can stay behind in free space after an app edits a file. */
+function readFree(p: Uint8Array, box: Box, ctx: Ctx, blanked: boolean) {
+  if (!p.some((b) => b !== 0)) return;
+  const text = printable(p);
+  ctx.out.addText("Leftover data in free space", text.length >= 4 ? text : `${p.length} bytes`, "free box", "other");
+  if (!blanked) ctx.patches.push({ offset: box.start + box.headerSize, bytes: new Uint8Array(box.size - box.headerSize) });
+}
+
 /** Reads the boxes inside `parent`. `blanked` is true when a parent box is already being removed. */
 function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, blanked: boolean) {
   for (const box of childrenOf(buf, base, parent)) {
@@ -289,6 +320,13 @@ function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, bla
       case "meta":
         readMeta(buf, base, box, ctx, "QuickTime metadata");
         if (!blanked) ctx.patches.push(blankBox(box));
+        break;
+      case "uuid":
+        if (readUuid(box, payload(buf, base, box), ctx) && !blanked) ctx.patches.push(blankBox(box));
+        break;
+      case "free":
+      case "skip":
+        readFree(payload(buf, base, box), box, ctx, blanked);
         break;
       default:
         if (CONTAINERS.has(box.type)) scanContainer(buf, base, box, ctx, blanked);
