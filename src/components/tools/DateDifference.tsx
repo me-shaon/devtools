@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
+import { Clock, ArrowRight } from "lucide-react";
 
 export function DateDifference() {
   const [date1, setDate1] = useState("");

@@ -27,7 +27,7 @@ describe("DevToolsApp shortcuts", () => {
   it("traps dialog focus, cancels recording before closing, and restores the opener", async () => {
     setupMatchMedia();
     render(<DevToolsApp />);
-    const opener = screen.getByRole("button", { name: "Shortcuts", exact: true });
+    const opener = screen.getByRole("button", { name: "Shortcuts" });
     opener.focus();
     fireEvent.click(opener);
     const close = screen.getByRole("button", { name: "Close shortcut settings" });

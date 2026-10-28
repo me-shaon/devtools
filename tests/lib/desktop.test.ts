@@ -8,7 +8,7 @@ const tauri = vi.hoisted(() => ({
   openUrl: vi.fn(async () => {}),
   relaunch: vi.fn(async () => {}),
   check: vi.fn(),
-  listen: vi.fn(async () => () => {}),
+  listen: vi.fn(async (_event: string, _handler: () => Promise<void>) => () => {}),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: tauri.isTauri, invoke: tauri.invoke }));

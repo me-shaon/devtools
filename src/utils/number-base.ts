@@ -135,7 +135,6 @@ export function getBasePrefix(base: NumberBase): string {
  */
 export function formatWithPrefix(value: string, base: NumberBase): string {
   const prefix = getBasePrefix(base);
-  const prefixInValue = value.match(/^(0x|0o|0b)/i)?.[0];
 
   // Remove existing prefix if present
   const cleanValue = value.replace(/^(0x|0o|0b)/i, '');

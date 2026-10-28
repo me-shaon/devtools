@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react"],
+  "ignorePatterns": [
+    "dist",
+    "src-tauri/target",
+    "src-tauri/gen",
+    ".agents/**",
+    "**/*.js",
+    "**/*.cjs",
+    "**/*.mjs"
+  ],
+  "options": {
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-require-imports": "error",
+    "no-useless-escape": "error",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "caughtErrors": "none" }],
+    "react-hooks/exhaustive-deps": "error",
+    "react/only-export-components": [
+      "error",
+      { "allowConstantExport": true, "allowExportNames": ["buttonVariants", "badgeVariants"] }
+    ],
+    "no-control-regex": "error",
+    "no-misleading-character-class": "error",
+
+    "react/set-state-in-effect": "off",
+    "react/refs": "off",
+    "react/purity": "off",
+    "react/use-memo": "off",
+    "react/immutability": "off",
+    "unicorn/prefer-string-starts-ends-with": "off",
+    "unicorn/no-new-array": "off",
+    "unicorn/no-useless-spread": "off"
+  }
+}

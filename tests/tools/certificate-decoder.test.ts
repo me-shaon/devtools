@@ -16,7 +16,7 @@ const DAY = 86_400_000;
 
 let x509: X509;
 let selfSignedPem: string;
-let selfSignedDer: Uint8Array;
+let selfSignedDer: Uint8Array<ArrayBuffer>;
 let rootPem: string;
 let leafPem: string;
 let impostorRootPem: string;

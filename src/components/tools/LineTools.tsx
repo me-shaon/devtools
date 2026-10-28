@@ -107,7 +107,7 @@ export function LineTools() {
       return { result: null, error: (err as Error).message };
     }
     // shuffleNonce is a deliberate trigger for a new shuffle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [text, pattern, filterMode, filterRegex, sort, reverse, dedupe, ignoreCase, trim, removeEmpty, shuffleNonce]);
   const result = processed.result;
 

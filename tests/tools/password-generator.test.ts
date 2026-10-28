@@ -8,8 +8,6 @@ import {
   generateMultiplePasswords,
   calculatePasswordStrength,
   generatePassphrase,
-  type PasswordOptions,
-  type PassphraseOptions,
 } from '@/utils/password';
 
 describe('Password Utils', () => {
@@ -72,7 +70,7 @@ describe('Password Utils', () => {
       });
 
       expect(password.length).toBe(50);
-      expect(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(password)).toBe(true);
+      expect(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>?]/.test(password)).toBe(true);
     });
 
     it('should throw error if no character sets selected', () => {

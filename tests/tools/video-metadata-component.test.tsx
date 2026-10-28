@@ -12,7 +12,7 @@ const gpsVideo = () => sampleMp4({ moovExtra: [box("udta", qtText("©xyz", "+52.
 
 const open = (bytes: Uint8Array, name = "clip.mp4") => {
   const input = document.querySelector<HTMLInputElement>("#video-metadata-file")!;
-  fireEvent.change(input, { target: { files: [new File([bytes], name, { type: "video/mp4" })] } });
+  fireEvent.change(input, { target: { files: [new File([new Uint8Array(bytes)], name, { type: "video/mp4" })] } });
 };
 
 afterEach(() => {

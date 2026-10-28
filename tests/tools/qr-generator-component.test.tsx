@@ -112,9 +112,11 @@ describe("QrGenerator copy image", () => {
     vi.stubGlobal("ClipboardItem", class {
       constructor(public items: Record<string, Promise<Blob>>) {}
     });
-    const clipboard = navigator.clipboard as Clipboard & { write?: unknown };
+    const clipboard = navigator.clipboard as Omit<Clipboard, "write"> & { write?: typeof write };
     clipboard.write = write;
-    onTestFinished(() => delete clipboard.write);
+    onTestFinished(() => {
+      delete clipboard.write;
+    });
 
     await renderWithText();
     fireEvent.click(screen.getByRole("button", { name: /copy image/i }));

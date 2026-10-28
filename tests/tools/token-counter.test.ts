@@ -66,7 +66,12 @@ describe("countO200k", () => {
   });
 
   it("joins partial-character tokens into one piece", () => {
-    const fake = { decode: (ids: number[]) => (ids.length === 1 && ids[0] === 1 ? "�" : ids.join("+")) };
+    const fake = {
+      decode: (ids: Iterable<number>) => {
+        const list = [...ids];
+        return list.length === 1 && list[0] === 1 ? "�" : list.join("+");
+      },
+    };
     expect(decodePieces(fake, [1, 2, 3])).toEqual([{ text: "1+2", tokens: 2 }, { text: "3", tokens: 1 }]);
   });
 });

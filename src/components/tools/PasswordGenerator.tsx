@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { RefreshCw } from "lucide-react";
@@ -19,7 +18,7 @@ export function PasswordGenerator() {
     symbols: true,
   });
 
-  const generatePassword = () => {
+  const generatePassword = useCallback(() => {
     const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const lowercase = "abcdefghijklmnopqrstuvwxyz";
     const numbers = "0123456789";
@@ -45,11 +44,11 @@ export function PasswordGenerator() {
     }
 
     setPassword(result);
-  };
+  }, [length, options]);
 
   useEffect(() => {
     generatePassword();
-  }, [length, options]);
+  }, [generatePassword]);
 
 
   const getStrength = () => {

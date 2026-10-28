@@ -542,7 +542,7 @@ export function generateColorPalette(baseColor: string): ColorPalette | null {
  * Generate shades of a color
  */
 export function generateShades(color: Color, count: number): Color[] {
-  const { h, s, l } = color.hsl;
+  const { h, s } = color.hsl;
   const shades: Color[] = [];
 
   for (let i = 0; i < count; i++) {

@@ -339,7 +339,7 @@ class JsonReader {
 
   readString(): string {
     // JSON forbids raw control characters in strings.
-    // eslint-disable-next-line no-control-regex
+    // oxlint-disable-next-line no-control-regex
     const match = /^"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/.exec(this.text.slice(this.pos));
     if (!match) this.fail("Invalid string");
     this.pos += match[0].length;

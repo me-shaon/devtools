@@ -32,7 +32,7 @@ describe("randomFromAlphabet", () => {
     // A 3-character alphabet uses mask 3, so masked value 3 must be rejected, not mapped to "a".
     const bytes = [3, 0, 7, 1, 255, 2];
     let offset = 0;
-    const fill = (buffer: Uint8Array) => {
+    const fill = (buffer: Uint8Array<ArrayBuffer>) => {
       for (let i = 0; i < buffer.length; i++) buffer[i] = bytes[offset++ % bytes.length];
       return buffer;
     };
@@ -43,8 +43,8 @@ describe("randomFromAlphabet", () => {
     // With modulo, a 10-character alphabet over bytes gives "0".."5" about 4% more often than "6".."9".
     // A seeded byte source keeps the result the same on every run, so the test never fails by chance.
     let seed = 0x9e3779b9;
-    const spy = vi.spyOn(crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView | null>(array: T) => {
-      const bytes = new Uint8Array((array as unknown as ArrayBufferView).buffer);
+    const spy = vi.spyOn(crypto, "getRandomValues").mockImplementation(<T extends Exclude<BufferSource, ArrayBuffer>>(array: T): T => {
+      const bytes = new Uint8Array((array as ArrayBufferView).buffer);
       for (let i = 0; i < bytes.length; i++) {
         seed = (seed + 0x6d2b79f5) | 0;
         let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);

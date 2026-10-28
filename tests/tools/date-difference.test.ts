@@ -2,7 +2,7 @@
  * Test for Date Difference utilities
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   calculateDateDifference,
   formatDateDifference,

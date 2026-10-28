@@ -73,7 +73,7 @@ export function LoremGenerator() {
   const output = useMemo(
     () => formatItems(generateItems(kind, count, { startWithLorem: lorem && startWithLorem }), kind, format),
     // The nonce makes Regenerate draw a new list with the same options.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [kind, count, startWithLorem, lorem, format, nonce],
   );
 

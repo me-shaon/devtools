@@ -41,7 +41,7 @@ const jpeg = (xmp: string) =>
   cat([0xff, 0xd8], segment(0xe1, cat(latin(XMP_ID), latin(xmp))), segment(0xfe, latin("hello")), SCAN);
 const PLAIN_JPEG = cat([0xff, 0xd8], SCAN);
 
-const imageFile = (bytes: Uint8Array, name: string, type: string) => new File([bytes], name, { type });
+const imageFile = (bytes: Uint8Array, name: string, type: string) => new File([new Uint8Array(bytes)], name, { type });
 
 const openFiles = (files: File[]) => {
   fireEvent.change(document.getElementById("image-metadata-file")!, { target: { files } });

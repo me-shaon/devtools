@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight } from "lucide-react";
-import { toast } from "sonner";
 import { formatResult } from "@/utils/unit-converter";
 
 interface ConversionUnit {
@@ -81,7 +80,7 @@ export function UnitConverter() {
       setFromUnit(newFrom);
       setToUnit(newTo);
     }
-  }, [category]);
+  }, [category, currentConversion.units]);
 
   useEffect(() => {
     if (!fromValue || isNaN(Number(fromValue))) {
@@ -107,7 +106,7 @@ export function UnitConverter() {
       console.error("Conversion error:", err);
       setToValue("");
     }
-  }, [fromValue, fromUnit, toUnit, category]);
+  }, [fromValue, fromUnit, toUnit, category, currentConversion.units]);
 
   const swapUnits = () => {
     const temp = fromUnit;

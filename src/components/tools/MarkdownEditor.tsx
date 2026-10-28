@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, Code } from "lucide-react";
-import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { convertMarkdown, sanitizeHtml } from "@/utils/markdown";
 

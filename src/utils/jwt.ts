@@ -98,7 +98,7 @@ export function decodeJwt(token: string): DecodedJwt {
     } catch (e) {
       // Handle case where base64 padding creates extra bytes at the end
       // First try stripping trailing control characters
-      // eslint-disable-next-line no-control-regex
+      // oxlint-disable-next-line no-control-regex
       let cleaned = payloadJson.replace(/[\x00-\x1F\x7F]+$/g, '');
       // Also try stripping replacement and other non-ASCII characters at the end
       cleaned = cleaned.replace(/[^\x20-\x7E]+$/g, '');
@@ -233,7 +233,7 @@ const TIME_CLAIMS: [JwtTimeClaim["claim"], string][] = [
 ];
 
 /** Reads iat, nbf and exp, and tells whether the token is valid at `now`. */
-export function describeTimeClaims(payload: JwtPayload, now: number = Date.now()): JwtTimeInfo {
+export function describeTimeClaims(payload: Record<string, unknown>, now: number = Date.now()): JwtTimeInfo {
   const claims: JwtTimeClaim[] = [];
   for (const [claim, label] of TIME_CLAIMS) {
     const value = payload[claim];

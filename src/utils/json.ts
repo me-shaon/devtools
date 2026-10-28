@@ -4,9 +4,11 @@
 
 import { LosslessNumber } from './json-repair';
 
+type JsonRecord = Record<string, unknown>;
+
 export interface JsonNode {
   key: string;
-  value: any;
+  value: unknown;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'null';
   depth: number;
   children?: JsonNode[];
@@ -15,7 +17,7 @@ export interface JsonNode {
 
 export interface JsonParseResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   tree?: JsonNode;
 }
@@ -39,7 +41,7 @@ export function parseJson(input: string): JsonParseResult {
 /**
  * Build tree structure from JSON data
  */
-function buildJsonTree(data: any, key: string, depth: number): JsonNode {
+function buildJsonTree(data: unknown, key: string, depth: number): JsonNode {
   const type = getJsonType(data);
 
   const node: JsonNode = {
@@ -53,14 +55,14 @@ function buildJsonTree(data: any, key: string, depth: number): JsonNode {
     const children: JsonNode[] = [];
     let size = 0;
 
-    for (const [k, v] of Object.entries(data)) {
+    for (const [k, v] of Object.entries(data as JsonRecord)) {
       children.push(buildJsonTree(v, k, depth + 1));
       size++;
     }
 
     node.children = children;
     node.size = size;
-  } else if (type === 'array') {
+  } else if (type === 'array' && Array.isArray(data)) {
     const children: JsonNode[] = [];
 
     for (let i = 0; i < data.length; i++) {
@@ -77,7 +79,7 @@ function buildJsonTree(data: any, key: string, depth: number): JsonNode {
 /**
  * Get the type of a JSON value
  */
-export function getJsonType(value: any): JsonNode['type'] {
+export function getJsonType(value: unknown): JsonNode['type'] {
   if (value === null) return 'null';
   if (value instanceof LosslessNumber) return 'number';
   if (Array.isArray(value)) return 'array';
@@ -176,16 +178,16 @@ export function describeJsonValue(value: unknown): { type: JsonNode['type']; key
 /**
  * Recursively sort object keys
  */
-function sortObject(obj: any): any {
+function sortObject(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(sortObject);
   }
 
   if (isContainer(obj)) {
-    const sorted: any = {};
-    const keys = Object.keys(obj).sort();
-    for (const key of keys) {
-      sorted[key] = sortObject(obj[key]);
+    const record = obj as JsonRecord;
+    const sorted: JsonRecord = {};
+    for (const key of Object.keys(record).sort()) {
+      sorted[key] = sortObject(record[key]);
     }
     return sorted;
   }
@@ -215,7 +217,7 @@ function xmlName(name: string): string {
   return safe;
 }
 
-function isContainer(value: any): boolean {
+function isContainer(value: unknown): value is JsonRecord | unknown[] {
   return value !== null && typeof value === 'object' && !(value instanceof LosslessNumber);
 }
 
@@ -223,7 +225,7 @@ function isContainer(value: any): boolean {
  * Convert a value to indented XML lines. Arrays repeat the element name.
  * An array inside an array is wrapped and its items are named "item".
  */
-function valueToXmlLines(value: any, name: string, nested = false): string[] {
+function valueToXmlLines(value: unknown, name: string, nested = false): string[] {
   const tag = xmlName(name);
   if (Array.isArray(value)) {
     if (nested) {
@@ -236,15 +238,16 @@ function valueToXmlLines(value: any, name: string, nested = false): string[] {
     return value.flatMap((item) => valueToXmlLines(item, name, Array.isArray(item)));
   }
   if (isContainer(value)) {
-    const keys = Object.keys(value);
+    const record = value as JsonRecord;
+    const keys = Object.keys(record);
     if (keys.length === 0) return [`<${tag}/>`];
-    const inner = keys.flatMap((key) => valueToXmlLines(value[key], key));
+    const inner = keys.flatMap((key) => valueToXmlLines(record[key], key));
     return [`<${tag}>`, ...inner.map((l) => `  ${l}`), `</${tag}>`];
   }
   return [`<${tag}>${scalarToXml(value)}</${tag}>`];
 }
 
-function scalarToXml(value: any): string {
+function scalarToXml(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return escapeXml(value);
   return String(value);
@@ -278,7 +281,7 @@ export function jsonValueToYaml(value: unknown): string {
   return yamlValue(value);
 }
 
-function yamlScalar(value: any): string {
+function yamlScalar(value: unknown): string {
   if (value === null) return 'null';
   if (value instanceof LosslessNumber) return value.text;
   if (Array.isArray(value)) return '[]';
@@ -291,15 +294,15 @@ function yamlKey(key: string): string {
   return /^[A-Za-z_][A-Za-z0-9_-]*$/.test(key) ? key : JSON.stringify(key);
 }
 
-function isFilledContainer(value: any): boolean {
+function isFilledContainer(value: unknown): boolean {
   return isContainer(value) && Object.keys(value).length > 0;
 }
 
-function yamlValue(value: any): string {
+function yamlValue(value: unknown): string {
   return isFilledContainer(value) ? yamlLines(value).join('\n') : yamlScalar(value);
 }
 
-function yamlLines(value: any): string[] {
+function yamlLines(value: unknown): string[] {
   const lines: string[] = [];
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -311,8 +314,9 @@ function yamlLines(value: any): string[] {
       }
     }
   } else {
-    for (const key of Object.keys(value)) {
-      const child = value[key];
+    const record = value as JsonRecord;
+    for (const key of Object.keys(record)) {
+      const child = record[key];
       if (isFilledContainer(child)) {
         lines.push(`${yamlKey(key)}:`, ...yamlLines(child).map((l) => `  ${l}`));
       } else {
@@ -328,7 +332,7 @@ const SIMPLE_KEY = /^[^.[\]'"\s]+$/;
 /**
  * Get JSON path to a value
  */
-export function getJsonPaths(data: any, prefix = ''): string[] {
+export function getJsonPaths(data: unknown, prefix = ''): string[] {
   const paths: string[] = [];
 
   if (Array.isArray(data)) {
@@ -338,12 +342,13 @@ export function getJsonPaths(data: any, prefix = ''): string[] {
       paths.push(...getJsonPaths(data[i], path));
     }
   } else if (isContainer(data)) {
-    for (const key of Object.keys(data)) {
+    const record = data as JsonRecord;
+    for (const key of Object.keys(record)) {
       const path = SIMPLE_KEY.test(key)
         ? prefix ? `${prefix}.${key}` : key
         : `${prefix}['${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}']`;
       paths.push(path);
-      paths.push(...getJsonPaths(data[key], path));
+      paths.push(...getJsonPaths(record[key], path));
     }
   }
 
@@ -405,16 +410,16 @@ function tokenizePath(path: string): PathToken[] | null {
  * "['key']" and the wildcards "[*]" and ".*". Wildcards return an array.
  */
 export function runJsonQuery(
-  data: any,
+  data: unknown,
   path: string
-): { ok: true; found: boolean; value: any } | { ok: false; error: string } {
+): { ok: true; found: boolean; value: unknown } | { ok: false; error: string } {
   const tokens = tokenizePath(path);
   if (!tokens) return { ok: false, error: 'Invalid query syntax.' };
 
-  let current: any[] = [data];
+  let current: unknown[] = [data];
   let multiple = false;
   for (const token of tokens) {
-    const next: any[] = [];
+    const next: unknown[] = [];
     for (const node of current) {
       if (token.type === 'wildcard') {
         if (Array.isArray(node)) next.push(...node);
@@ -426,7 +431,7 @@ export function runJsonQuery(
         !Array.isArray(node) &&
         Object.prototype.hasOwnProperty.call(node, token.key)
       ) {
-        next.push(node[token.key]);
+        next.push((node as JsonRecord)[token.key]);
       }
     }
     if (token.type === 'wildcard') multiple = true;
@@ -439,7 +444,7 @@ export function runJsonQuery(
 /**
  * Query JSON using JSONPath-like syntax. Returns null when nothing matches.
  */
-export function queryJson(data: any, path: string): any | null {
+export function queryJson(data: unknown, path: string): unknown {
   const result = runJsonQuery(data, path);
   return result.ok && result.found ? result.value : null;
 }
@@ -471,7 +476,7 @@ export function getJsonStats(input: string): {
 /**
  * Count keys in JSON
  */
-function countKeys(obj: any): number {
+function countKeys(obj: unknown): number {
   if (Array.isArray(obj)) {
     return obj.reduce((sum, item) => sum + countKeys(item), 0);
   }
@@ -487,7 +492,7 @@ function countKeys(obj: any): number {
 /**
  * Count arrays in JSON
  */
-function countArrays(obj: any): number {
+function countArrays(obj: unknown): number {
   if (Array.isArray(obj)) {
     return 1 + obj.reduce((sum, item) => sum + countArrays(item), 0);
   }
@@ -500,7 +505,7 @@ function countArrays(obj: any): number {
 /**
  * Count objects in JSON
  */
-function countObjects(obj: any): number {
+function countObjects(obj: unknown): number {
   if (Array.isArray(obj)) {
     return obj.reduce((sum, item) => sum + countObjects(item), 0);
   }
@@ -516,7 +521,7 @@ function countObjects(obj: any): number {
 /**
  * Get depth of JSON structure
  */
-function getDepth(obj: any, currentDepth = 0): number {
+function getDepth(obj: unknown, currentDepth = 0): number {
   if (Array.isArray(obj)) {
     if (obj.length === 0) return currentDepth;
     return Math.max(...obj.map((item) => getDepth(item, currentDepth + 1)));

@@ -889,10 +889,16 @@ function pepPrefixMatches(prefix: { epoch: number; release: number[] }, version:
 }
 
 function pepSpecMatches(spec: PepSpecifier, version: Pep440Version): boolean {
+  if (spec.op === "===") {
+    return formatPep440(version).toLowerCase() === spec.raw.toLowerCase();
+  }
   const target = spec.version;
+  if (!target) {
+    // Only `==` and `!=` reach here without a version, via their `.*` prefix form.
+    const matches = spec.prefix !== undefined && pepPrefixMatches(spec.prefix, version);
+    return spec.op === "!=" ? !matches : matches;
+  }
   switch (spec.op) {
-    case "===":
-      return formatPep440(version).toLowerCase() === spec.raw.toLowerCase();
     case "==":
       if (spec.prefix) return pepPrefixMatches(spec.prefix, version);
       return comparePep440(target.local ? version : publicOf(version), target) === 0;
@@ -918,6 +924,7 @@ function pepSpecMatches(spec: PepSpecifier, version: Pep440Version): boolean {
 function pepComparators(spec: PepSpecifier): string[] {
   if (spec.op === "===") return [`===${spec.raw}`];
   if (spec.prefix) return [`${spec.op}${spec.prefix.epoch ? `${spec.prefix.epoch}!` : ""}${spec.prefix.release.join(".")}.*`];
+  if (!spec.version) return [];
   const text = formatPep440(spec.version);
   if (spec.op === "~=") {
     const { epoch, release } = spec.version;
@@ -1035,6 +1042,7 @@ const shortComposer = (version: string) => version.replace(/^(\d+\.\d+\.\d+)\.0(
 function describeComparator(text: string, dialect: VersionDialect): string {
   if (text === "*" || text === "") return "any version";
   const match = /^(===|==|!=|>=|<=|>|<|=)?(.*)$/.exec(text);
+  if (!match) return text;
   const op = match[1] ?? "=";
   let version = match[2];
   let detail = "";
@@ -1148,7 +1156,7 @@ export function nextVersions(dialect: VersionDialect, text: string, preid: strin
     ];
     return kinds.flatMap(([label, kind]) => {
       try {
-        const version = semverInc(parsed.normalized, kind, id);
+        const version = semverInc(parsed.normalized, kind, {}, id);
         return version ? [{ label, version }] : [];
       } catch {
         return [];
