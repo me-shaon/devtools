@@ -1,6 +1,7 @@
 import { zlibSync } from "fflate";
 import { describe, expect, it, vi } from "vitest";
 import {
+  Findings,
   VP8X_FLAGS,
   buildOrientationTiff,
   cleanFileName,
@@ -9,6 +10,8 @@ import {
   detectImageFormat,
   findAiHint,
   inspectImage,
+  readC2pa,
+  readXmp,
   remainingMetadata,
   scanForMetadataMarkers,
   xmpProperty,
@@ -337,5 +340,31 @@ describe("re-encode options", () => {
     const wasm = vi.fn();
     expect(Array.from(await encodeCanvas(canvas, "webp", 80, wasm))).toEqual(Array.from(enc("webp")));
     expect(wasm).not.toHaveBeenCalled();
+  });
+});
+
+describe("shared helpers for video metadata", () => {
+  it("names AI video tools", () => {
+    expect(findAiHint("Runway Gen-3 Alpha")).toBe("Runway");
+    expect(findAiHint("Google Veo 3")).toBe("Google Veo");
+    expect(findAiHint("Sora")).toBe("OpenAI Sora");
+    expect(findAiHint("OpenAI Sora")).toBe("OpenAI");
+    expect(findAiHint("Kling 2.1")).toBe("Kling");
+    expect(findAiHint("Pika 2.0")).toBe("Pika");
+    expect(findAiHint("Luma Dream Machine")).toBe("Luma Dream Machine");
+    expect(findAiHint("Hailuo 02")).toBe("Hailuo");
+  });
+
+  it("does not read common words as AI tools", () => {
+    expect(findAiHint("veo el mar desde aquí")).toBeNull();
+    expect(findAiHint("the runway was wet")).toBeNull();
+  });
+
+  it("exports the findings collector and the XMP and C2PA readers", () => {
+    const out = new Findings();
+    readXmp('<x:xmpmeta><rdf:Description Iptc4xmpExt:DigitalSourceType="http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"/></x:xmpmeta>', out, "XMP box");
+    readC2pa(Uint8Array.from("c2pa claim_generator: OpenAI Sora", (c) => c.charCodeAt(0)), out, "C2PA box");
+    expect(out.items.some((f) => f.kind === "ai" && f.source === "XMP box")).toBe(true);
+    expect(out.items.map((f) => f.label)).toContain("Content Credentials (C2PA)");
   });
 });
