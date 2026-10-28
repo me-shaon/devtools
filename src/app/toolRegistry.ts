@@ -18,6 +18,7 @@ import {
   FileBadge,
   FileCheck,
   FileCode2,
+  FileDiff,
   FileImage,
   FileJson,
   FileText,
@@ -59,6 +60,7 @@ export const ALL_TOOLS = [
   { icon: Terminal, name: "Regex Tester", id: "regex-generator", category: "Development Tools", keywords: ["regex", "regexp", "pattern", "match", "replace", "capture group", "regex generator"] },
   { icon: Type, name: "JSON to Code", id: "json-typescript", category: "Development Tools", keywords: ["typescript", "ts", "interface", "types", "go", "golang", "struct", "rust", "serde", "python", "dataclass", "pydantic", "swift", "codable", "kotlin", "json schema", "codegen", "model"] },
   { icon: FileCheck, name: "JSON Schema Validator", id: "json-schema", category: "Development Tools", keywords: ["json schema", "validate", "validator", "ajv", "draft 2020-12", "draft-07", "openapi", "kubernetes", "yaml"] },
+  { icon: FileDiff, name: "JSON Diff", id: "json-diff", category: "Development Tools", keywords: ["json diff", "compare", "difference", "json patch", "rfc 6902", "structural", "yaml", "jsonpath"] },
   { icon: FileBadge, name: "X.509 Certificate Decoder", id: "certificate-decoder", category: "Development Tools", keywords: ["x509", "certificate", "pem", "der", "ssl", "tls", "csr", "fingerprint", "chain", "san"] },
   { icon: MonitorPlay, name: "HTML Preview", id: "html-preview", category: "Development Tools", keywords: ["html", "preview", "render", "live", "sandbox", "iframe", "responsive", "viewport"] },
   { icon: Braces, name: "Code Formatter", id: "code-formatter", category: "Development Tools", keywords: ["beautify", "prettify", "minify", "html", "css", "js", "xml", "sql"] },
@@ -175,5 +177,6 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   "text-compare": lazyNamed(() => import("@/components/tools/TextCompare"), "TextCompare"),
   "jwt-decoder": lazyNamed(() => import("@/components/tools/JwtDecoder"), "JwtDecoder"),
   "api-formatter": lazyNamed(() => import("@/components/tools/ApiFormatter"), "ApiFormatter"),
+  "json-diff": lazyNamed(() => import("@/components/tools/JsonDiff"), "JsonDiff"),
   "unit-converter": lazyNamed(() => import("@/components/tools/UnitConverter"), "UnitConverter"),
 };
