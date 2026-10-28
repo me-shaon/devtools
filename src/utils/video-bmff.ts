@@ -1,5 +1,6 @@
-import type { Patch } from "@/utils/byte-source";
-import { VideoError } from "@/utils/video-format";
+import { Findings } from "@/utils/image-metadata";
+import type { ByteSource, Patch } from "@/utils/byte-source";
+import { VideoError, type ScanResult, type VideoCleanOptions, type VideoFormat } from "@/utils/video-format";
 
 /**
  * Reads and removes metadata in ISO base media files (MP4, MOV, M4V, 3GP).
@@ -74,6 +75,9 @@ export function* children(buf: Uint8Array, base: number, from: number, to: numbe
   }
 }
 
+const childrenOf = (buf: Uint8Array, base: number, box: Box, skip = 0) =>
+  children(buf, base, box.start - base + box.headerSize + skip, box.start - base + box.size);
+
 /** Turns a box into a "free" box of the same size with zero content. */
 export function blankBox(box: Box): Patch {
   const bytes = new Uint8Array(box.size);
@@ -86,4 +90,92 @@ export function blankBox(box: Box): Patch {
   }
   bytes.set([0x66, 0x72, 0x65, 0x65], 4);
   return { offset: box.start, bytes };
+}
+
+const MAX_MOOV = 256 * 1024 * 1024;
+const MAX_SIDE_BOX = 64 * 1024 * 1024;
+const MAC_EPOCH = 2082844800;
+const HEIF_BRANDS = new Set(["heic", "heix", "heim", "heis", "mif1", "msf1", "avif", "avis"]);
+const CONTAINERS = new Set(["moov", "mdia", "minf", "edts", "dinf"]);
+
+interface Ctx {
+  out: Findings;
+  patches: Patch[];
+  options: VideoCleanOptions;
+  dates: { value: string; count: number } | null;
+}
+
+const macDate = (seconds: number) => {
+  if (!seconds) return null;
+  const date = new Date((seconds - MAC_EPOCH) * 1000);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().replace(".000Z", "Z");
+};
+
+/** Reads and clears the creation and modification dates of a mvhd, tkhd, or mdhd box. */
+function readDates(buf: Uint8Array, base: number, box: Box, ctx: Ctx, blanked: boolean) {
+  const p = box.start - base + box.headerSize;
+  if (box.size - box.headerSize < 20) return;
+  const wide = buf[p] === 1;
+  const created = wide ? u64(buf, p + 4) : u32(buf, p + 4);
+  const modified = wide ? u64(buf, p + 12) : u32(buf, p + 8);
+  if (!created && !modified) return;
+  const value = macDate(created) ?? macDate(modified);
+  if (value) ctx.dates = ctx.dates ? { ...ctx.dates, count: ctx.dates.count + 1 } : { value, count: 1 };
+  if (ctx.options.clearDates && !blanked) ctx.patches.push({ offset: box.start + box.headerSize + 4, bytes: new Uint8Array(wide ? 16 : 8) });
+}
+
+/** Reads the boxes inside `parent`. `blanked` is true when a parent box is already being removed. */
+function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, blanked: boolean) {
+  for (const box of childrenOf(buf, base, parent)) {
+    switch (box.type) {
+      case "mvhd":
+      case "tkhd":
+      case "mdhd":
+        readDates(buf, base, box, ctx, blanked);
+        break;
+      case "trak":
+        scanContainer(buf, base, box, ctx, blanked);
+        break;
+      default:
+        if (CONTAINERS.has(box.type)) scanContainer(buf, base, box, ctx, blanked);
+    }
+  }
+}
+
+const formatForBrand = (brand: string): VideoFormat => (brand === "qt" ? "mov" : /^M4V/.test(brand) ? "m4v" : /^3g/.test(brand) ? "3gp" : "mp4");
+
+/** Finds the metadata in an MP4, MOV, M4V, or 3GP file, and the patches that remove it. */
+export async function scanBmff(source: ByteSource, options: VideoCleanOptions): Promise<ScanResult> {
+  const ctx: Ctx = { out: new Findings(), patches: [], options, dates: null };
+  const warnings: string[] = [];
+  // Old QuickTime files start without an ftyp box.
+  let format: VideoFormat = "mov";
+  let sawMoov = false;
+  let offset = 0;
+  while (source.size - offset >= 8) {
+    const box = headerAt(await source.read(offset, 32), offset, source.size);
+    if (box.type === "ftyp") {
+      const brand = fourcc(await source.read(offset + box.headerSize, 4), 0).trim();
+      if (HEIF_BRANDS.has(brand)) throw new VideoError("This file is a HEIF or AVIF image. Use Image Metadata Cleaner for images.");
+      format = formatForBrand(brand);
+    } else if (box.type === "moov") {
+      if (box.size > MAX_MOOV) throw new VideoError("The movie header is larger than 256 MB. This tool cannot read it.");
+      // A parent range with no header, so scanContainer reads this one box.
+      scanContainer(await source.read(box.start, box.size), box.start, { ...box, headerSize: 0 }, ctx, false);
+      sawMoov = true;
+    } else if (["uuid", "meta", "udta", "free", "skip"].includes(box.type)) {
+      if (box.size > MAX_SIDE_BOX) {
+        warnings.push(`A ${box.type} box of ${box.size} bytes at byte ${box.start} is too large to check, so it was kept.`);
+      } else {
+        scanContainer(await source.read(box.start, box.size), box.start, { ...box, headerSize: 0 }, ctx, false);
+      }
+    }
+    offset += box.size;
+  }
+  if (!sawMoov) throw new VideoError("The file has no movie header (moov box). It may be cut off, or the recording did not finish.");
+  if (ctx.dates) {
+    const { value, count } = ctx.dates;
+    ctx.out.add({ kind: "camera", label: "Recording date", detail: count > 1 ? `${value}, in ${count} headers` : value, source: "Movie and track headers" }, options.clearDates);
+  }
+  return { format, findings: ctx.out.items, patches: ctx.patches, warnings };
 }
