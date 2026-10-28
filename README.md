@@ -187,7 +187,8 @@ For UI-only development, run `pnpm run dev:web` and open the URL printed by Vite
 | `pnpm run build` | Build the desktop app and installers for the current platform |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm run test:watch` | Run tests in watch mode |
-| `pnpm run lint` | Run ESLint |
+| `pnpm run lint` | Run oxlint |
+| `pnpm run typecheck` | Type-check the app, tests, and config files with TypeScript 7 |
 | `pnpm run dist:mac` | Build macOS `.app` and `.dmg` packages |
 | `pnpm run dist:win` | Build the Windows NSIS installer |
 | `pnpm run dist:linux` | Build Linux AppImage, Debian, and RPM packages |

@@ -116,7 +116,7 @@ function isJoiningScriptLetter(cp: number | undefined): boolean {
 }
 
 // The class lists single code points. Variation selectors are matched alone, not combined with a base.
-// eslint-disable-next-line no-misleading-character-class
+// oxlint-disable-next-line no-misleading-character-class
 const HAS_INVISIBLE = /[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufe00-\ufe0f\ufeff\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/u;
 
 function removeInvisible(text: string): { text: string; count: number } {

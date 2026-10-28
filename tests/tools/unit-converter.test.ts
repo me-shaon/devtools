@@ -8,7 +8,6 @@ import {
   getCategories,
   getUnits,
   formatResult,
-  conversions,
 } from '@/utils/unit-converter';
 
 describe('Unit Converter Utils', () => {

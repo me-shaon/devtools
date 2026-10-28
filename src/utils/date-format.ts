@@ -378,7 +378,7 @@ const nameOrNumber = (count: number, num: FieldId, num2: FieldId) => (count === 
 const monthRule: LetterRule = (n) => (n === 1 ? "month" : n === 2 ? "month2" : n === 3 ? "monthShort" : n === 4 ? "monthLong" : { raw: "Month, narrow (J)" });
 const textWeekday: LetterRule = (n) => (n <= 3 ? "weekdayShort" : n === 4 ? "weekdayLong" : { raw: "Weekday name, narrow" });
 
-const JAVA_LETTERS: Record<string, LetterRule> = {
+const JAVA_LETTERS: Partial<Record<string, LetterRule>> = {
   G: () => ({ raw: "Era (AD)" }),
   u: (n) => (n === 2 ? "year2" : "year"),
   y: (n) => (n === 2 ? "year2" : "year"),
@@ -416,7 +416,7 @@ const JAVA_LETTERS: Record<string, LetterRule> = {
   Z: (n) => (n <= 3 ? "offset" : n === 4 ? { raw: "Localized offset (GMT-07:00)" } : n === 5 ? "offsetColonZ" : null),
 };
 
-const DATEFNS_LETTERS: Record<string, LetterRule> = {
+const DATEFNS_LETTERS: Partial<Record<string, LetterRule>> = {
   G: () => ({ raw: "Era (AD)" }),
   y: (n) => (n === 2 ? "year2" : "year"),
   Y: () => ({ raw: "Local week-numbering year" }),

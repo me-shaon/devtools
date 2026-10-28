@@ -116,7 +116,8 @@ describe('JSON Utils', () => {
       const input = '{"z":1,"a":2,"m":3}';
       const result = sortJsonKeys(input);
       expect(result).toContain('"a"');
-      expect(result?.indexOf('"a"')).toBeLessThan(result?.indexOf('"m"'));
+      const sorted = result ?? '';
+      expect(sorted.indexOf('"a"')).toBeLessThan(sorted.indexOf('"m"'));
     });
 
     it('should handle nested objects', () => {

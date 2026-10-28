@@ -74,7 +74,7 @@ describe("IpCidrCalculator", () => {
       within(screen.getByRole("table", { name: "Subnets" }))
         .getAllByRole("row")
         .slice(1)
-        .map((row) => row.cells[0].textContent);
+        .map((row) => (row as HTMLTableRowElement).cells[0].textContent);
     expect(rows()).toEqual(["192.168.1.0/26", "192.168.1.64/26", "192.168.1.128/26", "192.168.1.192/26"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Subnet prefix" }));

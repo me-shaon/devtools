@@ -18,7 +18,7 @@ export type CharacterSet = keyof typeof CHARACTER_SETS;
 /** The largest alphabet the byte-based sampler supports. */
 export const MAX_ALPHABET_SIZE = 256;
 
-export type RandomFill = (bytes: Uint8Array) => Uint8Array;
+export type RandomFill = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
 
 const cryptoFill: RandomFill = (bytes) => crypto.getRandomValues(bytes);
 

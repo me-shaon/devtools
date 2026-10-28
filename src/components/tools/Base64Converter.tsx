@@ -1,5 +1,5 @@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -146,7 +146,7 @@ export function Base64Converter() {
       return { text: "", hex: "", bytes: 0, binary: false, error: (err as Error).message || `Invalid ${formatName} format` };
     }
     // decodeInput depends only on the format and the alphabet.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingBase64, base32, variant]);
 
   const handleEncodeFile = async (file: File | undefined) => {

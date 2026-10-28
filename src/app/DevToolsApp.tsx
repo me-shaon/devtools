@@ -450,6 +450,24 @@ const DevToolsApp = () => {
     [platform, shortcutBindings],
   );
 
+  const selectTool = useCallback((tool: ToolDefinition | null) => {
+    setShowCommandPalette(false);
+    setSearchQuery("");
+    toast.dismiss();
+
+    startTransition(() => {
+      setSelectedTool(tool);
+    });
+
+    if (tool) {
+      if (window.innerWidth < 640) setSidebarOpen(false);
+      setOpenTools((previous) => previous.some((entry) => entry.id === tool.id) ? previous : [...previous, tool]);
+      setRecentToolIds((prev) =>
+        [tool.id, ...prev.filter((id) => id !== tool.id)].slice(0, MAX_RECENT_TOOLS)
+      );
+    }
+  }, []);
+
   const shortcutHandlers = useMemo(
     () => ({
       "open-command-palette": openCommandPalette,
@@ -486,7 +504,7 @@ const DevToolsApp = () => {
         }
       },
     }),
-    [favorites],
+    [favorites, selectTool],
   );
 
   useKeyboardShortcuts({
@@ -494,24 +512,6 @@ const DevToolsApp = () => {
     handlers: shortcutHandlers,
     enabled: !showCommandPalette && !showShortcutSettings && !showWhatsNew,
   });
-
-  const selectTool = (tool: ToolDefinition | null) => {
-    setShowCommandPalette(false);
-    setSearchQuery("");
-    toast.dismiss();
-
-    startTransition(() => {
-      setSelectedTool(tool);
-    });
-
-    if (tool) {
-      if (window.innerWidth < 640) setSidebarOpen(false);
-      setOpenTools((previous) => previous.some((entry) => entry.id === tool.id) ? previous : [...previous, tool]);
-      setRecentToolIds((prev) =>
-        [tool.id, ...prev.filter((id) => id !== tool.id)].slice(0, MAX_RECENT_TOOLS)
-      );
-    }
-  };
 
   // devtoolsapp:// links from Raycast, Alfred, scripts, or a browser. The ref keeps the
   // listener on the latest handlers without subscribing again on every render.
@@ -603,7 +603,7 @@ const DevToolsApp = () => {
       field.focus();
     };
     window.setTimeout(fill, 0);
-  }, [pasted]);
+  }, [pasted, selectTool]);
 
   // Automatic updates: download in the background and install on quit. On by default.
   const [autoUpdate, setAutoUpdate] = useState(() => {

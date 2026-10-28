@@ -112,20 +112,20 @@ it.each(["darwin", "win32"])("uses desktop tab shortcuts on %s without intercept
   const bridge = createBridge("0.0.0", { status: "idle" });
   bridge.platform = platform;
   render(<DevToolsApp />);
-  fireEvent.click(screen.getByRole("button", { name: "JSON Viewer", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "JSON Viewer" }));
   const input = await screen.findByRole("textbox", { name: "JSON Input" });
   fireEvent.change(input, { target: { value: '{"saved":true}' } });
-  fireEvent.click(screen.getByRole("button", { name: "Home", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Home" }));
   // Open the tool from the sidebar search, so the test does not depend on the Quick Access order.
   fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "Hash" } });
-  fireEvent.click(screen.getByRole("button", { name: "Hash Generator", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Hash Generator" }));
   await screen.findByPlaceholderText("Enter text to generate hashes...", {}, { timeout: 5000 });
   fireEvent.keyDown(window, { key: "Tab", ctrlKey: true, shiftKey: true });
-  expect(screen.getByRole("tab", { name: "JSON Viewer", exact: true })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: "JSON Viewer" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByRole("textbox", { name: "JSON Input" })).toHaveValue('{"saved":true}');
   fireEvent.keyDown(window, { key: "Tab", metaKey: true });
-  expect(screen.getByRole("tab", { name: "JSON Viewer", exact: true })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: "JSON Viewer" })).toHaveAttribute("aria-selected", "true");
   fireEvent.keyDown(window, { key: "w", metaKey: platform === "darwin", ctrlKey: platform !== "darwin" });
-  expect(screen.queryByRole("tab", { name: "JSON Viewer", exact: true })).not.toBeInTheDocument();
-  expect(screen.getByRole("tab", { name: "Hash Generator", exact: true })).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("tab", { name: "JSON Viewer" })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Hash Generator" })).toHaveAttribute("aria-selected", "true");
 });

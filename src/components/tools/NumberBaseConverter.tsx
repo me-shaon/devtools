@@ -47,7 +47,9 @@ function describeSource(parsed: ReadResult): string {
   if ("error" in parsed) return "";
   if (parsed.source === "expression") return "Read as an expression.";
   if (parsed.source === "roman") return "Read as a Roman numeral.";
-  return `Read as ${BASE_NAMES[parsed.base] ?? `base ${parsed.base}`}.`;
+  const base = parsed.base;
+  if (base === undefined) return "";
+  return `Read as ${BASE_NAMES[base] ?? `base ${base}`}.`;
 }
 
 /** Write a value back into the input field in the form the user typed, so a bit toggle keeps the base. */
