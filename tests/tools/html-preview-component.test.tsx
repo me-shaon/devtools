@@ -36,6 +36,11 @@ describe("HtmlPreview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mobile" }));
     expect(frame().style.width).toBe("375px");
     expect(screen.getByRole("button", { name: "Mobile" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Tablet" }));
+    expect(frame().style.width).toBe("768px");
+    expect(screen.getByRole("button", { name: "Tablet" })).toHaveAttribute("aria-pressed", "true");
+    expect(frame()).toHaveClass("mx-auto");
+    expect(frame().parentElement).not.toHaveClass("justify-center");
   });
 
   it("puts the policy first and removes refreshes and link targets", () => {

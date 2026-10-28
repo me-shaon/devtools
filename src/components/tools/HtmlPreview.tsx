@@ -104,9 +104,9 @@ export function HtmlPreview() {
         </EditorPane>
       }
       second={
-        <EditorPane title="Preview">
+        <EditorPane title="Preview" scroll={false}>
           {srcDoc ? (
-            <div className="flex h-full min-h-full justify-center overflow-auto bg-muted">
+            <div className="flex h-full min-h-full overflow-auto bg-muted">
               <iframe
                 // A new frame applies the sandbox flags when scripts are turned on or off
                 key={scripts ? "scripts" : "static"}
@@ -114,7 +114,7 @@ export function HtmlPreview() {
                 sandbox={previewSandbox(scripts)}
                 referrerPolicy="no-referrer"
                 srcDoc={srcDoc}
-                className="h-full min-h-[320px] shrink-0 border-x border-border bg-background"
+                className="mx-auto h-full min-h-[320px] shrink-0 border-x border-border bg-background"
                 style={{ width: width ? `${width}px` : "100%" }}
               />
             </div>
