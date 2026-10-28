@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  findNormalizationVariants,
   formatCodePoint,
   getCharCategory,
+  getNormalizedForms,
   getStringStats,
   inspectCharacters,
   splitGraphemes,
@@ -121,5 +123,54 @@ describe("character helpers", () => {
     expect(formatCodePoint(0x1f600)).toBe("U+1F600");
     expect(utf8Hex("\u{1F600}")).toBe("F0 9F 98 80");
     expect(utf8Hex("é")).toBe("C3 A9");
+  });
+});
+
+describe("getNormalizedForms", () => {
+  it("reports ASCII text as normalized in every form", () => {
+    const forms = getNormalizedForms("hello");
+    expect(forms.map((f) => f.form)).toEqual(["NFC", "NFD", "NFKC", "NFKD"]);
+    expect(forms.every((f) => f.same && f.value === "hello" && f.bytes === 5)).toBe(true);
+  });
+
+  it("shows the lengths of composed and decomposed forms", () => {
+    const [nfc, nfd, nfkc, nfkd] = getNormalizedForms("caf\u00E9");
+    expect(nfc).toMatchObject({ same: true, value: "caf\u00E9", codePoints: 4, codeUnits: 4, bytes: 5 });
+    expect(nfd.value).not.toBe(nfc.value);
+    expect(nfd).toMatchObject({ same: false, value: "cafe\u0301", codePoints: 5, codeUnits: 5, bytes: 6 });
+    expect(nfkc.same).toBe(true);
+    expect(nfkd.same).toBe(false);
+  });
+
+  it("maps compatibility characters only in NFKC and NFKD", () => {
+    const [nfc, , nfkc] = getNormalizedForms("\uFB01le \u2460");
+    expect(nfc.same).toBe(true);
+    expect(nfkc).toMatchObject({ same: false, value: "file 1" });
+  });
+});
+
+describe("findNormalizationVariants", () => {
+  it("finds a character written in two ways", () => {
+    expect(findNormalizationVariants("caf\u00E9 cafe\u0301")).toEqual({
+      variants: [{ nfc: "\u00E9", spellings: [["U+00E9"], ["U+0065", "U+0301"]] }],
+      checked: 10,
+      truncated: false,
+    });
+  });
+
+  it("returns nothing when each character has one spelling", () => {
+    expect(findNormalizationVariants("cafe\u0301 cafe\u0301").variants).toEqual([]);
+    expect(findNormalizationVariants("plain ascii").variants).toEqual([]);
+  });
+
+  it("checks only the start of text past the limit", () => {
+    const text = `\u00E9${"x".repeat(20)}e\u0301`;
+    expect(findNormalizationVariants(text, 10)).toEqual({ variants: [], checked: 10, truncated: true });
+    expect(findNormalizationVariants(text, 100)).toMatchObject({ truncated: false, checked: 23 });
+    expect(findNormalizationVariants(text, 100).variants).toHaveLength(1);
+  });
+
+  it("does not cut a surrogate pair at the limit", () => {
+    expect(findNormalizationVariants("ab\u{1F600}cd", 3)).toMatchObject({ checked: 2, truncated: true });
   });
 });

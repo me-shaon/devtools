@@ -31,4 +31,17 @@ describe("CaseConverter", () => {
     await waitFor(() => expect(screen.getByLabelText("PascalCase")).toHaveValue("UserID"));
     expect(screen.getByLabelText("snake_case")).toHaveValue("user_id");
   });
+
+  it("shows a URL slug with its options", async () => {
+    render(<CaseConverter />);
+    fireEvent.change(screen.getByLabelText("Input"), { target: { value: "Crème Brûlée Straße" } });
+    await waitFor(() => expect(screen.getByLabelText("slug")).toHaveValue("creme-brulee-strasse"));
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Underscore" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Keep case" }));
+    await waitFor(() => expect(screen.getByLabelText("slug")).toHaveValue("Creme_Brulee_Strasse"));
+
+    fireEvent.change(screen.getByLabelText("Max length"), { target: { value: "13" } });
+    await waitFor(() => expect(screen.getByLabelText("slug")).toHaveValue("Creme_Brulee"));
+  });
 });

@@ -196,3 +196,56 @@ export function convertLines(text: string, caseType: CaseType, options: CaseOpti
 export function convertToAllCases(str: string, options: CaseOptions = {}): Record<CaseType, string> {
   return Object.fromEntries(CASE_TYPES.map((type) => [type, convertLines(str, type, options)])) as Record<CaseType, string>;
 }
+
+/* ------------------------------------------------------------------ Slug */
+
+export type SlugSeparator = "-" | "_";
+
+export interface SlugOptions {
+  separator?: SlugSeparator;
+  /** Keep the letter case of the input instead of lowercasing it. */
+  keepCase?: boolean;
+  /** Cut the slug at a word boundary so it is at most this long. 0 or less means no limit. */
+  maxLength?: number;
+}
+
+// Letters that NFKD does not split into a base letter and a mark.
+const SLUG_LETTERS: Record<string, string> = {
+  ß: "ss", ẞ: "SS", æ: "ae", Æ: "AE", ø: "o", Ø: "O", đ: "d", Đ: "D", ð: "d", Ð: "D",
+  ł: "l", Ł: "L", þ: "th", Þ: "TH", œ: "oe", Œ: "OE", ı: "i",
+};
+const SLUG_LETTER = new RegExp(`[${Object.keys(SLUG_LETTERS).join("")}]`, "g");
+
+/**
+ * Convert text to a URL slug. Accents are removed, other symbols become the
+ * separator, and apostrophes are dropped so "don't" becomes "dont". Letters
+ * with no ASCII form, such as CJK, are removed.
+ */
+export function toSlug(str: string, options: SlugOptions = {}): string {
+  const { separator = "-", keepCase = false, maxLength = 0 } = options;
+  let ascii = str
+    .replace(SLUG_LETTER, (c) => SLUG_LETTERS[c])
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/['’]/g, "");
+  if (!keepCase) ascii = ascii.toLowerCase();
+  const words = ascii.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  if (maxLength <= 0) return words.join(separator);
+
+  // Add whole words while they fit. A first word that is too long is cut.
+  let slug = "";
+  for (const word of words) {
+    const next = slug ? `${slug}${separator}${word}` : word;
+    if (next.length > maxLength) return slug || word.slice(0, maxLength);
+    slug = next;
+  }
+  return slug;
+}
+
+/** Convert each line to a slug on its own. Blank lines stay blank. */
+export function slugLines(text: string, options: SlugOptions = {}): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => toSlug(line, options))
+    .join("\n");
+}

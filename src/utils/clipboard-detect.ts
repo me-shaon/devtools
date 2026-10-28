@@ -1,4 +1,6 @@
+import { failed, parseCidr } from "@/utils/ip-cidr";
 import { readJson } from "@/utils/json-repair";
+import { looksLikeToon } from "@/utils/toon-detect";
 
 /** A tool suggestion for pasted text. Higher scores are surer matches. */
 export interface PasteSuggestion {
@@ -75,6 +77,15 @@ const compressedBase64 = (text: string): "GZIP data" | "zlib data" | null => {
   return null;
 };
 
+/** A CIDR block, an IPv4 address with a netmask, or an IPv6 address. A bare IPv4 address could be a version number, so it is skipped. */
+const ipPaste = (text: string): string | null => {
+  const v4 = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2}|\s+255\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.test(text);
+  const v6 = /^[0-9a-f:.]+(\/\d{1,3})?$/i.test(text) && (text.includes("::") || text.split(":").length === 8);
+  if ((!v4 && !v6) || failed(parseCidr(text))) return null;
+  if (v6 && !text.includes("/")) return "an IPv6 address";
+  return /\s/.test(text) ? "an IPv4 address and netmask" : "a CIDR block";
+};
+
 const isTimestamp = (text: string) => {
   // Seconds, milliseconds, microseconds, or nanoseconds.
   if (!/^\d{10}(\d{3}|\d{6}|\d{9})?$/.test(text)) return false;
@@ -107,6 +118,7 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp(256|384|521)) AAAA[A-Za-z0-9+/]+=*( .*)?$/.test(text)) add("key-generator", "an SSH public key", 95);
   if (/^curl\s/i.test(text)) add("curl-to-code", "a cURL command", 95);
   if (isJson(text)) {
+    if (/^\{\s*"log"\s*:/.test(text) && /"entries"\s*:\s*\[/.test(text)) add("har-viewer", "a HAR file", 98);
     if (/"\$schema"\s*:\s*"https?:\/\/json-schema\.org\//.test(text)) add("json-schema", "a JSON Schema", 95);
     add("json-viewer", "JSON", 90);
     add("json-typescript", "JSON", 40);
@@ -119,6 +131,10 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && isCron(text)) add("cron-calculator", "a cron expression", 85);
   if (single && /^(#[0-9a-f]{3,4}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgba?\([^)]{5,40}\)|hsla?\([^)]{5,40}\)|(hwb|oklch|oklab)\([^)]{5,40}\))$/i.test(text)) add("color-palette", "a color", 85);
   if (single && /^-?0(x[0-9a-f_]+|o[0-7_]+|b[01_]+)$/i.test(text)) add("number-base", "a number literal", 80);
+  const ip = single ? ipPaste(text) : null;
+  if (ip) add("ip-cidr", ip, 85);
+  if (single && /^(sudo\s+)?chmod\s+(--?[A-Za-z][\w-]*\s+)*([0-7]{3,4}|[ugoa]*[-+=][rwxXst]*(,[ugoa]*[-+=][rwxXst]*)*)\s+\S/.test(text)) add("chmod-calculator", "a chmod command", 95);
+  if (single && /^[-dlbcps][r-][w-][xsS-][r-][w-][xsS-][r-][w-][xtT-][.@+]?$/.test(text)) add("chmod-calculator", "a file mode", 85);
   if (single && /^https?:\/\/\S+$/i.test(text)) add("url-encoder", "a URL", 80);
   if (/^(a:\d+:\{|O:\d+:"|C:\d+:"|[^|:;{}"\s]+\|(a|s|i|b|d|O):)/.test(text)) add("php-tools", "PHP serialized data", 85);
   if (/^\s*(<\?php\s+)?(return\s+|\$\w+\s*=\s*)?(\[|array\s*\()[\s\S]*=>/i.test(text)) add("php-tools", "a PHP array", 70);
@@ -130,6 +146,7 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   const compressed = compressedBase64(text);
   if (compressed) add("compression", compressed, compressed === "GZIP data" ? 95 : 75);
   if (single && isPrintableBase64(text)) add("base64", "Base64", 60);
+  if (!single && looksLikeToon(text)) add("yaml-json", "TOON", 55);
   if (!single && /^[^\n:#]+:\s?.+\n(\s*[^\n:#]+:.*\n?)+$/.test(text) && !isJson(text)) add("yaml-json", "YAML", 50);
   if (!single && /^\[\[?[\w.\-" ]+\]\]?[ \t]*$/m.test(text) && /^[\w.\-"]+[ \t]*=[ \t]*\S/m.test(text)) add("yaml-json", "TOML", 50);
   if (isEnvFile(text)) add("yaml-json", ".env", 50);

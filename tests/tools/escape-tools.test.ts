@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  convertDomain,
+  convertIdn,
+  decodePunycode,
+  encodePunycode,
   decodeBackslash,
   decodeHex,
   decodeHtml,
@@ -119,5 +123,80 @@ describe("Hex", () => {
   it("round trips text", () => {
     const text = "👨\u200D👩\u200D👧 naïve\n";
     expect(decodeHex(encodeHex(text, { spaced: true }))).toEqual({ ok: true, value: text });
+  });
+});
+
+// RFC 3492 section 7.1 sample strings (B, C, L, M, P, R, S).
+const RFC_3492_VECTORS: [string, string][] = [
+  ["\u4ED6\u4EEC\u4E3A\u4EC0\u4E48\u4E0D\u8BF4\u4E2D\u6587", "ihqwcrb4cv8a8dqg056pqjye"],
+  ["\u4ED6\u5011\u7232\u4EC0\u9EBD\u4E0D\u8AAA\u4E2D\u6587", "ihqwctvzc91f659drss3x8bo0yb"],
+  ["3\u5E74B\u7D44\u91D1\u516B\u5148\u751F", "3B-ww4c5e180e575a65lsy2b"],
+  ["\u5B89\u5BA4\u5948\u7F8E\u6075-with-SUPER-MONKEYS", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n"],
+  ["Maji\u3067Koi\u3059\u308B5\u79D2\u524D", "MajiKoi5-783gue6qz075azm5e"],
+  ["почемужеонинеговорятпорусски", "b1abfaaepdrnnbgefbadotcwatmq2g4l"],
+  ["PorquénopuedensimplementehablarenEspañol", "PorqunopuedensimplementehablarenEspaol-fmd56a"],
+];
+
+describe("Punycode", () => {
+  it.each(RFC_3492_VECTORS)("encodes and decodes %s", (unicode, ascii) => {
+    expect(encodePunycode(unicode)).toBe(ascii);
+    expect(decodePunycode(ascii)).toBe(unicode);
+  });
+
+  it("decodes digits in any case", () => {
+    expect(decodePunycode("B1ABFAAEPDRNNBGEFBADOTCWATMQ2G4L")).toBe("почемужеонинеговорятпорусски");
+  });
+
+  it("rejects invalid input", () => {
+    expect(() => decodePunycode("zz")).toThrow(/middle of a number/);
+    expect(() => decodePunycode("a!")).toThrow(/not a Punycode digit/);
+  });
+});
+
+describe("IDN", () => {
+  it.each([
+    ["münchen.de", "xn--mnchen-3ya.de"],
+    ["bücher.de", "xn--bcher-kva.de"],
+    ["例え.テスト", "xn--r8jz45g.xn--zckzah"],
+    ["☃.net", "xn--n3h.net"],
+  ])("converts %s to %s and back", (unicode, ascii) => {
+    expect(convertDomain(unicode, "toAscii")).toBe(ascii);
+    expect(convertDomain(ascii, "toUnicode")).toBe(unicode);
+  });
+
+  it("lowercases and NFC normalizes before encoding", () => {
+    expect(convertDomain("MÜNCHEN.de", "toAscii")).toBe("xn--mnchen-3ya.de");
+    expect(convertDomain("mu\u0308nchen.de", "toAscii")).toBe("xn--mnchen-3ya.de");
+  });
+
+  it("keeps ASCII labels unchanged and splits on ideographic full stops", () => {
+    expect(convertDomain("WWW.bücher.DE", "toAscii")).toBe("WWW.xn--bcher-kva.DE");
+    expect(convertDomain("日本語\u3002jp", "toAscii")).toBe("xn--wgv71a119e.jp");
+    expect(convertDomain("example.com", "toUnicode")).toBe("example.com");
+  });
+
+  it("converts only the host of a URL or an email address", () => {
+    expect(convertIdn("https://user:pw@bücher.de:8080/pfad?q=ü#top", "toAscii")).toEqual({
+      ok: true,
+      value: "https://user:pw@xn--bcher-kva.de:8080/pfad?q=ü#top",
+    });
+    expect(convertIdn("jörg@münchen.de", "toAscii")).toEqual({ ok: true, value: "jörg@xn--mnchen-3ya.de" });
+    expect(convertIdn("http://xn--n3h.net/a", "toUnicode")).toEqual({ ok: true, value: "http://☃.net/a" });
+    expect(convertIdn("http://[::1]:80/", "toAscii")).toEqual({ ok: true, value: "http://[::1]:80/" });
+  });
+
+  it("converts one line at a time", () => {
+    expect(convertIdn("bücher.de\n\n☃.net", "toAscii")).toEqual({ ok: true, value: "xn--bcher-kva.de\n\nxn--n3h.net" });
+  });
+
+  it("reports invalid xn-- labels", () => {
+    expect(convertIdn("xn--zz.de", "toUnicode")).toMatchObject({ ok: false, error: expect.stringContaining('"xn--zz"') });
+    expect(convertIdn("ok.de\nxn--.de", "toUnicode")).toMatchObject({ ok: false, error: expect.stringMatching(/^Line 2: /) });
+    expect(convertIdn("xn--abc.de", "toUnicode").ok).toBe(false);
+    expect(convertIdn("xn--zz.de", "toAscii").ok).toBe(false);
+  });
+
+  it("rejects labels longer than 63 characters", () => {
+    expect(convertIdn(`${"ü".repeat(60)}.de`, "toAscii")).toMatchObject({ ok: false, error: expect.stringContaining("63") });
   });
 });

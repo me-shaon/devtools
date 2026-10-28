@@ -6,6 +6,7 @@ import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import {
+  convertIdn,
   decodeBackslash,
   decodeHex,
   decodeHtml,
@@ -17,7 +18,7 @@ import {
   type EscapeResult,
 } from "@/utils/escape";
 
-type Mode = "html" | "backslash" | "unicode" | "hex";
+type Mode = "html" | "backslash" | "unicode" | "hex" | "punycode";
 type Direction = "encode" | "decode";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
@@ -33,6 +34,14 @@ const FAQ_ITEMS: ToolFaqItem[] = [
     q: "Which hex formats can I decode?",
     a: "Plain digits such as `48656c6c6f`, bytes split by spaces, colons, commas, or dashes, and bytes with `0x` or `\\x` prefixes. The bytes must be valid UTF-8.",
   },
+  {
+    q: "What does Punycode do?",
+    a: "It converts internationalized domain names to the ASCII form that DNS uses. Each label converts on its own, so `münchen.de` becomes `xn--mnchen-3ya.de`. Encode lowercases and NFC normalizes each label first. Decode shows an error for an invalid `xn--` label.",
+  },
+  {
+    q: "Can I convert a full URL or an email address?",
+    a: "Yes. The tool converts only the domain part. The scheme, user name, port, path, and query stay as you wrote them. Put one domain, URL, or email address on each line.",
+  },
 ];
 
 const MODE_LABELS: Record<Mode, string> = {
@@ -40,6 +49,7 @@ const MODE_LABELS: Record<Mode, string> = {
   backslash: "Backslash",
   unicode: "Unicode",
   hex: "Hex",
+  punycode: "Punycode",
 };
 
 const PLACEHOLDERS: Record<Mode, Record<Direction, string>> = {
@@ -47,6 +57,10 @@ const PLACEHOLDERS: Record<Mode, Record<Direction, string>> = {
   backslash: { encode: 'Enter text to escape (e.g., He said "hi"\\n)', decode: "Enter an escaped string (e.g., line 1\\nline 2\\t\\u00e9)" },
   unicode: { encode: "Enter text to escape (e.g., café 😀)", decode: "Enter Unicode escapes (e.g., caf\\u00e9 \\u{1F600})" },
   hex: { encode: "Enter text to convert to hex (e.g., Hello)", decode: "Enter hex bytes (e.g., 48 65 6c 6c 6f)" },
+  punycode: {
+    encode: "Enter a domain, URL, or email address, one per line (e.g., münchen.de)",
+    decode: "Enter a Punycode domain, URL, or email address, one per line (e.g., xn--mnchen-3ya.de)",
+  },
 };
 
 export function EscapeTools() {
@@ -72,13 +86,17 @@ export function EscapeTools() {
         return encode ? { ok: true, value: encodeUnicode(text, { braces: unicodeBraces, all: unicodeAll }) } : decodeUnicode(text);
       case "hex":
         return encode ? { ok: true, value: encodeHex(text, { spaced: hexSpaced, uppercase: hexUpper }) } : decodeHex(text);
+      case "punycode":
+        return convertIdn(text, encode ? "toAscii" : "toUnicode");
     }
   }, [text, mode, direction, htmlNonAscii, unicodeBraces, unicodeAll, hexSpaced, hexUpper]);
 
   const output = "value" in result ? result.value : "";
   const error = "error" in result ? result.error : "";
   const encoding = direction === "encode";
-  const outputTitle = encoding ? "Escaped" : "Unescaped";
+  const punycode = mode === "punycode";
+  const outputTitle = punycode ? (encoding ? "ASCII" : "Unicode") : encoding ? "Escaped" : "Unescaped";
+  const inputTitle = punycode ? (encoding ? "Domain" : "Punycode domain") : encoding ? "Text" : mode === "hex" ? "Hex" : "Escaped text";
 
   // Move the result into the input and reverse the direction
   const swap = () => {
@@ -132,7 +150,7 @@ export function EscapeTools() {
       notice={error ? <div className="workspace-notice" data-tone="error" role="alert">{error}</div> : undefined}
       first={
         <EditorPane
-          title={encoding ? "Text" : mode === "hex" ? "Hex" : "Escaped text"}
+          title={inputTitle}
           htmlFor="escape-input"
           scroll={false}
           actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}

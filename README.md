@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 47 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 51 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
@@ -79,6 +79,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Regex Tester** - Test a pattern as you type, with highlighted matches, capture groups, and live replace
 - **JSON to Code** - Generate TypeScript, Go, Rust, Python, Swift, and Kotlin types, or a JSON Schema, from JSON
 - **JSON Schema Validator** - Check JSON or YAML against a JSON Schema as you type, and click each error to find the failing value
+- **JSON Diff** - Compare two JSON or YAML documents by value, list changes by path, match array items by key, and copy the changes as a JSON Patch
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
@@ -98,18 +99,23 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 ### Converters
 
 - **Base64** - Encode and decode Base64 and Base32 text, files, and data URIs, with a URL-safe mode
-- **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line
-- **Number Base** - See a number in binary, octal, decimal, hex, and any base to 36 as you type, with two's complement views
+- **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line, and make URL slugs
+- **Number Base** - See a number in binary, octal, decimal, hex, any base to 36, and Roman numerals as you type, with two's complement views, integer expressions, and a clickable bit grid
 - **Markdown** - Live, sanitized preview and HTML export
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters and nested key flattening
-- **Config Converter** - Convert between JSON, YAML, TOML, .env, and Java .properties files, including multi-document YAML
-- **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
+- **Config Converter** - Convert between JSON, YAML, TOML, .env, Java .properties, and TOON files, including multi-document YAML, and see how many LLM tokens TOON saves against JSON
+- **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex, and convert domain names to and from Punycode
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
 - **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
 - **Compression** - Decompress GZIP, zlib, and raw deflate from Base64, hex, or a .gz file, and compress text back, with format detection
 - **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
+
+### Network
+
+- **IP / CIDR Calculator** - Get the network, broadcast, host range, masks, and address type for IPv4 and IPv6 blocks, and split, merge, or check ranges
+- **HAR Viewer** - Filter, sort, and inspect the requests in a .har file from the browser, copy a request as cURL, and save a sanitized copy without credentials and cookies
 
 ### Time & Date
 
@@ -129,7 +135,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Text Compare** - Aligned line, word and character diff with change navigation that can ignore whitespace and case
 - **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
-- **String Inspector** - Count characters, words, lines, and bytes, and find hidden Unicode characters
+- **String Inspector** - Count characters, words, lines, and bytes, find hidden Unicode characters, and check Unicode normalization (NFC, NFD, NFKC, NFKD)
 - **Line Tools** - Filter, sort, reverse, dedupe, trim, and shuffle lines, and compare two lists
 
 ### AI Tools
@@ -142,6 +148,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 ### Utilities
 
 - **Unit Converter** - Convert length, weight, temperature, and data units
+- **chmod Calculator** - Set file permissions with checkboxes, octal, or `rwx` text, apply expressions such as `u+x`, and see the chmod commands, a plain-English summary, and umask defaults
 
 ## Development
 

@@ -2,27 +2,33 @@ import { parseAllDocuments, stringify, YAMLError } from "yaml";
 import { ConversionError, errorAt, setOwn } from "./conversion-error";
 import { envKey, formatEnv, parseEnv, type EnvNesting } from "./env-file";
 import { expandKeys, formatProperties, parseProperties, propertiesKey } from "./properties-file";
+import { isToonHeaderLine } from "./toon-detect";
 
 export { ConversionError };
 export type { EnvNesting };
 
 export type YamlIndent = 2 | 4;
-export type ConfigFormat = "json" | "yaml" | "toml" | "env" | "properties";
+export type ConfigFormat = "json" | "yaml" | "toml" | "env" | "properties" | "toon";
+export type ToonDelimiter = "," | "\t" | "|";
 
-export const CONFIG_FORMATS: readonly ConfigFormat[] = ["json", "yaml", "toml", "env", "properties"];
-export const FORMAT_NAMES: Record<ConfigFormat, string> = { json: "JSON", yaml: "YAML", toml: "TOML", env: ".env", properties: ".properties" };
+export const CONFIG_FORMATS: readonly ConfigFormat[] = ["json", "yaml", "toml", "env", "properties", "toon"];
+export const FORMAT_NAMES: Record<ConfigFormat, string> = { json: "JSON", yaml: "YAML", toml: "TOML", env: ".env", properties: ".properties", toon: "TOON" };
 
 export interface ConvertOptions {
-  /** Indent for JSON and YAML output. */
+  /** Indent for JSON, YAML, and TOON output. */
   indent: YamlIndent;
   /** How nested keys join in .env output. */
   envNesting: EnvNesting;
+  /** Delimiter for TOON table rows and inline arrays. The default is a comma. */
+  toonDelimiter?: ToonDelimiter;
 }
 
 export interface ConversionResult {
   output: string;
   /** Number of YAML documents read. Above 1, the JSON output is an array with one item per document. */
   documents: number;
+  /** The data that was written, for the token comparison. */
+  data?: unknown;
 }
 
 export type TomlModule = typeof import("smol-toml");
@@ -31,6 +37,13 @@ export type TomlModule = typeof import("smol-toml");
 export const loadToml = (): Promise<TomlModule> => import("smol-toml");
 
 export const needsToml = (from: ConfigFormat, to: ConfigFormat) => from === "toml" || to === "toml";
+
+export type ToonModule = typeof import("@toon-format/toon");
+
+/** Loads the TOON encoder on first use, the same way as the TOML parser. */
+export const loadToon = (): Promise<ToonModule> => import("@toon-format/toon");
+
+export const needsToon = (from: ConfigFormat, to: ConfigFormat) => from === "toon" || to === "toon";
 
 const yamlError = (error: YAMLError) => {
   const pos = error.linePos?.[0];
@@ -76,6 +89,28 @@ const requireToml = (toml: TomlModule | undefined) => {
   return toml;
 };
 
+const requireToon = (toon: ToonModule | undefined) => {
+  if (!toon) throw new ConversionError("The TOON encoder is still loading. Try again in a moment.");
+  return toon;
+};
+
+/** TOON decodes at a fixed indent. Input that uses only multiples of 4 spaces reads at 4. */
+const toonIndent = (input: string) => {
+  const indents = input.split(/\r?\n/).filter((line) => line.trim()).map((line) => /^ */.exec(line)![0].length).filter((n) => n > 0);
+  return indents.length && indents.every((n) => n % 4 === 0) ? 4 : 2;
+};
+
+const parseToon = (input: string, toon: ToonModule): unknown => {
+  try {
+    return toon.decode(input, { indentSize: toonIndent(input) });
+  } catch (error) {
+    if (!(error instanceof toon.ToonDecodeError)) throw error;
+    // The decoder gives a line but no column. Point at the first character of the line.
+    const column = error.source === undefined ? undefined : /^\s*/.exec(error.source)![0].length + 1;
+    throw errorAt(error.message.replace(/^Line \d+:\s*/, ""), error.line, column);
+  }
+};
+
 const parseToml = (input: string, toml: TomlModule): unknown => {
   try {
     return toml.parse(input);
@@ -100,7 +135,12 @@ const datesToText = (value: unknown): unknown => {
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date);
 
-const parseSource = (input: string, from: ConfigFormat, to: ConfigFormat, toml?: TomlModule): unknown[] => {
+interface Parsers {
+  toml?: TomlModule;
+  toon?: ToonModule;
+}
+
+const parseSource = (input: string, from: ConfigFormat, to: ConfigFormat, { toml, toon }: Parsers): unknown[] => {
   switch (from) {
     case "yaml":
       return parseYaml(input);
@@ -114,6 +154,8 @@ const parseSource = (input: string, from: ConfigFormat, to: ConfigFormat, toml?:
       return [parseEnv(input)];
     case "properties":
       return [expandKeys(parseProperties(input))];
+    case "toon":
+      return [parseToon(input, requireToon(toon))];
   }
 };
 
@@ -174,10 +216,18 @@ const writeToml = (value: Record<string, unknown>, toml: TomlModule) => {
   }
 };
 
-const writeTarget = (values: unknown[], to: ConfigFormat, options: ConvertOptions, toml?: TomlModule) => {
+const writeToon = (value: unknown, options: ConvertOptions, toon: ToonModule) => {
+  const text = toon.encode(value, { indentSize: options.indent, delimiter: options.toonDelimiter ?? "," });
+  return text ? `${text}\n` : "";
+};
+
+/** The value that JSON and TOON write. Several YAML documents become one array. */
+const dataOf = (values: unknown[]) => (values.length === 1 ? values[0] : values) ?? null;
+
+const writeTarget = (values: unknown[], to: ConfigFormat, options: ConvertOptions, { toml, toon }: Parsers) => {
   switch (to) {
     case "json":
-      return JSON.stringify((values.length === 1 ? values[0] : values) ?? null, null, options.indent);
+      return JSON.stringify(dataOf(values), null, options.indent);
     case "yaml":
       return values.map((value) => stringify(value, { indent: options.indent, lineWidth: 0 })).join("---\n");
     case "toml":
@@ -186,20 +236,58 @@ const writeTarget = (values: unknown[], to: ConfigFormat, options: ConvertOption
       return writeEnv(singleObject(values, to), options.envNesting);
     case "properties":
       return formatProperties(flatten(singleObject(values, to)).map(([path, text]) => [propertiesKey(path), text] as const));
+    case "toon":
+      return writeToon(dataOf(values), options, requireToon(toon));
   }
 };
 
 /**
- * Converts between JSON, YAML, TOML, .env, and .properties. Pass the module from loadToml when
- * either side is TOML. Several YAML documents become a JSON array, or stay separate in YAML.
+ * Converts between JSON, YAML, TOML, .env, .properties, and TOON. Pass the module from loadToml
+ * when either side is TOML, and the module from loadToon when either side is TOON. Several YAML
+ * documents become an array in JSON and TOON, or stay separate in YAML.
  * Throws a ConversionError with a short message, and a line and column when the parser gives one.
  */
-export function convertConfig(input: string, from: ConfigFormat, to: ConfigFormat, options: ConvertOptions, toml?: TomlModule): ConversionResult {
+export function convertConfig(
+  input: string,
+  from: ConfigFormat,
+  to: ConfigFormat,
+  options: ConvertOptions,
+  toml?: TomlModule,
+  toon?: ToonModule,
+): ConversionResult {
   if (!input.trim()) return { output: "", documents: 0 };
   if (needsToml(from, to)) requireToml(toml);
-  const values = parseSource(input, from, to, toml);
-  if (values.length === 0) return { output: to === "yaml" ? "null\n" : "null", documents: 0 };
-  return { output: writeTarget(values, to, options, toml), documents: values.length };
+  if (needsToon(from, to)) requireToon(toon);
+  const values = parseSource(input, from, to, { toml, toon });
+  if (values.length === 0) return { output: to === "yaml" ? "null\n" : "null", documents: 0, data: null };
+  return { output: writeTarget(values, to, options, { toml, toon }), documents: values.length, data: dataOf(values) };
+}
+
+export interface TokenComparison {
+  /** Tokens in minified JSON. */
+  json: number;
+  /** Tokens in JSON with a 2-space indent. */
+  prettyJson: number;
+  toon: number;
+  /** Percent of tokens that TOON saves against minified JSON. Below 0 when TOON uses more. */
+  saved: number;
+}
+
+/** Percent saved, with one decimal place. */
+export const percentSaved = (jsonTokens: number, toonTokens: number) =>
+  jsonTokens > 0 ? Math.round((1 - toonTokens / jsonTokens) * 1000) / 10 : 0;
+
+/**
+ * Counts the tokens of the same data as minified JSON, pretty JSON, and TOON text.
+ * The count function comes from the caller, so this module does not load a tokenizer.
+ */
+export async function compareTokens(data: unknown, toonText: string, count: (text: string) => Promise<number>): Promise<TokenComparison> {
+  const [json, prettyJson, toon] = await Promise.all([
+    count(JSON.stringify(data ?? null)),
+    count(JSON.stringify(data ?? null, null, 2)),
+    count(toonText.trimEnd()),
+  ]);
+  return { json, prettyJson, toon, saved: percentSaved(json, toon) };
 }
 
 /** Converts YAML to JSON. Several documents (separated by ---) become a JSON array. */
@@ -243,6 +331,7 @@ export function detectConfigFormat(text: string): ConfigFormat | null {
   if (lines.length && lines.every((line) => TOML_TYPED_PAIR.test(line))) return "toml";
   const pairs = lines.filter((line) => !line.startsWith("!"));
   if (pairs.length && pairs.every((line) => PROPERTIES_PAIR.test(line))) return "properties";
+  if (lines.some(isToonHeaderLine)) return "toon";
   if (lines.some((line) => /^(- |---$)/.test(line) || /^[^\s:#][^:]*:(\s|$)/.test(line))) return "yaml";
   return null;
 }

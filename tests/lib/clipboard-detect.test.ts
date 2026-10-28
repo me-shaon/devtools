@@ -46,6 +46,35 @@ describe("detectPastedContent", () => {
     expect(first("eJustSomeWordsThatLookLikeBase64")).not.toBe("compression");
   });
 
+  it("sends pasted HAR JSON to the HAR viewer", () => {
+    const har = '{"log": {"version": "1.2", "creator": {"name": "WebInspector"}, "entries": [{"request": {"method": "GET", "url": "https://example.com/"}}]}}';
+    expect(detectPastedContent(har, ids)[0]).toMatchObject({ toolId: "har-viewer", label: "a HAR file" });
+    expect(first('{"log": "just a message"}')).toBe("json-viewer");
+  });
+
+  it("sends IP blocks and IPv6 addresses to the CIDR calculator", () => {
+    expect(detectPastedContent("10.0.0.0/8", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "a CIDR block" });
+    expect(detectPastedContent("fe80::1", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv6 address" });
+    expect(detectPastedContent("192.168.1.10 255.255.255.0", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv4 address and netmask" });
+    expect(first("1.2.3.4")).toBeUndefined();
+    expect(first("12:30:45")).toBeUndefined();
+    expect(first("300.0.0.0/8")).toBeUndefined();
+  });
+
+  it("recognises TOON before YAML", () => {
+    expect(detectPastedContent("users[2]{id,name}:\n  1,Ada\n  2,Bob", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "TOON" });
+    expect(detectPastedContent("name: demo\ntags[2]: a,b", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "TOON" });
+    expect(detectPastedContent("name: demo\nversion: 1", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "YAML" });
+  });
+
+  it("recognises file modes and chmod commands", () => {
+    expect(first("-rwxr-xr-x")).toBe("chmod-calculator");
+    expect(first("drwxrwxrwt")).toBe("chmod-calculator");
+    expect(detectPastedContent("sudo chmod -R 755 /var/www", ids)[0]).toMatchObject({ toolId: "chmod-calculator", label: "a chmod command" });
+    expect(first("chmod --recursive u+x,go-w ./bin")).toBe("chmod-calculator");
+    expect(first("chmod 755")).toBeUndefined();
+  });
+
   it("ignores plain text, hex digests, and numbers that are not timestamps", () => {
     expect(first("hello world")).toBeUndefined();
     expect(first("d41d8cd98f00b204e9800998ecf8427e")).toBeUndefined();

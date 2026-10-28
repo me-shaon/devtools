@@ -14,6 +14,13 @@ import {
   toBase,
   groupDigits,
   fixedWidth,
+  popcount,
+  highestSetBit,
+  lowestSetBit,
+  byteSwap,
+  toggleBit,
+  toRoman,
+  parseRoman,
 } from '@/utils/number-base';
 
 describe('Number Base Utils', () => {
@@ -362,5 +369,69 @@ describe('fixedWidth', () => {
     expect(fixedWidth(-129n, 8).fits).toBe(false);
     expect(fixedWidth(-128n, 8).fits).toBe(true);
     expect(fixedWidth(2n ** 64n - 1n, 64).fits).toBe(true);
+  });
+});
+
+describe('bit helpers', () => {
+  it('counts set bits and finds the highest and lowest set bit', () => {
+    expect(popcount(0n)).toBe(0);
+    expect(popcount(0xffn)).toBe(8);
+    expect(popcount(2n ** 64n - 1n)).toBe(64);
+    expect(highestSetBit(0n)).toBeNull();
+    expect(lowestSetBit(0n)).toBeNull();
+    expect(highestSetBit(0x80n)).toBe(7);
+    expect(lowestSetBit(0x80n)).toBe(7);
+    expect(highestSetBit(1n << 63n)).toBe(63);
+    expect(lowestSetBit(0b101000n)).toBe(3);
+  });
+
+  it('swaps byte order at the given width', () => {
+    expect(byteSwap(0x12345678n, 32)).toBe(0x78563412n);
+    expect(byteSwap(0x1234n, 16)).toBe(0x3412n);
+    expect(byteSwap(0xabn, 8)).toBe(0xabn);
+    expect(byteSwap(0x0102030405060708n, 64)).toBe(0x0807060504030201n);
+    expect(byteSwap(-1n, 32)).toBe(0xffffffffn);
+  });
+
+  it('toggles a bit and keeps the sign meaning of the value', () => {
+    expect(toggleBit(0n, 3, 8)).toBe(8n);
+    expect(toggleBit(8n, 3, 8)).toBe(0n);
+    expect(toggleBit(-1n, 0, 8)).toBe(-2n);
+    expect(toggleBit(-128n, 7, 8)).toBe(0n);
+    expect(toggleBit(0n, 63, 64)).toBe(1n << 63n);
+  });
+});
+
+describe('Roman numerals', () => {
+  it('writes standard subtractive forms', () => {
+    expect(toRoman(1n)).toBe('I');
+    expect(toRoman(4n)).toBe('IV');
+    expect(toRoman(9n)).toBe('IX');
+    expect(toRoman(40n)).toBe('XL');
+    expect(toRoman(400n)).toBe('CD');
+    expect(toRoman(1994n)).toBe('MCMXCIV');
+    expect(toRoman(3999n)).toBe('MMMCMXCIX');
+  });
+
+  it('has no numeral outside 1 to 3999', () => {
+    expect(toRoman(0n)).toBeNull();
+    expect(toRoman(-5n)).toBeNull();
+    expect(toRoman(4000n)).toBeNull();
+  });
+
+  it('round-trips every value from 1 to 3999', () => {
+    for (let n = 1n; n <= 3999n; n++) {
+      const roman = toRoman(n)!;
+      expect(parseRoman(roman)).toEqual({ ok: true, value: n });
+      expect(parseRoman(roman.toLowerCase())).toEqual({ ok: true, value: n });
+    }
+  });
+
+  it('rejects non-standard and invalid numerals', () => {
+    for (const bad of ['IIII', 'VX', 'IC', 'IL', 'XM', 'VV', 'LL', 'DD', 'MMMM', 'IIV', 'IXI', 'XCX', 'ABC', '12', 'I V', '']) {
+      expect(parseRoman(bad).ok, bad).toBe(false);
+    }
+    const r = parseRoman('IIII');
+    expect(!r.ok && r.error).toContain('not a valid Roman numeral');
   });
 });

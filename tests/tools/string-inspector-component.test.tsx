@@ -20,4 +20,24 @@ describe("StringInspector", () => {
     expect(await screen.findByText("No hidden characters")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
+
+  it("shows normalization forms and warns about two spellings", async () => {
+    render(<StringInspector />);
+    fireEvent.change(screen.getByLabelText("Text"), { target: { value: "caf\u00E9 cafe\u0301" } });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "1 character written in more than one way: \u00E9 (U+00E9 or U+0065 U+0301).",
+    );
+    const nfd = screen.getByText("NFD", { selector: ".result-row-label" }).nextElementSibling;
+    expect(nfd).toHaveTextContent("Differs from input · 11 code points, 11 UTF-16 units, 13 bytes");
+    expect(screen.getByRole("button", { name: "Copy NFC" })).toBeInTheDocument();
+  });
+
+  it("says when the variant check covers only the start of long text", async () => {
+    render(<StringInspector />);
+    fireEvent.change(screen.getByLabelText("Text"), { target: { value: `\u00E9${"a".repeat(200_000)}e\u0301` } });
+    expect(
+      await screen.findByText("The check for characters written in more than one way covered only the first 200,000 characters."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
 });

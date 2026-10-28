@@ -5,6 +5,8 @@ import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import {
+  findNormalizationVariants,
+  getNormalizedForms,
   getStringStats,
   inspectCharacters,
   stripFlaggedCharacters,
@@ -27,6 +29,14 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   {
     q: "Why are there no Unicode character names?",
     a: "The full Unicode name list is large and the tool runs offline, so only hard-to-see characters get a name. Every character shows its code point, category, and UTF-8 bytes.",
+  },
+  {
+    q: "What does the Normalization section show?",
+    a: "Unicode can write one character in more than one way. For example, `é` can be U+00E9 or `e` followed by U+0301. The section shows if the text is already in NFC, NFD, NFKC, and NFKD, and the length of each form. Copy a form to make comparisons and lookups match.",
+  },
+  {
+    q: "Why do two strings that look the same not compare equal?",
+    a: "One string can use a composed character and the other a base letter plus a combining mark. The tool warns when your text writes the same character in two ways. Copy the NFC form to use one spelling.",
   },
 ];
 
@@ -79,6 +89,12 @@ export function StringInspector() {
     if (!text) return null;
     return { stats: getStringStats(text), chars: inspectCharacters(text, CHAR_LIMIT) };
   }, [text]);
+
+  const normalization = useMemo(
+    () => (text ? { forms: getNormalizedForms(text), check: findNormalizationVariants(text) } : null),
+    [text],
+  );
+  const variants = normalization?.check.variants ?? [];
 
   const cleaned = useMemo(() => (result?.chars.flaggedCount ? stripFlaggedCharacters(text) : ""), [result, text]);
 
@@ -138,11 +154,40 @@ export function StringInspector() {
                   </span>
                 </div>
               )}
+              {variants.length > 0 && (
+                <div className="pane-options text-warning" role="status">
+                  <TriangleAlert size={14} aria-hidden="true" />
+                  <span>
+                    {plural(variants.length, "character")} written in more than one way:{" "}
+                    {variants.slice(0, 3).map((v) => `${v.nfc} (${v.spellings.map((cps) => cps.join(" ")).join(" or ")})`).join(", ")}
+                    {variants.length > 3 && ` and ${variants.length - 3} more`}. They look the same but do not compare equal. Copy the NFC form to use one spelling.
+                  </span>
+                </div>
+              )}
               {statRows.map(([label, value]) => (
                 <div key={label} className="result-row">
                   <span className="result-row-label">{label}</span>
                   <span className="result-row-value">{value}</span>
                   <span />
+                </div>
+              ))}
+              <div className="pane-options">
+                <span className="font-medium">Normalization</span>
+              </div>
+              {normalization?.check.truncated && (
+                <div className="pane-options text-muted-foreground">
+                  The check for characters written in more than one way covered only the first{" "}
+                  {normalization.check.checked.toLocaleString()} characters.
+                </div>
+              )}
+              {normalization?.forms.map((f) => (
+                <div key={f.form} className="result-row">
+                  <span className="result-row-label">{f.form}</span>
+                  <span className="result-row-value">
+                    {f.same ? "Same as input" : "Differs from input"} · {plural(f.codePoints, "code point")}, {plural(f.codeUnits, "UTF-16 unit")},{" "}
+                    {plural(f.bytes, "byte")}
+                  </span>
+                  <CopyButton value={f.value} iconOnly label={`Copy ${f.form}`} />
                 </div>
               ))}
               <div className="pane-options">
