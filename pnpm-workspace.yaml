@@ -1,0 +1,5 @@
+allowBuilds:
+  '@swc/core': true
+  edgedriver: true
+  esbuild: true
+  geckodriver: true

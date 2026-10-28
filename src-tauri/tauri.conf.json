@@ -5,9 +5,9 @@
   "version": "../package.json",
   "identifier": "com.meshaon.devtoolsapp",
   "build": {
-    "beforeDevCommand": "npm run dev:web",
+    "beforeDevCommand": "pnpm run dev:web",
     "devUrl": "http://localhost:8080",
-    "beforeBuildCommand": "npm run build:web",
+    "beforeBuildCommand": "pnpm run build:web",
     "frontendDist": "../dist"
   },
   "app": {

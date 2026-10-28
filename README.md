@@ -155,7 +155,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Prerequisites
 
-- Node.js 22+ and npm.
+- Node.js 24 LTS (22+ supported) and pnpm (enable with `corepack enable`; the version is pinned in `package.json`).
 - Stable Rust, installed with [rustup](https://rustup.rs).
 - The [Tauri system prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
@@ -171,27 +171,27 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librs
 ```bash
 git clone https://github.com/me-shaon/devtools.git
 cd devtools
-npm ci
-npm run dev
+pnpm install
+ppnpm run dev
 ```
 
-For UI-only development, run `npm run dev:web` and open the URL printed by Vite. Browser preview does not provide native desktop integrations or the updater.
+For UI-only development, run `pnpm run dev:web` and open the URL printed by Vite. Browser preview does not provide native desktop integrations or the updater.
 
 ### Commands
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Start Vite and the Tauri desktop app with hot reload |
-| `npm run dev:web` | Run the web UI in a browser |
-| `npm run build:web` | Build the frontend into `dist/` |
-| `npm run build` | Build the desktop app and installers for the current platform |
-| `npm test` | Run the Vitest suite |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint |
-| `npm run dist:mac` | Build macOS `.app` and `.dmg` packages |
-| `npm run dist:win` | Build the Windows NSIS installer |
-| `npm run dist:linux` | Build Linux AppImage, Debian, and RPM packages |
-| `npm run brand:build` | Rebuild logos, favicons, and desktop icons |
+| `pnpm run dev` | Start Vite and the Tauri desktop app with hot reload |
+| `pnpm run dev:web` | Run the web UI in a browser |
+| `pnpm run build:web` | Build the frontend into `dist/` |
+| `pnpm run build` | Build the desktop app and installers for the current platform |
+| `pnpm test` | Run the Vitest suite |
+| `pnpm run test:watch` | Run tests in watch mode |
+| `pnpm run lint` | Run ESLint |
+| `pnpm run dist:mac` | Build macOS `.app` and `.dmg` packages |
+| `pnpm run dist:win` | Build the Windows NSIS installer |
+| `pnpm run dist:linux` | Build Linux AppImage, Debian, and RPM packages |
+| `pnpm run brand:build` | Rebuild logos, favicons, and desktop icons |
 
 Installers are written to `src-tauri/target/release/bundle/`. Each platform builds its own installers; CI builds the supported platforms. See the [release process](docs/release-process.md) for versioning, signing, and publishing.
 
@@ -202,7 +202,7 @@ The [smoke test](e2e/smoke.mjs) launches the built app through `tauri-driver` an
 ```bash
 sudo apt-get install -y xvfb webkit2gtk-driver
 cargo install tauri-driver --locked
-npm run build
+pnpm run build
 xvfb-run node e2e/smoke.mjs
 ```
 

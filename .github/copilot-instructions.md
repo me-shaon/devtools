@@ -37,10 +37,10 @@ src-tauri/
 ## Commands
 
 ```bash
-npm run dev        # Tauri app with hot reload
-npm run dev:web    # Web UI only, in a browser
-npm test           # Unit tests (Vitest)
-npm run build      # App and installers for the current platform
+pnpm run dev        # Tauri app with hot reload
+pnpm run dev:web    # Web UI only, in a browser
+pnpm test           # Unit tests (Vitest)
+pnpm run build      # App and installers for the current platform
 ```
 
 ## Release
