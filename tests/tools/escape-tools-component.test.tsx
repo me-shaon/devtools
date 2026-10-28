@@ -27,4 +27,17 @@ describe("EscapeTools", () => {
     fireEvent.change(screen.getByLabelText("Text"), { target: { value: "a\u{1F600}" } });
     expect(await screen.findByDisplayValue("a\\u{1F600}")).toBeInTheDocument();
   });
+
+  it("converts domains with Punycode and reports invalid labels", async () => {
+    render(<EscapeTools />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Punycode" }));
+    fireEvent.change(screen.getByLabelText("Domain"), { target: { value: "https://bücher.de/path" } });
+    expect(await screen.findByDisplayValue("https://xn--bcher-kva.de/path")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Swap" }));
+    expect(await screen.findByDisplayValue("https://bücher.de/path")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Punycode domain"), { target: { value: "xn--zz.de" } });
+    expect(await screen.findByRole("alert")).toHaveTextContent('Invalid Punycode label "xn--zz"');
+  });
 });

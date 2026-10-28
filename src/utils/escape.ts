@@ -231,3 +231,199 @@ export function decodeHex(text: string): EscapeResult {
     return fail("The bytes are not valid UTF-8 text.");
   }
 }
+
+/* -------------------------------------------------------------- Punycode */
+
+// RFC 3492 parameters for IDNA.
+const BASE = 36;
+const T_MIN = 1;
+const T_MAX = 26;
+const SKEW = 38;
+const DAMP = 700;
+const INITIAL_BIAS = 72;
+const INITIAL_N = 0x80;
+const MAX_INT = 0x7fffffff;
+
+function adaptBias(delta: number, points: number, first: boolean): number {
+  delta = first ? Math.floor(delta / DAMP) : delta >> 1;
+  delta += Math.floor(delta / points);
+  let k = 0;
+  while (delta > ((BASE - T_MIN) * T_MAX) >> 1) {
+    delta = Math.floor(delta / (BASE - T_MIN));
+    k += BASE;
+  }
+  return k + Math.floor(((BASE - T_MIN + 1) * delta) / (delta + SKEW));
+}
+
+const threshold = (k: number, bias: number) => (k <= bias ? T_MIN : k >= bias + T_MAX ? T_MAX : k - bias);
+
+// 0-25 are a-z, 26-35 are 0-9.
+const toDigitChar = (d: number) => String.fromCharCode(d < 26 ? 97 + d : 22 + d);
+
+function fromDigitChar(code: number): number {
+  if (code >= 0x30 && code <= 0x39) return code - 22;
+  if (code >= 0x41 && code <= 0x5a) return code - 0x41;
+  if (code >= 0x61 && code <= 0x7a) return code - 0x61;
+  return BASE;
+}
+
+/** Encode a string with RFC 3492 Punycode, without the `xn--` prefix. */
+export function encodePunycode(input: string): string {
+  const codePoints = Array.from(input, (c) => c.codePointAt(0) ?? 0);
+  const out: string[] = codePoints.filter((c) => c < 0x80).map((c) => String.fromCharCode(c));
+  const basic = out.length;
+  if (basic > 0) out.push("-");
+
+  let n = INITIAL_N;
+  let delta = 0;
+  let bias = INITIAL_BIAS;
+  for (let handled = basic; handled < codePoints.length; ) {
+    let next = Infinity;
+    for (const c of codePoints) if (c >= n && c < next) next = c;
+    delta += (next - n) * (handled + 1);
+    n = next;
+    for (const c of codePoints) {
+      if (c < n) delta++;
+      if (c !== n) continue;
+      let q = delta;
+      for (let k = BASE; ; k += BASE) {
+        const t = threshold(k, bias);
+        if (q < t) break;
+        out.push(toDigitChar(t + ((q - t) % (BASE - t))));
+        q = Math.floor((q - t) / (BASE - t));
+      }
+      out.push(toDigitChar(q));
+      bias = adaptBias(delta, handled + 1, handled === basic);
+      delta = 0;
+      handled++;
+    }
+    delta++;
+    n++;
+  }
+  return out.join("");
+}
+
+/** Decode RFC 3492 Punycode (without the `xn--` prefix). Throws on invalid input. */
+export function decodePunycode(input: string): string {
+  const delimiter = input.lastIndexOf("-");
+  const out: number[] = [];
+  for (let j = 0; j < Math.max(delimiter, 0); j++) {
+    const code = input.charCodeAt(j);
+    if (code >= 0x80) throw new Error("The basic part has non-ASCII characters.");
+    out.push(code);
+  }
+
+  let n = INITIAL_N;
+  let i = 0;
+  let bias = INITIAL_BIAS;
+  for (let pos = delimiter > 0 ? delimiter + 1 : 0; pos < input.length; ) {
+    const oldI = i;
+    for (let w = 1, k = BASE; ; k += BASE) {
+      if (pos >= input.length) throw new Error("The input ends in the middle of a number.");
+      const digit = fromDigitChar(input.charCodeAt(pos++));
+      if (digit >= BASE) throw new Error(`"${input[pos - 1]}" is not a Punycode digit.`);
+      i += digit * w;
+      if (i > MAX_INT) throw new Error("The input is too large.");
+      const t = threshold(k, bias);
+      if (digit < t) break;
+      w *= BASE - t;
+    }
+    const length = out.length + 1;
+    bias = adaptBias(i - oldI, length, oldI === 0);
+    n += Math.floor(i / length);
+    i %= length;
+    if (n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) throw new Error("The input decodes to an invalid code point.");
+    out.splice(i, 0, n);
+    i++;
+  }
+  return String.fromCodePoint(...out);
+}
+
+/* ------------------------------------------------------------------- IDN */
+
+export type IdnDirection = "toAscii" | "toUnicode";
+
+const ACE_PREFIX = "xn--";
+// IDNA treats the ideographic and fullwidth full stops as label separators.
+const LABEL_DOT = /[.。．｡]/;
+const isAscii = (text: string) => /^\p{ASCII}*$/u.test(text);
+
+function labelToUnicode(label: string): string {
+  if (label.slice(0, 4).toLowerCase() !== ACE_PREFIX) return label;
+  let decoded: string;
+  try {
+    decoded = decodePunycode(label.slice(4));
+  } catch (e) {
+    throw new Error(`Invalid Punycode label "${label}". ${(e as Error).message}`);
+  }
+  if (!decoded || isAscii(decoded)) throw new Error(`Invalid Punycode label "${label}". It does not decode to non-ASCII text.`);
+  // A valid label encodes back to the same digits. This rejects odd forms that decode by accident.
+  if (encodePunycode(decoded).toLowerCase() !== label.slice(4).toLowerCase()) {
+    throw new Error(`Invalid Punycode label "${label}". It is not in the standard form.`);
+  }
+  if (/[\p{Cc}\p{White_Space}.\u3002\uFF0E\uFF61]/u.test(decoded)) {
+    throw new Error(`Invalid Punycode label "${label}". It decodes to control, space, or dot characters.`);
+  }
+  return decoded;
+}
+
+function labelToAscii(label: string): string {
+  if (isAscii(label)) {
+    if (label.slice(0, 4).toLowerCase() === ACE_PREFIX) labelToUnicode(label); // Only checks that it is valid.
+    return label;
+  }
+  const normalized = label.normalize("NFC").toLowerCase();
+  if (isAscii(normalized)) return normalized;
+  const encoded = ACE_PREFIX + encodePunycode(normalized);
+  if (encoded.length > 63) throw new Error(`The label "${label}" is ${encoded.length} characters in ASCII. DNS allows 63.`);
+  return encoded;
+}
+
+/** Convert a domain name label by label between Unicode and the ASCII (`xn--`) form. */
+export function convertDomain(domain: string, direction: IdnDirection): string {
+  const convert = direction === "toAscii" ? labelToAscii : labelToUnicode;
+  const labels = direction === "toAscii" ? domain.split(LABEL_DOT) : domain.split(".");
+  return labels.map(convert).join(".");
+}
+
+// Optional scheme, then the authority (up to the first /, ?, or #), then the rest.
+const URL_PARTS = /^([a-z][a-z0-9+.-]*:\/\/)?([^/?#]*)([\s\S]*)$/i;
+
+/**
+ * Convert one domain, URL, or email address. Only the host is converted. The
+ * scheme, user info or email local part, port, path, and query stay as written.
+ */
+function convertHostIn(text: string, direction: IdnDirection): string {
+  const [, scheme = "", authority, rest] = URL_PARTS.exec(text) ?? ["", "", text, ""];
+  const at = authority.lastIndexOf("@");
+  const userInfo = authority.slice(0, at + 1);
+  let host = authority.slice(at + 1);
+  let port = "";
+  // An IPv6 literal such as [::1] is never an IDN.
+  if (host.startsWith("[")) return text;
+  const portMatch = /:\d*$/.exec(host);
+  if (portMatch) {
+    port = portMatch[0];
+    host = host.slice(0, portMatch.index);
+  }
+  return scheme + userInfo + convertDomain(host, direction) + port + rest;
+}
+
+/**
+ * Convert internationalized domain names between Unicode and ASCII. Each line
+ * can be a domain, a URL, or an email address. Blank lines stay blank.
+ */
+export function convertIdn(text: string, direction: IdnDirection): EscapeResult {
+  const lines = text.split(/\r?\n/);
+  const out: string[] = [];
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n].trim();
+    try {
+      out.push(line ? convertHostIn(line, direction) : "");
+    } catch (e) {
+      const where = lines.length > 1 ? `Line ${n + 1}: ` : "";
+      return fail(where + (e as Error).message);
+    }
+  }
+  return ok(out.join("\n"));
+}

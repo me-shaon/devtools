@@ -105,7 +105,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters and nested key flattening
 - **Config Converter** - Convert between JSON, YAML, TOML, .env, and Java .properties files, including multi-document YAML
-- **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex
+- **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex, and convert domain names to and from Punycode
 - **HTML to JSX** - Convert HTML markup into React JSX
 - **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
 - **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
