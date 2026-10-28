@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 50 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 51 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — offline developer tools for macOS, Windows, and Linux. Redact secrets locally before sharing.](assets/readme-banner.jpg)
 
@@ -148,6 +148,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 ### Utilities
 
 - **Unit Converter** - Convert length, weight, temperature, and data units
+- **chmod Calculator** - Set file permissions with checkboxes, octal, or `rwx` text, apply expressions such as `u+x`, and see the chmod commands, a plain-English summary, and umask defaults
 
 ## Development
 

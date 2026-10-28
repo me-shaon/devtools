@@ -21,6 +21,7 @@ import {
   FileDiff,
   FileImage,
   FileJson,
+  FileLock2,
   FileSearch,
   FileText,
   Globe,
@@ -103,6 +104,7 @@ export const ALL_TOOLS = [
   { icon: ScanText, name: "String Inspector", id: "string-inspector", category: "Text Tools", keywords: ["count", "characters", "words", "bytes", "unicode", "invisible", "zero width"] },
   { icon: ListOrdered, name: "Line Tools", id: "line-tools", category: "Text Tools", keywords: ["sort", "dedupe", "unique", "lines", "shuffle", "reverse", "filter", "grep", "compare lists", "set difference", "intersection"] },
   { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities", keywords: ["units", "length", "weight", "temperature", "currency"] },
+  { icon: FileLock2, name: "chmod Calculator", id: "chmod-calculator", category: "Utilities", keywords: ["chmod", "permissions", "file mode", "octal", "rwx", "umask", "setuid", "setgid", "sticky bit", "ls -l"] },
   { icon: ShieldOff, name: "Image Metadata Cleaner", id: "image-metadata", category: "AI Tools", keywords: ["exif", "metadata", "remove metadata", "gps", "c2pa", "content credentials", "ai generated", "stable diffusion prompt", "privacy", "strip exif"] },
   { icon: ShieldAlert, name: "Secret & PII Redactor", id: "secret-redactor", category: "AI Tools", keywords: ["redact", "secrets", "api key", "token", "password", "pii", "mask", "sanitize", "chatgpt", "privacy"] },
   { icon: Coins, name: "Token Counter", id: "token-counter", category: "AI Tools", keywords: ["tokens", "tokenizer", "gpt", "openai", "o200k", "llm", "prompt", "cost", "context window", "claude"] },
@@ -184,5 +186,6 @@ export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>>
   "json-diff": lazyNamed(() => import("@/components/tools/JsonDiff"), "JsonDiff"),
   "ip-cidr": lazyNamed(() => import("@/components/tools/IpCidrCalculator"), "IpCidrCalculator"),
   "har-viewer": lazyNamed(() => import("@/components/tools/HarViewer"), "HarViewer"),
+  "chmod-calculator": lazyNamed(() => import("@/components/tools/ChmodCalculator"), "ChmodCalculator"),
   "unit-converter": lazyNamed(() => import("@/components/tools/UnitConverter"), "UnitConverter"),
 };

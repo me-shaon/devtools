@@ -61,6 +61,14 @@ describe("detectPastedContent", () => {
     expect(first("300.0.0.0/8")).toBeUndefined();
   });
 
+  it("recognises file modes and chmod commands", () => {
+    expect(first("-rwxr-xr-x")).toBe("chmod-calculator");
+    expect(first("drwxrwxrwt")).toBe("chmod-calculator");
+    expect(detectPastedContent("sudo chmod -R 755 /var/www", ids)[0]).toMatchObject({ toolId: "chmod-calculator", label: "a chmod command" });
+    expect(first("chmod --recursive u+x,go-w ./bin")).toBe("chmod-calculator");
+    expect(first("chmod 755")).toBeUndefined();
+  });
+
   it("ignores plain text, hex digests, and numbers that are not timestamps", () => {
     expect(first("hello world")).toBeUndefined();
     expect(first("d41d8cd98f00b204e9800998ecf8427e")).toBeUndefined();

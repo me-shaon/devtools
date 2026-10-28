@@ -132,6 +132,8 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   if (single && /^-?0(x[0-9a-f_]+|o[0-7_]+|b[01_]+)$/i.test(text)) add("number-base", "a number literal", 80);
   const ip = single ? ipPaste(text) : null;
   if (ip) add("ip-cidr", ip, 85);
+  if (single && /^(sudo\s+)?chmod\s+(--?[A-Za-z][\w-]*\s+)*([0-7]{3,4}|[ugoa]*[-+=][rwxXst]*(,[ugoa]*[-+=][rwxXst]*)*)\s+\S/.test(text)) add("chmod-calculator", "a chmod command", 95);
+  if (single && /^[-dlbcps][r-][w-][xsS-][r-][w-][xsS-][r-][w-][xtT-][.@+]?$/.test(text)) add("chmod-calculator", "a file mode", 85);
   if (single && /^https?:\/\/\S+$/i.test(text)) add("url-encoder", "a URL", 80);
   if (/^(a:\d+:\{|O:\d+:"|C:\d+:"|[^|:;{}"\s]+\|(a|s|i|b|d|O):)/.test(text)) add("php-tools", "PHP serialized data", 85);
   if (/^\s*(<\?php\s+)?(return\s+|\$\w+\s*=\s*)?(\[|array\s*\()[\s\S]*=>/i.test(text)) add("php-tools", "a PHP array", 70);
