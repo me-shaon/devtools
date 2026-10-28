@@ -1,4 +1,5 @@
-import { Findings, crc32 } from "@/utils/image-metadata";
+import { Findings, crc32, type FindingKind } from "@/utils/image-metadata";
+import { formatBytes } from "@/utils/hash";
 import type { ByteSource, Patch } from "@/utils/byte-source";
 import { VideoError, type ScanResult, type VideoCleanOptions } from "@/utils/video-format";
 
@@ -117,6 +118,7 @@ export function* ebmlChildren(buf: Uint8Array, base: number, parent: EbmlElement
 
 const data = (buf: Uint8Array, base: number, element: EbmlElement) => buf.subarray(element.dataStart - base, element.end - base);
 const text = (b: Uint8Array) => textDecoder.decode(b).replace(/\0+$/, "").trim();
+const uint = (b: Uint8Array) => b.reduce((value, byte) => value * 256 + byte, 0);
 
 function dateUtc(b: Uint8Array): string | null {
   if (b.length !== 8) return null;
@@ -199,7 +201,92 @@ function scanTracks(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ct
   push(ctx, edit.finish());
 }
 
+const STATISTICS = new Set(["BPS", "DURATION", "NUMBER_OF_FRAMES", "NUMBER_OF_BYTES", "_STATISTICS_WRITING_APP", "_STATISTICS_WRITING_DATE_UTC", "_STATISTICS_TAGS"]);
+
+const tagKind = (name: string): FindingKind =>
+  /LOCATION|GPS|COORDINATES/i.test(name)
+    ? "location"
+    : /MAKE|MODEL|CAMERA|DEVICE|DATE|TIME/i.test(name)
+      ? "camera"
+      : /ARTIST|AUTHOR|COPYRIGHT|PUBLISHER|PRODUCER|DIRECTOR/i.test(name)
+        ? "provenance"
+        : /ENCODER|SOFTWARE|WRITING/i.test(name)
+          ? "other"
+          : "text";
+
+function scanTags(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ctx) {
+  let statistics = 0;
+  const readSimpleTag = (tag: EbmlElement) => {
+    let name = "";
+    let value = "";
+    for (const child of ebmlChildren(buf, base, tag)) {
+      if (child.id === EBML_ID.TagName) name = text(data(buf, base, child));
+      else if (child.id === EBML_ID.TagString) value = text(data(buf, base, child));
+      else if (child.id === EBML_ID.SimpleTag) readSimpleTag(child);
+    }
+    if (STATISTICS.has(name)) statistics++;
+    else if (name || value) ctx.out.addText(name || "Tag", value || "(empty)", "Matroska tags", tagKind(name));
+  };
+  for (const tag of ebmlChildren(buf, base, element)) {
+    if (tag.id !== EBML_ID.Tag) continue;
+    for (const child of ebmlChildren(buf, base, tag)) if (child.id === EBML_ID.SimpleTag) readSimpleTag(child);
+  }
+  if (statistics) {
+    ctx.out.add({ kind: "other", label: "Track statistics", detail: `${statistics} ${statistics === 1 ? "value" : "values"}, such as the bit rate and the frame count`, source: "Matroska tags" });
+  }
+  ctx.patches.push({ offset: element.start, bytes: voidElement(element.end - element.start) });
+}
+
+const isFont = (name: string, mime: string) => /font|truetype|opentype|sfnt|woff/i.test(mime) || /\.(ttf|otf|ttc|woff2?)$/i.test(name);
+
+function scanAttachments(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ctx) {
+  const edit = new ElementEdit(element, buf, base);
+  const remove: EbmlElement[] = [];
+  let kept = 0;
+  for (const file of ebmlChildren(buf, base, element)) {
+    if (file.id !== EBML_ID.AttachedFile) continue;
+    let name = "";
+    let mime = "";
+    let length = 0;
+    for (const child of ebmlChildren(buf, base, file)) {
+      if (child.id === EBML_ID.FileName) name = text(data(buf, base, child));
+      else if (child.id === EBML_ID.FileMediaType) mime = text(data(buf, base, child));
+      else if (child.id === EBML_ID.FileData) length = child.end - child.dataStart;
+    }
+    const font = isFont(name, mime);
+    const keep = font && ctx.options.keepFonts;
+    const label = font ? "Attached font" : mime.startsWith("image/") ? "Attached picture" : "Attached file";
+    ctx.out.add({ kind: "other", label, detail: `${name || "No name"}, ${mime || "unknown type"}, ${formatBytes(length)}`, source: "Matroska attachments" }, !keep);
+    if (keep) kept++;
+    else remove.push(file);
+  }
+  if (!remove.length) return;
+  if (!kept) {
+    ctx.patches.push({ offset: element.start, bytes: voidElement(element.end - element.start) });
+    return;
+  }
+  for (const file of remove) edit.void(file);
+  push(ctx, edit.finish());
+}
+
+/** The elements this module reads, at the top level of the segment or through the seek index. */
 const READ_IDS = new Set<number>([EBML_ID.SeekHead, EBML_ID.Info, EBML_ID.Tracks, EBML_ID.Tags, EBML_ID.Attachments]);
+
+/** Positions of metadata elements in the seek index, as file offsets. */
+function seekTargets(buf: Uint8Array, base: number, element: EbmlElement, segmentDataStart: number): number[] {
+  const positions: number[] = [];
+  for (const seek of ebmlChildren(buf, base, element)) {
+    if (seek.id !== EBML_ID.Seek) continue;
+    let id = 0;
+    let position = -1;
+    for (const child of ebmlChildren(buf, base, seek)) {
+      if (child.id === EBML_ID.SeekID) id = uint(data(buf, base, child));
+      else if (child.id === EBML_ID.SeekPosition) position = uint(data(buf, base, child));
+    }
+    if (position >= 0 && READ_IDS.has(id)) positions.push(segmentDataStart + position);
+  }
+  return positions;
+}
 
 /** Finds the metadata in an MKV or WebM file, and the patches that remove it. */
 export async function scanEbml(source: ByteSource, options: VideoCleanOptions): Promise<ScanResult> {
@@ -222,8 +309,11 @@ export async function scanEbml(source: ByteSource, options: VideoCleanOptions): 
     if (element.size === null) throw new VideoError("A metadata element has an unknown size. This tool cannot read it.");
     if (element.end - element.start > MAX_LEVEL1) throw new VideoError("A metadata element is larger than 64 MB. This tool cannot read it.");
     const buf = await source.read(element.start, element.end - element.start);
-    if (element.id === EBML_ID.Info) scanInfo(buf, element.start, element, ctx);
+    if (element.id === EBML_ID.SeekHead) pending.push(...seekTargets(buf, element.start, element, segment.dataStart));
+    else if (element.id === EBML_ID.Info) scanInfo(buf, element.start, element, ctx);
     else if (element.id === EBML_ID.Tracks) scanTracks(buf, element.start, element, ctx);
+    else if (element.id === EBML_ID.Tags) scanTags(buf, element.start, element, ctx);
+    else if (element.id === EBML_ID.Attachments) scanAttachments(buf, element.start, element, ctx);
   };
 
   let o = segment.dataStart;

@@ -3,13 +3,14 @@ import { applyPatches, bytesSource } from "@/utils/byte-source";
 import { crc32 } from "@/utils/image-metadata";
 import { DEFAULT_VIDEO_OPTIONS } from "@/utils/video-format";
 import { elementAt, readVint, scanEbml, voidElement } from "@/utils/video-ebml";
-import { DATE_2026_NS, ID, cat, el, elText, indexOfSeq, sampleMkv } from "./video-fixtures";
+import { DATE_2026_NS, ID, cat, el, elText, elUnknown, indexOfSeq, sampleMkv, simpleTag, u32 } from "./video-fixtures";
 
 const scan = (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => scanEbml(bytesSource(bytes), options);
 const clean = async (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => applyPatches(bytes, (await scan(bytes, options)).patches);
 const info = (...extra: Uint8Array[]) =>
   el(ID.Info, elText(ID.Title, "Holiday 2026"), elText(ID.MuxingApp, "Lavf61.7.100"), elText(ID.WritingApp, "Lavf61.7.100"), el(ID.DateUTC, DATE_2026_NS), ...extra);
 const tracks = () => el(ID.Tracks, el(ID.TrackEntry, elText(ID.Name, "Recorded on Pixel 9")));
+const labels = (findings: { label: string }[]) => findings.map((f) => f.label);
 const cluster = () => el(ID.Cluster, new Uint8Array(140).fill(7));
 
 describe("EBML basics", () => {
@@ -77,5 +78,48 @@ describe("scanEbml Info and Tracks", () => {
     const stored = (cleaned[crcAt] | (cleaned[crcAt + 1] << 8) | (cleaned[crcAt + 2] << 16) | (cleaned[crcAt + 3] << 24)) >>> 0;
     expect(stored).toBe(crc32(cleaned.subarray(crcAt + 4, infoElement.end)));
     expect(stored).not.toBe(crc);
+  });
+});
+
+describe("scanEbml Tags, Attachments, and seek index", () => {
+  const tags = () => el(ID.Tags, el(ID.Tag, simpleTag("ENCODER", "Lavf61.7.100"), simpleTag("LOCATION", "+52.5200+013.4050/"), simpleTag("COMMENT", "made with Pika"), simpleTag("BPS", "4000000")));
+  const attachment = (name: string, mime: string) => el(ID.AttachedFile, elText(ID.FileName, name), elText(ID.FileMediaType, mime), el(ID.FileData, new Uint8Array(20).fill(1)));
+
+  it("reads tags, marks AI and location, groups statistics, and removes the Tags element", async () => {
+    const { bytes } = sampleMkv([el(ID.Info, elText(ID.Title, "x")), cluster(), tags()]);
+    const result = await scan(bytes);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "location", label: "LOCATION" }),
+        expect.objectContaining({ kind: "ai", label: "COMMENT (mentions Pika)" }),
+        expect.objectContaining({ kind: "other", label: "Track statistics", detail: "1 value, such as the bit rate and the frame count" }),
+      ]),
+    );
+    expect((await scan(await clean(bytes))).findings).toEqual([]);
+  });
+
+  it("removes a cover picture and keeps fonts by default", async () => {
+    const { bytes } = sampleMkv([el(ID.Info, elText(ID.Title, "x")), el(ID.Attachments, attachment("cover.jpg", "image/jpeg"), attachment("OpenSans.ttf", "font/ttf")), cluster()]);
+    const result = await scan(bytes);
+    expect(result.findings.find((f) => f.label === "Attached picture")?.removable).toBe(true);
+    expect(result.findings.find((f) => f.label === "Attached font")?.removable).toBe(false);
+    const after = await scan(await clean(bytes));
+    expect(labels(after.findings)).toEqual(["Attached font"]);
+  });
+
+  it("removes fonts too when Keep fonts is off", async () => {
+    const options = { ...DEFAULT_VIDEO_OPTIONS, keepFonts: false };
+    const { bytes } = sampleMkv([el(ID.Info, elText(ID.Title, "x")), el(ID.Attachments, attachment("OpenSans.ttf", "font/ttf")), cluster()]);
+    expect((await scan(await clean(bytes, options), options)).findings).toEqual([]);
+  });
+
+  it("follows the seek index past a cluster of unknown size", async () => {
+    // Build the segment twice: the seek position is a fixed 4-byte number, so the layout does not change.
+    const seekHead = (position: number) => el(ID.SeekHead, el(ID.Seek, el(ID.SeekID, [0x12, 0x54, 0xc3, 0x67]), el(ID.SeekPosition, u32(position))));
+    const live = elUnknown(ID.Cluster, new Uint8Array(140).fill(7));
+    const first = cat(seekHead(0), el(ID.Info, elText(ID.Title, "x")), live);
+    const { bytes } = sampleMkv([seekHead(first.length), el(ID.Info, elText(ID.Title, "x")), live, tags()]);
+    const result = await scan(bytes);
+    expect(labels(result.findings)).toContain("COMMENT (mentions Pika)");
   });
 });
