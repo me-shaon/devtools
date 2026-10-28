@@ -105,6 +105,20 @@ describe("scanBmff user data and QuickTime metadata", () => {
     );
   });
 
+  it("names the plain mdta keys that FFmpeg writes", async () => {
+    const names = ["title", "encoder", "location-eng"];
+    const keys = fullBox("keys", 0, u32(names.length), ...names.map((n) => box("mdta", utf8(n))));
+    const ilst = box("ilst", indexBox(1, dataBox("Holiday")), indexBox(2, dataBox("Lavf63.1.101")), indexBox(3, dataBox("+52.5200+013.4050/")));
+    const result = await scan(sampleMp4({ moovExtra: [box("udta", fullBox("meta", 0, hdlr("mdta"), keys, ilst))] }).bytes);
+    expect(result.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "text", label: "Title", detail: "Holiday" }),
+        expect.objectContaining({ kind: "other", label: "Encoder", detail: "Lavf63.1.101" }),
+        expect.objectContaining({ kind: "location", label: "GPS position", detail: "52.52, 13.405" }),
+      ]),
+    );
+  });
+
   it("reads iTunes-style tags in an MP4 meta full box and marks AI tools", async () => {
     const udta = box("udta", fullBox("meta", 0, hdlr("mdir"), box("ilst", box("\u00a9too", dataBox("Sora")))));
     const result = await scan(sampleMp4({ moovExtra: [udta] }).bytes);

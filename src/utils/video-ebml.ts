@@ -1,7 +1,7 @@
 import { Findings, crc32, type FindingKind } from "@/utils/image-metadata";
 import { formatBytes } from "@/utils/hash";
 import type { ByteSource, Patch } from "@/utils/byte-source";
-import { VideoError, type ScanResult, type VideoCleanOptions } from "@/utils/video-format";
+import { VideoError, iso6709, namedKey, type ScanResult, type VideoCleanOptions } from "@/utils/video-format";
 
 /**
  * Reads and removes metadata in Matroska and WebM files. Removed elements
@@ -201,7 +201,21 @@ function scanTracks(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ct
   push(ctx, edit.finish());
 }
 
-const STATISTICS = new Set(["BPS", "DURATION", "NUMBER_OF_FRAMES", "NUMBER_OF_BYTES", "_STATISTICS_WRITING_APP", "_STATISTICS_WRITING_DATE_UTC", "_STATISTICS_TAGS"]);
+/** Tags that muxers write about the streams and the source file. The tool lists them as one item. */
+const TECHNICAL = new Set([
+  "BPS",
+  "DURATION",
+  "NUMBER_OF_FRAMES",
+  "NUMBER_OF_BYTES",
+  "_STATISTICS_WRITING_APP",
+  "_STATISTICS_WRITING_DATE_UTC",
+  "_STATISTICS_TAGS",
+  "MAJOR_BRAND",
+  "MINOR_VERSION",
+  "COMPATIBLE_BRANDS",
+  "HANDLER_NAME",
+  "VENDOR_ID",
+]);
 
 const tagKind = (name: string): FindingKind =>
   /LOCATION|GPS|COORDINATES/i.test(name)
@@ -215,7 +229,7 @@ const tagKind = (name: string): FindingKind =>
           : "text";
 
 function scanTags(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ctx) {
-  let statistics = 0;
+  let technical = 0;
   const readSimpleTag = (tag: EbmlElement) => {
     let name = "";
     let value = "";
@@ -224,15 +238,21 @@ function scanTags(buf: Uint8Array, base: number, element: EbmlElement, ctx: Ctx)
       else if (child.id === EBML_ID.TagString) value = text(data(buf, base, child));
       else if (child.id === EBML_ID.SimpleTag) readSimpleTag(child);
     }
-    if (STATISTICS.has(name)) statistics++;
-    else if (name || value) ctx.out.addText(name || "Tag", value || "(empty)", "Matroska tags", tagKind(name));
+    if (TECHNICAL.has(name.toUpperCase())) {
+      technical++;
+      return;
+    }
+    if (!name && !value) return;
+    const [label, kind] = namedKey(name) ?? [name || "Tag", tagKind(name)];
+    ctx.out.addText(label, kind === "location" ? iso6709(value) : value || "(empty)", "Matroska tags", kind);
   };
   for (const tag of ebmlChildren(buf, base, element)) {
     if (tag.id !== EBML_ID.Tag) continue;
     for (const child of ebmlChildren(buf, base, tag)) if (child.id === EBML_ID.SimpleTag) readSimpleTag(child);
   }
-  if (statistics) {
-    ctx.out.add({ kind: "other", label: "Track statistics", detail: `${statistics} ${statistics === 1 ? "value" : "values"}, such as the bit rate and the frame count`, source: "Matroska tags" });
+  if (technical) {
+    const values = `${technical} ${technical === 1 ? "value" : "values"}`;
+    ctx.out.add({ kind: "other", label: "Technical tags", detail: `${values}, such as the bit rate, the frame count, and the source format`, source: "Matroska tags" });
   }
   ctx.patches.push({ offset: element.start, bytes: voidElement(element.end - element.start) });
 }

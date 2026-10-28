@@ -1,6 +1,6 @@
 import { Findings, readC2pa, readXmp, type FindingKind } from "@/utils/image-metadata";
 import type { ByteSource, Patch } from "@/utils/byte-source";
-import { VideoError, type ScanResult, type VideoCleanOptions, type VideoFormat } from "@/utils/video-format";
+import { VideoError, iso6709, namedKey, type ScanResult, type VideoCleanOptions, type VideoFormat } from "@/utils/video-format";
 
 /**
  * Reads and removes metadata in ISO base media files (MP4, MOV, M4V, 3GP).
@@ -149,21 +149,6 @@ const UDTA_TEXT: Record<string, [string, FindingKind]> = {
   "\u00a9prd": ["Producer", "provenance"],
 };
 
-const META_KEYS: Record<string, [string, FindingKind]> = {
-  "com.apple.quicktime.location.ISO6709": ["GPS position", "location"],
-  "com.apple.quicktime.location.name": ["Location name", "location"],
-  "com.apple.quicktime.make": ["Camera make", "camera"],
-  "com.apple.quicktime.model": ["Camera model", "camera"],
-  "com.apple.quicktime.software": ["Software", "other"],
-  "com.apple.quicktime.creationdate": ["Creation date", "camera"],
-  "com.apple.quicktime.author": ["Author", "provenance"],
-  "com.apple.quicktime.title": ["Title", "text"],
-  "com.apple.quicktime.description": ["Description", "text"],
-  "com.apple.quicktime.content.identifier": ["Content identifier", "other"],
-  "com.android.version": ["Android version", "camera"],
-  "com.android.capture.fps": ["Capture frame rate", "camera"],
-};
-
 const kindForKey = (key: string): FindingKind =>
   /location|gps|latitude|longitude/i.test(key)
     ? "location"
@@ -173,16 +158,10 @@ const kindForKey = (key: string): FindingKind =>
         ? "provenance"
         : "text";
 
-/** Writes "+37.3349-122.0090+010.000/" as "37.3349, -122.009". */
-export function iso6709(text: string): string {
-  const match = /^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/.exec(text.trim());
-  return match ? `${Number(match[1])}, ${Number(match[2])}` : text;
-}
-
 const typeName = (type: string) => type.replace(/[^\x20-\x7e\u00a9]/g, "?");
 
 function addValue(ctx: Ctx, key: string, value: string, source: string) {
-  const [label, kind] = UDTA_TEXT[key] ?? META_KEYS[key] ?? [key, kindForKey(key)];
+  const [label, kind] = UDTA_TEXT[key] ?? namedKey(key) ?? [key, kindForKey(key)];
   ctx.out.addText(label, kind === "location" && /^[+-]\d/.test(value) ? iso6709(value) : value, source, kind);
 }
 

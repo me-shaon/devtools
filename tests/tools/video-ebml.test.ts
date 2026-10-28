@@ -82,7 +82,7 @@ describe("scanEbml Info and Tracks", () => {
 });
 
 describe("scanEbml Tags, Attachments, and seek index", () => {
-  const tags = () => el(ID.Tags, el(ID.Tag, simpleTag("ENCODER", "Lavf61.7.100"), simpleTag("LOCATION", "+52.5200+013.4050/"), simpleTag("COMMENT", "made with Pika"), simpleTag("BPS", "4000000")));
+  const tags = () => el(ID.Tags, el(ID.Tag, simpleTag("ENCODER", "Lavf61.7.100"), simpleTag("LOCATION", "+52.5200+013.4050/"), simpleTag("COMMENT", "made with Pika"), simpleTag("BPS", "4000000"), simpleTag("MAJOR_BRAND", "isom")));
   const attachment = (name: string, mime: string) => el(ID.AttachedFile, elText(ID.FileName, name), elText(ID.FileMediaType, mime), el(ID.FileData, new Uint8Array(20).fill(1)));
 
   it("reads tags, marks AI and location, groups statistics, and removes the Tags element", async () => {
@@ -90,12 +90,18 @@ describe("scanEbml Tags, Attachments, and seek index", () => {
     const result = await scan(bytes);
     expect(result.findings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: "location", label: "LOCATION" }),
-        expect.objectContaining({ kind: "ai", label: "COMMENT (mentions Pika)" }),
-        expect.objectContaining({ kind: "other", label: "Track statistics", detail: "1 value, such as the bit rate and the frame count" }),
+        expect.objectContaining({ kind: "location", label: "GPS position", detail: "52.52, 13.405" }),
+        expect.objectContaining({ kind: "ai", label: "Comment (mentions Pika)" }),
+        expect.objectContaining({ kind: "other", label: "Encoder", detail: "Lavf61.7.100" }),
+        expect.objectContaining({ kind: "other", label: "Technical tags", detail: "2 values, such as the bit rate, the frame count, and the source format" }),
       ]),
     );
     expect((await scan(await clean(bytes))).findings).toEqual([]);
+  });
+
+  it("names Apple keys that FFmpeg copies into Matroska tags", async () => {
+    const result = await scan(sampleMkv([el(ID.Tags, el(ID.Tag, simpleTag("COM.APPLE.QUICKTIME.MODEL", "iPhone 16 Pro"))), cluster()]).bytes);
+    expect(result.findings).toEqual([expect.objectContaining({ kind: "camera", label: "Camera model", detail: "iPhone 16 Pro" })]);
   });
 
   it("removes a cover picture and keeps fonts by default", async () => {
@@ -120,6 +126,6 @@ describe("scanEbml Tags, Attachments, and seek index", () => {
     const first = cat(seekHead(0), el(ID.Info, elText(ID.Title, "x")), live);
     const { bytes } = sampleMkv([seekHead(first.length), el(ID.Info, elText(ID.Title, "x")), live, tags()]);
     const result = await scan(bytes);
-    expect(labels(result.findings)).toContain("COMMENT (mentions Pika)");
+    expect(labels(result.findings)).toContain("Comment (mentions Pika)");
   });
 });

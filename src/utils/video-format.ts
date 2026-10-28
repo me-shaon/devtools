@@ -1,4 +1,4 @@
-import type { MetadataFinding } from "@/utils/image-metadata";
+import type { FindingKind, MetadataFinding } from "@/utils/image-metadata";
 import type { Patch } from "@/utils/byte-source";
 
 export type VideoFormat = "mp4" | "mov" | "m4v" | "3gp" | "mkv" | "webm";
@@ -40,6 +40,39 @@ export const VIDEO_MIME: Record<VideoFormat, string> = {
 };
 
 export const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/x-m4v,video/3gpp,video/3gpp2,video/x-matroska,video/webm,.mp4,.mov,.qt,.m4v,.3gp,.3g2,.mkv,.webm";
+
+/** Labels for metadata keys that QuickTime, Android, and FFmpeg write in MP4, MOV, and Matroska files. */
+const NAMED_KEYS: Record<string, [string, FindingKind]> = {
+  title: ["Title", "text"],
+  comment: ["Comment", "text"],
+  description: ["Description", "text"],
+  location: ["GPS position", "location"],
+  "location.iso6709": ["GPS position", "location"],
+  "location.name": ["Location name", "location"],
+  make: ["Camera make", "camera"],
+  model: ["Camera model", "camera"],
+  software: ["Software", "other"],
+  encoder: ["Encoder", "other"],
+  creationdate: ["Creation date", "camera"],
+  creation_time: ["Creation date", "camera"],
+  date: ["Creation date", "camera"],
+  author: ["Author", "provenance"],
+  artist: ["Artist", "provenance"],
+  copyright: ["Copyright", "provenance"],
+  "content.identifier": ["Content identifier", "other"],
+  "com.android.version": ["Android version", "camera"],
+  "com.android.capture.fps": ["Capture frame rate", "camera"],
+};
+
+/** The label and kind of a known metadata key. Ignores case, the "com.apple.quicktime." prefix, and a language suffix such as "-eng". */
+export const namedKey = (key: string): [string, FindingKind] | undefined =>
+  NAMED_KEYS[key.toLowerCase().replace(/^com\.apple\.quicktime\./, "").replace(/-[a-z]{3}$/, "")];
+
+/** Writes "+37.3349-122.0090+010.000/" as "37.3349, -122.009". Other text stays as it is. */
+export function iso6709(text: string): string {
+  const match = /^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/.exec(text.trim());
+  return match ? `${Number(match[1])}, ${Number(match[2])}` : text;
+}
 
 const KNOWN_EXTENSIONS = new Set(["mp4", "mov", "qt", "m4v", "3gp", "3g2", "mkv", "webm"]);
 
