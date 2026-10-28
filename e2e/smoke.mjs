@@ -12,7 +12,7 @@ import { remote } from "webdriverio";
 //   Set NATIVE_DRIVER to an msedgedriver.exe that matches the WebView2 version.
 //
 // Build the app with the e2e feature first, so file saves skip the native dialog:
-//   npx tauri build --no-bundle --features e2e   (Windows: add --config e2e/tauri.e2e.conf.json)
+//   pnpm exec tauri build --no-bundle --features e2e   (Windows: add --config e2e/tauri.e2e.conf.json)
 //
 // Usage: node e2e/smoke.mjs [path-to-app-binary]
 

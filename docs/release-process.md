@@ -3,15 +3,14 @@
 This project uses a small human-reviewed release workflow with CI validation. The goal is to keep these in sync for every version bump:
 
 - app version in `package.json` (the Tauri bundle reads its version from this file)
-- packaged app version in `package-lock.json`
 - Rust crate version in `src-tauri/Cargo.toml`
 - GitHub release notes in `release-notes/vX.Y.Z.md`
 
 ## Quick Flow
 
-1. Run `pnpm run release:prepare -- 1.2.0`
+1. Run `pnpm run release:prepare 1.2.0`
 2. Edit `release-notes/v1.2.0.md`
-3. Run `pnpm run release:check -- v1.2.0`
+3. Run `pnpm run release:check v1.2.0`
 4. Commit the changes
 5. Create and push the tag: `git tag v1.2.0 && git push origin v1.2.0`
 
@@ -39,7 +38,7 @@ The release workflow uses the secrets in the `Production` environment.
 
 If `TAURI_SIGNING_PRIVATE_KEY` is missing or a platform has no signed updater asset, the release job fails. A release without a complete `latest.json` would stop installed apps from updating. If the macOS certificate is missing, the macOS app gets an ad-hoc signature.
 
-Keep a backup of the updater private key. If you lose it, installed apps cannot verify new updates. To replace the key, run `npx tauri signer generate`. Put the new public key in `src-tauri/tauri.conf.json`. Update the secret. Users of older versions must then download the new version manually.
+Keep a backup of the updater private key. If you lose it, installed apps cannot verify new updates. To replace the key, run `pnpm exec tauri signer generate`. Put the new public key in `src-tauri/tauri.conf.json`. Update the secret. Users of older versions must then download the new version manually.
 
 The release assets use fixed names, for example `DevToolsApp-macos-arm64.dmg`. The download links in `README.md` depend on these names. `scripts/collect-release-assets.mjs` sets the names.
 
@@ -79,9 +78,9 @@ Weak example:
 If an AI agent is preparing a release, it should follow this exact checklist:
 
 1. Determine the target version number.
-2. Run `pnpm run release:prepare -- <version>`.
+2. Run `pnpm run release:prepare <version>`.
 3. Write `release-notes/v<version>.md` in clear human-facing language.
-4. Run `pnpm run release:check -- v<version>`.
+4. Run `pnpm run release:check v<version>`.
 5. Run the relevant tests or validation commands.
 6. Commit the release changes.
 7. Create the tag only after the validation passes.
@@ -102,10 +101,10 @@ Prepare release v1.2.0 for DevTools.
 Follow docs/release-process.md exactly and complete the full release-preparation workflow.
 
 Requirements:
-1. Run `pnpm run release:prepare -- 1.2.0`
+1. Run `pnpm run release:prepare 1.2.0`
 2. Write or refine `release-notes/v1.2.0.md`
 3. Treat `release-notes/v1.2.0.md` as the single source of truth for both the GitHub release body and the in-app What's New modal
-4. Run `pnpm run release:check -- v1.2.0`
+4. Run `pnpm run release:check v1.2.0`
 5. Run the relevant tests or validation commands
 6. Fix any issues found during validation
 7. Commit the release-preparation changes
@@ -125,9 +124,9 @@ Prepare and ship release v1.2.0 for DevTools.
 Follow docs/release-process.md exactly and complete the full release workflow.
 
 Requirements:
-1. Run `pnpm run release:prepare -- 1.2.0`
+1. Run `pnpm run release:prepare 1.2.0`
 2. Write or refine `release-notes/v1.2.0.md`
-3. Run `pnpm run release:check -- v1.2.0`
+3. Run `pnpm run release:check v1.2.0`
 4. Run the relevant tests or validation commands
 5. Fix any issues found during validation
 6. Commit the release changes
@@ -144,11 +143,11 @@ Important:
 Prepare a new release:
 
 ```bash
-pnpm run release:prepare -- 1.2.0
+pnpm run release:prepare 1.2.0
 ```
 
 Validate a release locally:
 
 ```bash
-pnpm run release:check -- v1.2.0
+pnpm run release:check v1.2.0
 ```

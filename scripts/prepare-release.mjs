@@ -22,14 +22,9 @@ function normalizeVersion(input) {
   return normalized;
 }
 
-function updateJsonVersion(filePath, version, updateRootPackage = false) {
+function updateJsonVersion(filePath, version) {
   const json = JSON.parse(fs.readFileSync(filePath, "utf8"));
   json.version = version;
-
-  if (updateRootPackage && json.packages?.[""]) {
-    json.packages[""].version = version;
-  }
-
   fs.writeFileSync(filePath, `${JSON.stringify(json, null, 2)}\n`);
 }
 
@@ -53,7 +48,6 @@ const version = normalizeVersion(process.argv[2]);
 const tag = `v${version}`;
 
 updateJsonVersion(path.join(cwd, "package.json"), version);
-updateJsonVersion(path.join(cwd, "package-lock.json"), version, true);
 updateCargoVersion(
   path.join(cwd, "src-tauri", "Cargo.toml"),
   path.join(cwd, "src-tauri", "Cargo.lock"),
@@ -86,7 +80,7 @@ if (!fs.existsSync(releaseNotesPath)) {
 console.log(`Prepared release ${tag}`);
 console.log("");
 console.log("Next steps:");
-console.log(`1. Review the version ${version} in package.json, package-lock.json, and src-tauri/Cargo.toml.`);
+console.log(`1. Review the version ${version} in package.json and src-tauri/Cargo.toml.`);
 console.log(`2. Edit release-notes/${tag}.md with human-readable release notes.`);
-console.log(`3. Run: pnpm run release:check -- ${tag}`);
+console.log(`3. Run: pnpm run release:check ${tag}`);
 console.log(`4. Commit, tag ${tag}, and push.`);
