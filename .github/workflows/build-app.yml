@@ -187,14 +187,28 @@ jobs:
           Get-Process DevToolsApp, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
           Start-Sleep -Seconds 3
 
-          # The one-click installer can hand off to a child process, so wait for the files to appear.
-          # Shared runners are sometimes slow, so try the install a second time before failing.
-          foreach ($attempt in 1..2) {
+          # Event 1000 in the Application log names the module that crashed.
+          function Show-InstallerCrash($since) {
+            Get-WinEvent -FilterHashtable @{ LogName = "Application"; Id = 1000; StartTime = $since } -ErrorAction SilentlyContinue |
+              Select-Object -First 1 | ForEach-Object { Write-Host $_.Message }
+          }
+
+          # On a new runner, the old installer often crashes with 0xC0000005 (access violation).
+          # A later attempt is more likely to work, so wait longer before each new attempt.
+          $pauses = 30, 60, 120, 240
+          foreach ($attempt in 1..5) {
+            $since = Get-Date
             $installer = Start-Process "$env:RUNNER_TEMP\electron\DevToolsApp-windows-setup.exe" -ArgumentList "/S" -Wait -PassThru
             Write-Host "Electron installer attempt $attempt exited with code $($installer.ExitCode)"
-            $deadline = (Get-Date).AddMinutes(4)
-            while (-not (Test-ElectronInstalled) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
-            if (Test-ElectronInstalled) { break }
+            if ($installer.ExitCode -eq 0) {
+              # The one-click installer can hand off to a child process, so wait for the files to appear.
+              $deadline = (Get-Date).AddMinutes(4)
+              while (-not (Test-ElectronInstalled) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
+            } else {
+              Show-InstallerCrash $since
+            }
+            if ((Test-ElectronInstalled) -or $attempt -eq 5) { break }
+            Start-Sleep -Seconds $pauses[$attempt - 1]
           }
           if (-not (Test-ElectronInstalled)) {
             Get-ChildItem (Join-Path $env:LOCALAPPDATA "Programs") -ErrorAction SilentlyContinue | Format-Table Name, LastWriteTime
