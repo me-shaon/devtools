@@ -224,3 +224,6 @@ e2e/screenshots/
 # Keep the Tauri app icons (the macOS "Icon?" rule matches this folder)
 !src-tauri/icons/
 !src-tauri/icons/**
+.maxential/
+.qoder/
+.agents/skills/security-audit/
