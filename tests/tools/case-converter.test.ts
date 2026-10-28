@@ -19,6 +19,8 @@ import {
   splitWords,
   toTrainCase,
   toDotCase,
+  toSlug,
+  slugLines,
 } from '@/utils/case';
 
 describe('Case Converter Utils', () => {
@@ -273,6 +275,42 @@ describe('Case Converter Utils', () => {
 
     it('keeps raw text for lowercase and UPPERCASE', () => {
       expect(convertLines('Hello, World', 'UPPERCASE')).toBe('HELLO, WORLD');
+    });
+  });
+
+  describe('toSlug', () => {
+    it('lowercases and joins words with hyphens', () => {
+      expect(toSlug('  Hello, World! 2024  ')).toBe('hello-world-2024');
+    });
+
+    it('removes accents and maps letters that do not decompose', () => {
+      expect(toSlug('Crème Brûlée à São Paulo')).toBe('creme-brulee-a-sao-paulo');
+      expect(toSlug('Straße Æsir Øre Đorđe Łódź Þór Œuvre')).toBe('strasse-aesir-ore-dorde-lodz-thor-oeuvre');
+    });
+
+    it('drops apostrophes and letters with no ASCII form', () => {
+      expect(toSlug("Don't stop")).toBe('dont-stop');
+      expect(toSlug('東京 Tokyo ﬁle')).toBe('tokyo-file');
+    });
+
+    it('uses an underscore separator and keeps case when asked', () => {
+      expect(toSlug('Hello World', { separator: '_' })).toBe('hello_world');
+      expect(toSlug('Hello World', { keepCase: true })).toBe('Hello-World');
+    });
+
+    it('cuts at a word boundary for a max length', () => {
+      expect(toSlug('the quick brown fox', { maxLength: 15 })).toBe('the-quick-brown');
+      expect(toSlug('the quick brown fox', { maxLength: 14 })).toBe('the-quick');
+      expect(toSlug('supercalifragilistic word', { maxLength: 5 })).toBe('super');
+      expect(toSlug('a b', { maxLength: 0 })).toBe('a-b');
+    });
+
+    it('returns an empty string for text with no letters or digits', () => {
+      expect(toSlug('--- !!! ---')).toBe('');
+    });
+
+    it('converts one slug per line', () => {
+      expect(slugLines('First Post\n\nSecond Post')).toBe('first-post\n\nsecond-post');
     });
   });
 });
