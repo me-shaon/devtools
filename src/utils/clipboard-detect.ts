@@ -1,5 +1,6 @@
 import { failed, parseCidr } from "@/utils/ip-cidr";
 import { readJson } from "@/utils/json-repair";
+import { looksLikeToon } from "@/utils/toon-detect";
 
 /** A tool suggestion for pasted text. Higher scores are surer matches. */
 export interface PasteSuggestion {
@@ -145,6 +146,7 @@ export function detectPastedContent(raw: string, availableToolIds: ReadonlySet<s
   const compressed = compressedBase64(text);
   if (compressed) add("compression", compressed, compressed === "GZIP data" ? 95 : 75);
   if (single && isPrintableBase64(text)) add("base64", "Base64", 60);
+  if (!single && looksLikeToon(text)) add("yaml-json", "TOON", 55);
   if (!single && /^[^\n:#]+:\s?.+\n(\s*[^\n:#]+:.*\n?)+$/.test(text) && !isJson(text)) add("yaml-json", "YAML", 50);
   if (!single && /^\[\[?[\w.\-" ]+\]\]?[ \t]*$/m.test(text) && /^[\w.\-"]+[ \t]*=[ \t]*\S/m.test(text)) add("yaml-json", "TOML", 50);
   if (isEnvFile(text)) add("yaml-json", ".env", 50);

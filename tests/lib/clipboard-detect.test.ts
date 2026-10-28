@@ -61,6 +61,12 @@ describe("detectPastedContent", () => {
     expect(first("300.0.0.0/8")).toBeUndefined();
   });
 
+  it("recognises TOON before YAML", () => {
+    expect(detectPastedContent("users[2]{id,name}:\n  1,Ada\n  2,Bob", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "TOON" });
+    expect(detectPastedContent("name: demo\ntags[2]: a,b", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "TOON" });
+    expect(detectPastedContent("name: demo\nversion: 1", ids)[0]).toMatchObject({ toolId: "yaml-json", label: "YAML" });
+  });
+
   it("recognises file modes and chmod commands", () => {
     expect(first("-rwxr-xr-x")).toBe("chmod-calculator");
     expect(first("drwxrwxrwt")).toBe("chmod-calculator");

@@ -71,6 +71,36 @@ describe("YamlJson", () => {
     await waitFor(async () => expect(await output(".env output")).toBe("DB_HOST=x\n"));
   });
 
+  it("writes TOON with the chosen delimiter and shows the token comparison", async () => {
+    render(<YamlJson />);
+    pick("Source format", "json");
+    pick("Target format", "toon");
+    const users = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, name: `User ${i + 1}`, active: i % 2 === 0 }));
+    fireEvent.change(screen.getByLabelText("JSON input"), { target: { value: JSON.stringify({ users }) } });
+    await waitFor(async () => expect(await output("TOON output")).toMatch(/^users\[20\]\{id,name,active\}:\n {2}1,User 1,true\n/));
+    expect(await screen.findByTestId("toon-tokens", {}, { timeout: 5000 })).toHaveTextContent(
+      /^o200k tokens: TOON [\d,]+, JSON [\d,]+ minified, [\d,]+ pretty\. TOON saves [\d.]+% against minified JSON\.$/,
+    );
+    pick("TOON delimiter", "\t");
+    await waitFor(async () => expect(await output("TOON output")).toMatch(/^users\[20\t\]\{id\tname\tactive\}:\n {2}1\tUser 1\ttrue\n/));
+  });
+
+  it("reads pasted TOON and converts it to JSON", async () => {
+    render(<YamlJson />);
+    fireEvent.change(screen.getByLabelText("YAML input"), { target: { value: "users[2]{id,name}:\n  1,Ada\n  2,Bob" } });
+    expect(screen.getByLabelText("Source format")).toHaveValue("toon");
+    await waitFor(async () => expect(JSON.parse(await output("JSON output"))).toEqual({ users: [{ id: 1, name: "Ada" }, { id: 2, name: "Bob" }] }));
+    expect(await screen.findByTestId("toon-tokens", {}, { timeout: 5000 })).toHaveTextContent(/TOON \d+, JSON \d+ minified/);
+  });
+
+  it("does not count tokens when neither side is TOON", async () => {
+    render(<YamlJson />);
+    fireEvent.change(screen.getByLabelText("YAML input"), { target: { value: "a: 1" } });
+    await output("JSON output");
+    expect(screen.queryByTestId("toon-tokens")).toBeNull();
+    expect(screen.queryByLabelText("TOON delimiter")).toBeNull();
+  });
+
   it("swaps the formats when the source is set to the target format", () => {
     render(<YamlJson />);
     pick("Source format", "json");

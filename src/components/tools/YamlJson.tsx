@@ -4,16 +4,23 @@ import { ArrowLeftRight } from "lucide-react";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { countO200k } from "@/utils/token-counter";
 import {
   CONFIG_FORMATS,
   FORMAT_NAMES,
+  compareTokens,
   convertConfig,
   detectConfigFormat,
   loadToml,
+  loadToon,
   needsToml,
+  needsToon,
   type ConfigFormat,
   type EnvNesting,
+  type TokenComparison,
   type TomlModule,
+  type ToonDelimiter,
+  type ToonModule,
   type YamlIndent,
 } from "@/utils/yaml-json";
 
@@ -21,6 +28,7 @@ interface Result {
   output: string;
   error: string;
   documents: number;
+  data?: unknown;
 }
 
 const EMPTY: Result = { output: "", error: "", documents: 0 };
@@ -31,7 +39,12 @@ const PLACEHOLDERS: Record<ConfigFormat, string> = {
   toml: '[package]\nname = "devtools"\nversion = "2.1.0"',
   env: "# .env\nPORT=3000\nDATABASE_URL=\"postgres://localhost/app\"",
   properties: "server.port=8080\nspring.application.name=devtools",
+  toon: "name: DevTools\ntools[2]{id,offline}:\n  json-viewer,true\n  yaml-json,true",
 };
+
+const countTokens = (text: string, signal: AbortSignal) => countO200k(text, { signal }).then((result) => result.count);
+
+const formatCount = (n: number) => n.toLocaleString("en-US");
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
@@ -40,11 +53,27 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
   {
     q: "Which formats can I convert?",
-    a: "JSON, YAML, TOML, .env, and Java .properties, in any direction. Pick the source and target formats in the toolbar. When you paste into an empty input, the tool picks the source format for you.",
+    a: "JSON, YAML, TOML, .env, Java .properties, and TOON, in any direction. Pick the source and target formats in the toolbar. When you paste into an empty input, the tool picks the source format for you.",
   },
   {
     q: "What happens with several YAML documents?",
-    a: "YAML files can hold several documents separated by a line with three dashes (---). JSON output is an array with one item for each document. YAML output keeps the documents separate. TOML, .env, and .properties need one document.",
+    a: "YAML files can hold several documents separated by a line with three dashes (---). JSON and TOON output is an array with one item for each document. YAML output keeps the documents separate. TOML, .env, and .properties need one document.",
+  },
+  {
+    q: "What is TOON?",
+    a: "TOON (Token-Oriented Object Notation) is a compact, line-based encoding of the JSON data model. It is made for data that you put in LLM prompts. Nested objects use indentation, like YAML. An array of objects that have the same keys becomes a table: the header lists the keys one time, and each object becomes one row. The header also gives the number of items, for example users[3]{id,name}:.",
+  },
+  {
+    q: "When does TOON use fewer tokens than JSON?",
+    a: "TOON saves the most tokens on arrays of objects that have the same keys and primitive values, such as rows from a database. It saves fewer tokens when the objects have different keys. For deeply nested or non-uniform data, minified JSON can use fewer tokens than TOON. The tool shows the real numbers for your data.",
+  },
+  {
+    q: "How are the tokens counted?",
+    a: "When the source or the target is TOON, the status bar shows the tokens of the TOON text and of the same data as JSON. The tool counts with the o200k_base encoding, the same as the Token Counter (GPT-4o and newer). The percent saved compares TOON with minified JSON. Pretty JSON with a 2-space indent is also shown. Other models use other tokenizers, so their counts are different.",
+  },
+  {
+    q: "Which TOON delimiter should I use?",
+    a: "The delimiter separates the values in table rows and in inline arrays. A comma is the default. A tab often uses fewer tokens, and a value that has commas needs no quotes. Use a pipe when the values have commas and tabs. TOON input can use any of the three delimiters, because the header tells the parser which one it uses.",
   },
   {
     q: "How are nested values written to a .env file?",
@@ -89,7 +118,9 @@ export function YamlJson() {
   const [input, setInput] = useState("");
   const [indent, setIndent] = useState<YamlIndent>(2);
   const [envNesting, setEnvNesting] = useState<EnvNesting>("__");
+  const [toonDelimiter, setToonDelimiter] = useState<ToonDelimiter>(",");
   const [toml, setToml] = useState<TomlModule>();
+  const [toon, setToon] = useState<ToonModule>();
   const [loadError, setLoadError] = useState("");
 
   const tomlNeeded = needsToml(from, to);
@@ -104,24 +135,50 @@ export function YamlJson() {
     };
   }, [tomlNeeded, toml]);
 
+  const toonNeeded = needsToon(from, to);
+  useEffect(() => {
+    if (!toonNeeded || toon) return;
+    let cancelled = false;
+    loadToon()
+      .then((mod) => !cancelled && setToon(mod))
+      .catch(() => !cancelled && setLoadError("Could not load the TOON encoder."));
+    return () => {
+      cancelled = true;
+    };
+  }, [toonNeeded, toon]);
+
   // Debounce input and formats together so a format change never runs on stale text
   const job = useMemo(() => ({ input, from, to }), [input, from, to]);
   const pending = useDebouncedValue(job);
   const waitingForToml = needsToml(pending.from, pending.to) && !toml;
+  const waitingForToon = needsToon(pending.from, pending.to) && !toon;
 
   const result = useMemo<Result>(() => {
-    if (!pending.input.trim() || waitingForToml) return EMPTY;
+    if (!pending.input.trim() || waitingForToml || waitingForToon) return EMPTY;
     try {
-      const converted = convertConfig(pending.input, pending.from, pending.to, { indent, envNesting }, toml);
+      const converted = convertConfig(pending.input, pending.from, pending.to, { indent, envNesting, toonDelimiter }, toml, toon);
       return { ...converted, error: "" };
     } catch (error) {
       return { ...EMPTY, error: error instanceof Error ? error.message : "Could not convert the data." };
     }
-  }, [pending, indent, envNesting, toml, waitingForToml]);
+  }, [pending, indent, envNesting, toonDelimiter, toml, toon, waitingForToml, waitingForToon]);
 
   // A result for the previous formats or text is stale until the debounce catches up
   const current = pending.from === from && pending.to === to && input.trim() ? result : EMPTY;
   const error = loadError || current.error;
+
+  // The token comparison loads the tokenizer only when one side is TOON
+  const toonText = !result.output ? "" : pending.to === "toon" ? result.output : pending.from === "toon" ? pending.input : "";
+  const [tokens, setTokens] = useState<{ result: Result; value: TokenComparison }>();
+  useEffect(() => {
+    if (!toonText) return;
+    const controller = new AbortController();
+    compareTokens(result.data, toonText, (text) => countTokens(text, controller.signal))
+      .then((value) => !controller.signal.aborted && setTokens({ result, value }))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [result, toonText]);
+  const comparison = toonText && tokens?.result === current ? tokens.value : undefined;
 
   const changeInput = (next: string) => {
     // A paste into an empty input sets the source format. Typing never changes it.
@@ -157,12 +214,19 @@ export function YamlJson() {
   const status = () => {
     if (error) return <span className="text-destructive">Invalid input</span>;
     if (input.trim() && waitingForToml) return <span>Loading the TOML parser</span>;
+    if (input.trim() && waitingForToon) return <span>Loading the TOON encoder</span>;
     if (!current.output) return <span>Ready</span>;
     const lines = current.output.split("\n").length;
     return (
       <>
         <span>{lines} {lines === 1 ? "line" : "lines"}</span>
-        {to === "json" && current.documents > 1 && <span>{current.documents} documents converted to a JSON array</span>}
+        {(to === "json" || to === "toon") && current.documents > 1 && <span>{current.documents} documents converted to {to === "json" ? "a JSON" : "a TOON"} array</span>}
+        {comparison && (
+          <span data-testid="toon-tokens" title="Tokens counted with the o200k_base encoding (GPT-4o and newer)">
+            o200k tokens: TOON {formatCount(comparison.toon)}, JSON {formatCount(comparison.json)} minified, {formatCount(comparison.prettyJson)} pretty.{" "}
+            {comparison.saved >= 0 ? `TOON saves ${comparison.saved}% against minified JSON.` : `TOON uses ${-comparison.saved}% more than minified JSON.`}
+          </span>
+        )}
       </>
     );
   };
@@ -174,7 +238,7 @@ export function YamlJson() {
         <>
           <FormatSelect label="From" name="Source format" value={from} onChange={changeFrom} />
           <FormatSelect label="To" name="Target format" value={to} onChange={changeTo} />
-          {(to === "json" || to === "yaml") && (
+          {(to === "json" || to === "yaml" || to === "toon") && (
             <label className="indent-control">
               Indent
               <select aria-label="Indentation" value={indent} onChange={(e) => setIndent(Number(e.target.value) as YamlIndent)}>
@@ -189,6 +253,16 @@ export function YamlJson() {
               <select aria-label="Nested keys" value={envNesting} onChange={(e) => setEnvNesting(e.target.value as EnvNesting)}>
                 <option value="__">A__B</option>
                 <option value="_">A_B</option>
+              </select>
+            </label>
+          )}
+          {to === "toon" && (
+            <label className="indent-control">
+              Delimiter
+              <select aria-label="TOON delimiter" value={toonDelimiter} onChange={(e) => setToonDelimiter(e.target.value as ToonDelimiter)}>
+                <option value=",">Comma</option>
+                <option value={"\t"}>Tab</option>
+                <option value="|">Pipe</option>
               </select>
             </label>
           )}
