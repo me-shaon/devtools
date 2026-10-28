@@ -206,6 +206,13 @@ const AI_HINTS: Array<[RegExp, string]> = [
   [/\bImagen\b|\bGemini\b|SynthID/i, "Google AI"],
   [/\bFLUX(\.1)?\b/, "FLUX"],
   [/Leonardo\.Ai|\bIdeogram\b|Bing Image Creator|Microsoft Designer|\bGrok\b|\bAurora\b/i, "AI image service"],
+  [/\bSora\b/, "OpenAI Sora"],
+  [/\bVeo\b/, "Google Veo"],
+  [/\bRunway\b|\bGen-[234]\b/, "Runway"],
+  [/\bKling\b/, "Kling"],
+  [/\bPika\b/, "Pika"],
+  [/Dream Machine|\bLuma AI\b/, "Luma Dream Machine"],
+  [/\bHailuo\b|\bMiniMax\b/, "Hailuo"],
   [/Made with AI|AI[- ]generated|Generated (by|with) AI/i, "AI label"],
 ];
 
@@ -221,7 +228,7 @@ export function findAiHint(text: string): string | null {
 
 type Draft = Omit<MetadataFinding, "removable">;
 
-class Findings {
+export class Findings {
   readonly items: MetadataFinding[] = [];
   orientation: number | null = null;
 
@@ -524,7 +531,7 @@ const XMP_FIELDS: Array<[string, string, FindingKind]> = [
 ];
 
 /** Reads an XMP packet into findings. */
-function readXmp(xml: string, out: Findings, source: string) {
+export function readXmp(xml: string, out: Findings, source: string) {
   const source2 = xmpProperty(xml, "Iptc4xmpExt:DigitalSourceType");
   let aiFound = false;
   if (source2) {
@@ -562,7 +569,7 @@ function readXmp(xml: string, out: Findings, source: string) {
 /* C2PA / JUMBF, ICC, IPTC                                             */
 /* ------------------------------------------------------------------ */
 
-function readC2pa(data: Uint8Array, out: Findings, source: string) {
+export function readC2pa(data: Uint8Array, out: Findings, source: string) {
   const text = latin1(data);
   const isC2pa = /c2pa/.test(text);
   const generator = /claim_generator[^A-Za-z0-9]{1,4}([\x20-\x7e]{3,80})/.exec(text)?.[1];
