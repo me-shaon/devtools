@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyPatches, bytesSource } from "@/utils/byte-source";
 import { DEFAULT_VIDEO_OPTIONS } from "@/utils/video-format";
-import { blankBox, children, headerAt, scanBmff } from "@/utils/video-bmff";
+import { blankBox, children, headerAt, sampleRanges, scanBmff } from "@/utils/video-bmff";
 import { UUID_C2PA, UUID_XMP, box, cat, dataBox, fullBox, hdlr, indexBox, latin, qtText, sampleMp4, u32, utf8, uuidBox } from "./video-fixtures";
 
 const scan = (bytes: Uint8Array, options = DEFAULT_VIDEO_OPTIONS) => scanBmff(bytesSource(bytes), options);
@@ -160,5 +160,42 @@ describe("scanBmff uuid boxes and free space", () => {
     expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "ai", label: "Leftover data in free space (mentions Runway)" })]));
     const after = await scan(await clean(bytes));
     expect(labels(after.findings)).not.toContain("Leftover data in free space (mentions Runway)");
+  });
+});
+
+describe("scanBmff metadata tracks", () => {
+  it("removes a GoPro telemetry track and zeros its samples", async () => {
+    const { bytes, gps, video } = sampleMp4({ withGpmd: true });
+    const result = await scan(bytes);
+    expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "location", label: "GoPro telemetry track", removable: true })]));
+    const cleaned = await clean(bytes);
+    expect(cleaned.subarray(gps.offset, gps.offset + gps.length).every((b) => b === 0)).toBe(true);
+    expect(Array.from(cleaned.subarray(video.offset, video.offset + video.length))).toEqual(Array.from(bytes.subarray(video.offset, video.offset + video.length)));
+    expect(labels((await scan(cleaned)).findings)).not.toContain("GoPro telemetry track");
+  });
+
+  it("keeps the track when Remove metadata tracks is off", async () => {
+    const { bytes, gps } = sampleMp4({ withGpmd: true });
+    const options = { ...DEFAULT_VIDEO_OPTIONS, removeMetadataTracks: false };
+    expect((await scan(bytes, options)).findings.find((f) => f.label === "GoPro telemetry track")?.removable).toBe(false);
+    const cleaned = await clean(bytes, options);
+    expect(Array.from(cleaned.subarray(gps.offset, gps.offset + gps.length))).toEqual(Array.from(bytes.subarray(gps.offset, gps.offset + gps.length)));
+  });
+
+  it("keeps subtitle tracks and warns that they can hold GPS data", async () => {
+    const result = await scan(sampleMp4({ withSubtitles: true }).bytes);
+    expect(result.findings).toEqual(expect.arrayContaining([expect.objectContaining({ label: "Subtitle track", removable: false })]));
+  });
+
+  it("finds the byte range of each chunk from the sample table", () => {
+    // 4 samples of sizes 10, 20, 30, 40. Chunks 1 and 2 hold 2 samples each. Chunk offsets 100 and 500.
+    const stbl = box(
+      "stbl",
+      fullBox("stsc", 0, u32(1), u32(1), u32(2), u32(1)),
+      fullBox("stsz", 0, u32(0), u32(4), u32(10), u32(20), u32(30), u32(40)),
+      fullBox("stco", 0, u32(2), u32(100), u32(500)),
+    );
+    const [stblBox] = [...children(stbl, 0, 0, stbl.length)];
+    expect(sampleRanges(stbl, 0, stblBox)).toEqual([{ offset: 100, length: 30 }, { offset: 500, length: 70 }]);
   });
 });

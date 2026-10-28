@@ -80,6 +80,11 @@ const childrenOf = (buf: Uint8Array, base: number, box: Box, skip = 0) =>
 
 const payload = (buf: Uint8Array, base: number, box: Box) => buf.subarray(box.start - base + box.headerSize, box.start - base + box.size);
 
+const findChild = (buf: Uint8Array, base: number, box: Box, type: string) => {
+  for (const child of childrenOf(buf, base, box)) if (child.type === type) return child;
+  return null;
+};
+
 /** Turns a box into a "free" box of the same size with zero content. */
 export function blankBox(box: Box): Patch {
   const bytes = new Uint8Array(box.size);
@@ -301,6 +306,86 @@ function readFree(p: Uint8Array, box: Box, ctx: Ctx, blanked: boolean) {
   if (!blanked) ctx.patches.push({ offset: box.start + box.headerSize, bytes: new Uint8Array(box.size - box.headerSize) });
 }
 
+const SUBTITLE_HANDLERS = new Set(["text", "sbtl", "subt", "clcp"]);
+
+const META_TRACKS: Record<string, [string, FindingKind, string]> = {
+  gpmd: ["GoPro telemetry track", "location", "GPS position, speed, and motion data (GPMF)"],
+  camm: ["Camera motion track", "location", "Motion data, and the GPS position on some cameras (camm)"],
+  mebx: ["Timed metadata track", "camera", "Face detection, focus, or other capture data (mebx)"],
+};
+
+/** The byte ranges of the samples in a track, one range for each chunk. */
+export function sampleRanges(buf: Uint8Array, base: number, stbl: Box): Array<{ offset: number; length: number }> {
+  const sizes: number[] = [];
+  const stsc: Array<[number, number]> = [];
+  const offsets: number[] = [];
+  let constant = 0;
+  let count = 0;
+  const need = (p: Uint8Array, end: number) => {
+    if (end > p.length) throw new VideoError("The sample table of a metadata track is cut off.");
+  };
+  for (const child of childrenOf(buf, base, stbl)) {
+    const p = payload(buf, base, child);
+    if (child.type === "stz2") throw new VideoError("A metadata track uses compact sample sizes (stz2), which this tool cannot read. Turn off Remove metadata tracks to clean the rest.");
+    if (child.type === "stsz") {
+      need(p, 12);
+      constant = u32(p, 4);
+      count = u32(p, 8);
+      if (!constant) {
+        need(p, 12 + 4 * count);
+        for (let i = 0; i < count; i++) sizes.push(u32(p, 12 + 4 * i));
+      }
+    } else if (child.type === "stsc") {
+      need(p, 8);
+      const n = u32(p, 4);
+      need(p, 8 + 12 * n);
+      for (let i = 0; i < n; i++) stsc.push([u32(p, 8 + 12 * i), u32(p, 12 + 12 * i)]);
+    } else if (child.type === "stco" || child.type === "co64") {
+      need(p, 8);
+      const n = u32(p, 4);
+      const wide = child.type === "co64";
+      need(p, 8 + (wide ? 8 : 4) * n);
+      for (let i = 0; i < n; i++) offsets.push(wide ? u64(p, 8 + 8 * i) : u32(p, 8 + 4 * i));
+    }
+  }
+  const ranges: Array<{ offset: number; length: number }> = [];
+  let sample = 0;
+  for (let chunk = 1; chunk <= offsets.length && sample < count; chunk++) {
+    // The last stsc entry whose first chunk is at or before this chunk applies.
+    let perChunk = 0;
+    for (const [first, n] of stsc) if (first <= chunk) perChunk = n;
+    let length = 0;
+    for (let i = 0; i < perChunk && sample < count; i++, sample++) length += constant || sizes[sample] || 0;
+    if (length) ranges.push({ offset: offsets[chunk - 1], length });
+  }
+  return ranges;
+}
+
+function scanTrack(buf: Uint8Array, base: number, trak: Box, ctx: Ctx, blanked: boolean) {
+  const mdia = findChild(buf, base, trak, "mdia");
+  const handlerBox = mdia && findChild(buf, base, mdia, "hdlr");
+  const handler = handlerBox && handlerBox.size >= handlerBox.headerSize + 12 ? fourcc(buf, handlerBox.start - base + handlerBox.headerSize + 8) : "";
+  const minf = mdia && findChild(buf, base, mdia, "minf");
+  const stbl = minf && findChild(buf, base, minf, "stbl");
+  const stsd = stbl && findChild(buf, base, stbl, "stsd");
+  const format = stsd && stsd.size >= stsd.headerSize + 16 ? fourcc(buf, stsd.start - base + stsd.headerSize + 12) : "";
+  if (handler === "meta" || handler === "camm" || format === "gpmd" || format === "camm") {
+    const [label, kind, detail] = META_TRACKS[format] ?? ["Timed metadata track", "other" as FindingKind, `Metadata samples (${format || "unknown format"})`];
+    const remove = ctx.options.removeMetadataTracks;
+    ctx.out.add({ kind, label, detail, source: "Track" }, remove || blanked);
+    if (remove && !blanked) {
+      ctx.patches.push(blankBox(trak));
+      if (stbl) for (const range of sampleRanges(buf, base, stbl)) ctx.patches.push({ offset: range.offset, bytes: new Uint8Array(range.length) });
+    }
+    scanContainer(buf, base, trak, ctx, blanked || remove);
+    return;
+  }
+  if (SUBTITLE_HANDLERS.has(handler)) {
+    ctx.out.add({ kind: "other", label: "Subtitle track", detail: "Kept. Some drones and dash cameras store GPS data in a subtitle track.", source: "Track" }, false);
+  }
+  scanContainer(buf, base, trak, ctx, blanked);
+}
+
 /** Reads the boxes inside `parent`. `blanked` is true when a parent box is already being removed. */
 function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, blanked: boolean) {
   for (const box of childrenOf(buf, base, parent)) {
@@ -311,7 +396,7 @@ function scanContainer(buf: Uint8Array, base: number, parent: Box, ctx: Ctx, bla
         readDates(buf, base, box, ctx, blanked);
         break;
       case "trak":
-        scanContainer(buf, base, box, ctx, blanked);
+        scanTrack(buf, base, box, ctx, blanked);
         break;
       case "udta":
         readUdta(buf, base, box, ctx);
