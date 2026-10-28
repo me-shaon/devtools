@@ -101,7 +101,7 @@ export const ALL_TOOLS = [
   { icon: AlignLeft, name: "Text Compare", id: "text-compare", category: "Text Tools", keywords: ["diff", "compare", "difference"] },
   { icon: Shield, name: "JWT Decoder", id: "jwt-decoder", category: "Text Tools", keywords: ["jwt", "token", "bearer", "decode", "verify"] },
   { icon: FileJson, name: "API Formatter", id: "api-formatter", category: "Text Tools", keywords: ["api", "rest", "graphql", "response"] },
-  { icon: ScanText, name: "String Inspector", id: "string-inspector", category: "Text Tools", keywords: ["count", "characters", "words", "bytes", "unicode", "invisible", "zero width"] },
+  { icon: ScanText, name: "String Inspector", id: "string-inspector", category: "Text Tools", keywords: ["count", "characters", "words", "bytes", "unicode", "invisible", "zero width", "normalization", "normalize", "nfc", "nfd", "nfkc", "nfkd", "combining characters", "unicode equivalence"] },
   { icon: ListOrdered, name: "Line Tools", id: "line-tools", category: "Text Tools", keywords: ["sort", "dedupe", "unique", "lines", "shuffle", "reverse", "filter", "grep", "compare lists", "set difference", "intersection"] },
   { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities", keywords: ["units", "length", "weight", "temperature", "currency"] },
   { icon: FileLock2, name: "chmod Calculator", id: "chmod-calculator", category: "Utilities", keywords: ["chmod", "permissions", "file mode", "octal", "rwx", "umask", "setuid", "setgid", "sticky bit", "ls -l"] },

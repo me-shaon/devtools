@@ -426,3 +426,101 @@ export function stripFlaggedCharacters(text: string): string {
   }
   return out.join("");
 }
+
+/* --------------------------------------------------------- Normalization */
+
+export type NormalizationForm = "NFC" | "NFD" | "NFKC" | "NFKD";
+
+export const NORMALIZATION_FORMS: NormalizationForm[] = ["NFC", "NFD", "NFKC", "NFKD"];
+
+export interface NormalizedForm {
+  form: NormalizationForm;
+  value: string;
+  /** True when the input is already in this form. */
+  same: boolean;
+  codePoints: number;
+  codeUnits: number;
+  bytes: number;
+}
+
+function measure(text: string): Pick<NormalizedForm, "codePoints" | "codeUnits" | "bytes"> {
+  let codePoints = 0;
+  let bytes = 0;
+  for (const char of text) {
+    codePoints++;
+    bytes += utf8Length(char.codePointAt(0) ?? 0);
+  }
+  return { codePoints, codeUnits: text.length, bytes };
+}
+
+const isAscii = (text: string) => /^\p{ASCII}*$/u.test(text);
+
+/** The text in each Unicode normalization form, with its lengths. */
+export function getNormalizedForms(text: string): NormalizedForm[] {
+  // ASCII text is the same in every form, so no form needs a pass.
+  const ascii = isAscii(text);
+  const input = measure(text);
+  return NORMALIZATION_FORMS.map((form) => {
+    const value = ascii ? text : text.normalize(form);
+    const same = value === text;
+    // Measure a form only when it differs from the input.
+    return { form, value: same ? text : value, same, ...(same ? input : measure(value)) };
+  });
+}
+
+export interface NormalizationVariant {
+  /** The NFC form that every spelling shares. */
+  nfc: string;
+  /** Distinct spellings in the text, as U+XXXX code point lists, in order of first appearance. */
+  spellings: string[][];
+}
+
+export interface NormalizationVariants {
+  variants: NormalizationVariant[];
+  /** UTF-16 code units of the text that were checked. */
+  checked: number;
+  /** True when the text was longer than the limit and only its start was checked. */
+  truncated: boolean;
+}
+
+/** How much text the variant check reads, in UTF-16 code units. */
+export const VARIANT_CHECK_LIMIT = 200_000;
+
+/**
+ * Find characters that the text writes in more than one way, such as `é` as
+ * U+00E9 in one place and `e` + U+0301 in another. They look the same but
+ * do not compare equal. Only the first `limit` code units are checked.
+ */
+export function findNormalizationVariants(text: string, limit = VARIANT_CHECK_LIMIT): NormalizationVariants {
+  const truncated = text.length > limit;
+  let end = truncated ? limit : text.length;
+  // Do not cut a surrogate pair in half.
+  if (truncated && end > 0 && /[\uD800-\uDBFF]/.test(text[end - 1])) end--;
+  const sample = truncated ? text.slice(0, end) : text;
+  const variants: NormalizationVariant[] = [];
+  const result = { variants, checked: sample.length, truncated };
+  if (isAscii(sample)) return result;
+
+  const groups = new Map<string, Set<string>>();
+  const graphemes = splitGraphemes(sample);
+  // The last grapheme of a cut sample can be missing its combining marks.
+  if (truncated) graphemes.pop();
+  for (const grapheme of graphemes) {
+    if (isAscii(grapheme)) continue;
+    const nfc = grapheme.normalize("NFC");
+    let spellings = groups.get(nfc);
+    if (!spellings) {
+      spellings = new Set();
+      groups.set(nfc, spellings);
+    }
+    spellings.add(grapheme);
+  }
+  for (const [nfc, spellings] of groups) {
+    if (spellings.size < 2) continue;
+    variants.push({
+      nfc,
+      spellings: Array.from(spellings, (s) => Array.from(s, (c) => formatCodePoint(c.codePointAt(0) ?? 0))),
+    });
+  }
+  return result;
+}
