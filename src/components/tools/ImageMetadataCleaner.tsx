@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { MetadataFindingRow } from "@/components/tools/MetadataFindingRow";
-import { EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { EditorPane, PaneEmpty, PaneOpenFile, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { saveFile } from "@/lib/desktop";
 import { formatBytes } from "@/utils/hash";
 import {
@@ -433,10 +433,10 @@ export function ImageMetadataCleaner() {
               e.target.value = "";
             }}
           />
-          <button type="button" className="toolbar-text-button" onClick={() => fileInputRef.current?.click()}>
-            <FileUp size={14} aria-hidden="true" />
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <FileUp aria-hidden="true" />
             Open images
-          </button>
+          </Button>
           {items.length > 0 && (
             <button type="button" className="toolbar-text-button" onClick={clearAll} disabled={busy}>
               Clear
@@ -570,10 +570,11 @@ export function ImageMetadataCleaner() {
                 })}
               </ul>
             ) : (
-              <PaneEmpty
+              <PaneOpenFile
                 icon={<ImageIcon size={22} aria-hidden="true" />}
-                title="Drop JPEG, PNG or WebP images"
-                hint="You can also paste an image or click Open images. Images stay on this device."
+                title="Drop images here or click to open"
+                hint="JPEG, PNG or WebP. You can also paste an image. Images stay on this device."
+                onClick={() => fileInputRef.current?.click()}
               />
             )}
           </div>

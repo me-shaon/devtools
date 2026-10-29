@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { MetadataFindingRow } from "@/components/tools/MetadataFindingRow";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
-import { EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { EditorPane, PaneEmpty, PaneOpenFile, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { saveFile } from "@/lib/desktop";
 import { blobSource } from "@/utils/byte-source";
 import { formatBytes } from "@/utils/hash";
@@ -162,10 +162,10 @@ export function VideoMetadataCleaner() {
               e.target.value = "";
             }}
           />
-          <button type="button" className="toolbar-text-button" onClick={() => inputRef.current?.click()}>
-            <FileUp size={14} aria-hidden="true" />
+          <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()}>
+            <FileUp aria-hidden="true" />
             Open video
-          </button>
+          </Button>
           <label className="option-switch indent-control" htmlFor="video-metadata-dates">
             Clear dates
             <Switch id="video-metadata-dates" checked={options.clearDates} onCheckedChange={setOption("clearDates")} disabled={busy} />
@@ -211,7 +211,12 @@ export function VideoMetadataCleaner() {
                 ))}
               </div>
             ) : (
-              <PaneEmpty icon={<FileVideo size={20} aria-hidden="true" />} title="Open or drop a video" hint="MP4, MOV, M4V, 3GP, MKV, or WebM. The video stays on this device." />
+              <PaneOpenFile
+                icon={<FileVideo size={20} aria-hidden="true" />}
+                title="Drop a video here or click to open"
+                hint="MP4, MOV, M4V, 3GP, MKV, or WebM. The video stays on this device."
+                onClick={() => inputRef.current?.click()}
+              />
             )}
           </div>
         </EditorPane>

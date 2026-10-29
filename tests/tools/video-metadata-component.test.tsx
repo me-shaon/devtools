@@ -22,6 +22,14 @@ afterEach(() => {
 });
 
 describe("VideoMetadataCleaner", () => {
+  it("opens the file picker from the empty drop area", () => {
+    const { container } = render(<VideoMetadataCleaner />);
+    const input = container.querySelector<HTMLInputElement>("#video-metadata-file")!;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: /Drop a video here or click to open/ }));
+    expect(click).toHaveBeenCalled();
+  });
+
   it("lists the metadata of an opened video", async () => {
     render(<VideoMetadataCleaner />);
     open(gpsVideo());

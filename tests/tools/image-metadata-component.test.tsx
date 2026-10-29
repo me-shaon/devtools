@@ -69,6 +69,14 @@ afterEach(() => {
 });
 
 describe("ImageMetadataCleaner", () => {
+  it("opens the file picker from the empty drop area", () => {
+    const { container } = render(<ImageMetadataCleaner />);
+    const input = container.querySelector<HTMLInputElement>("#image-metadata-file")!;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: /Drop images here or click to open/ }));
+    expect(click).toHaveBeenCalled();
+  });
+
   it("lists images, flags AI and location, and skips unsupported formats", async () => {
     render(<ImageMetadataCleaner />);
     openFiles([

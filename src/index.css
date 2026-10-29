@@ -130,6 +130,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .dark .json-key { color: #bb9aec; }.dark .json-string { color: #e9a394; }.dark .json-literal { color: #91b9ee; }.dark .json-number { color: #dec28e; }
 .editor-empty { height: 100%; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: hsl(var(--muted-foreground)); gap: 8px; padding: 20px; text-align: center; }
 .editor-empty p { color: hsl(var(--foreground)); font-weight: 500; }.editor-empty span { font-size: 12px; }
+.editor-open-file { flex: 1; height: auto; margin: 12px; border: 1px dashed hsl(var(--border)); border-radius: 8px; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.editor-open-file:hover, [data-dragging] .editor-open-file { border-color: hsl(var(--primary)); background: hsl(var(--primary) / .04); }
 .editor-resize { background: hsl(var(--border)); position: relative; flex-basis: 1px; }
 .editor-resize::after { content: ''; position: absolute; inset: 0 -3px; z-index: 2; }
 [data-layout="below"] .editor-resize::after { inset: -3px 0; }

@@ -125,3 +125,14 @@ export function PaneEmpty({ icon, title, hint }: { icon?: ReactNode; title: stri
     </div>
   );
 }
+
+/** Placeholder for an empty file pane that opens the file picker when clicked. */
+export function PaneOpenFile({ icon, title, hint, onClick }: { icon?: ReactNode; title: string; hint?: string; onClick: () => void }) {
+  return (
+    <button type="button" className="editor-empty editor-open-file" onClick={onClick}>
+      {icon}
+      <p>{title}</p>
+      {hint && <span>{hint}</span>}
+    </button>
+  );
+}
