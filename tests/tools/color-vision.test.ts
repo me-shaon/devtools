@@ -32,6 +32,14 @@ describe('cvdMatrix', () => {
     const half = cvdMatrix('protan', 0.95)[0];
     expect(half).toBeCloseTo((0.203876 + 0.152286) / 2, 6);
   });
+
+  it('is the identity at severity 0 for every type, including achromatopsia', () => {
+    for (const type of CVD_TYPES) {
+      expect(cvdMatrix(type, 0)).toEqual([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+      expect(simulateCvd(c('#ff0000'), type, 0).hex).toBe('#ff0000');
+      expect(simulateCvd(c('#3b82f6'), type, 0).hex).toBe('#3b82f6');
+    }
+  });
 });
 
 describe('simulateCvd', () => {
@@ -56,6 +64,15 @@ describe('simulateCvd', () => {
     expect(sim.rgb.r).toBe(sim.rgb.g);
     expect(sim.rgb.g).toBe(sim.rgb.b);
     expect(getContrastRatio(sim, c('#ffffff'))).toBeCloseTo(getContrastRatio(c('#3b82f6'), c('#ffffff')), 1);
+  });
+
+  it('scales achromatopsia with severity', () => {
+    const red = c('#ff0000');
+    const half = simulateCvd(red, 'achroma', 0.5);
+    expect(half.hex).not.toBe(red.hex);
+    expect(half.rgb.r).toBeGreaterThan(half.rgb.g);
+    expect(half.rgb.g).toBe(half.rgb.b);
+    expect(half.rgb.r).toBeLessThan(red.rgb.r);
   });
 
   it('makes red and green look alike for deuteranopia but not for tritanopia', () => {

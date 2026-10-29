@@ -95,16 +95,15 @@ describe("ColorPalette color blindness simulator", () => {
     expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
   });
 
-  it("shows the simulated contrast of the checker pair", () => {
+  it("shows the simulated contrast of the working color as text", () => {
     render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
-    const fg = parseColor("#d32f2f")!;
-    const bg = parseColor("#ffffff")!;
-    const ratio = getContrastRatio(simulateCvd(fg, "protan"), simulateCvd(bg, "protan"));
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    const protan = simulateCvd(parseColor("#ff0000")!, "protan");
+    const ratio = getContrastRatio(protan, parseColor("#000000")!);
     const expected = (Math.floor(ratio * 100) / 100).toFixed(2);
-    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.97:1");
-    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("4.97:1 AA");
+    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("5.25:1");
     expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent(`${expected}:1`);
+    expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent("Fails AA");
   });
 
   it("warns when two colors look alike", () => {
@@ -138,33 +137,5 @@ describe("ColorPalette color blindness simulator", () => {
     fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "60" } });
     expect(within(screen.getByTestId("cvd-row-deutan")).getByText("Deuteranomaly")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Severity/)).toHaveValue("60");
-  });
-
-  it("fills the compare list from a generated palette", () => {
-    render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "#3b82f6" } });
-    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
-    const values = screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value.split(", ");
-    expect(values).toHaveLength(10);
-    expect(new Set(values).size).toBe(10);
-    expect(values[0]).toBe("#3b82f6");
-  });
-
-  it("trims the base color before generating", () => {
-    render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "  #f00  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
-    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#ff0000, #/);
-  });
-
-  it("generates no duplicate swatches or false look-alike warnings for white", async () => {
-    render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "#ffffff" } });
-    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
-    const values = screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value.split(", ");
-    expect(values).toHaveLength(6);
-    expect(new Set(values).size).toBe(6);
-    await waitFor(() => expect(screen.getByText(/Every pair stays distinct/)).toBeInTheDocument());
-    expect(screen.queryByRole("alert", { name: "Hard to tell apart" })).toBeNull();
   });
 });
