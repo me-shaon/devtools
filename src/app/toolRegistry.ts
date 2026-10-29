@@ -114,6 +114,7 @@ export const ALL_TOOLS = [
   { icon: CodeXml, name: "XML Inspector", id: "xml-inspector", category: "Development Tools", keywords: ["xml", "xpath", "namespace", "format", "minify"] },
   { icon: Hash, name: "Checksum", id: "checksum", category: "Utilities", keywords: ["crc", "crc32", "crc32c", "crc16", "modbus", "luhn", "check digit"] },
   { icon: FileSearch, name: "ASN.1 Inspector", id: "asn1-inspector", category: "Development Tools", keywords: ["asn1", "asn.1", "der", "ber", "pem", "oid", "binary"] },
+  { icon: Clock, name: "Stopwatch", id: "stopwatch", category: "Time & Date", keywords: ["stopwatch", "timer", "elapsed", "laps", "split"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -127,6 +128,7 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  stopwatch: lazyNamed(() => import("@/components/tools/Stopwatch"), "Stopwatch"),
   "asn1-inspector": lazyNamed(() => import("@/components/tools/Asn1Inspector"), "Asn1Inspector"),
   checksum: lazyNamed(() => import("@/components/tools/Checksum"), "Checksum"),
   "xml-inspector": lazyNamed(() => import("@/components/tools/XmlInspector"), "XmlInspector"),
