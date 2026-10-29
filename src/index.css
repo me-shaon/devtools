@@ -73,6 +73,15 @@ button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
 [role="tab"]:focus-visible, [role="switch"]:focus-visible, [role="slider"]:focus-visible,
 [role="combobox"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+/* Text fields and dropdowns take focus on every click, so they show it with their own border and a soft halo, not an offset ring. */
+input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):focus-visible,
+select:focus-visible, textarea:focus-visible, .desktop-select-trigger:focus-visible { outline: none; border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--ring) / .16); }
+/* Native dropdowns drop the platform look and match the text fields: a flat box with one chevron. */
+select {
+  appearance: none; -webkit-appearance: none; padding-right: 24px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b93a1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center; background-size: 12px;
+}
 /* Theme placeholders instead of the browser gray, which fails contrast on light surfaces. */
 ::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
 button:disabled { opacity: .6; cursor: not-allowed; }
@@ -109,7 +118,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .toolbar-text-button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; }
 .toolbar-text-button:hover:not(:disabled) { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .indent-control { display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground)); }
-.indent-control select { background: transparent; color: hsl(var(--foreground)); padding: 3px 6px; border: 1px solid hsl(var(--input)); border-radius: 5px; }
+.indent-control select { background-color: transparent; color: hsl(var(--foreground)); padding: 3px 24px 3px 8px; border: 1px solid hsl(var(--input)); border-radius: 5px; }
 .indent-control option { background: var(--surface-editor); }
 .layout-switch { display: flex; padding: 2px; gap: 2px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border) / .7); border-radius: 7px; flex-shrink: 0; }
 .layout-switch button { display: flex; align-items: center; gap: 6px; padding: 4px 9px; font-size: 12px; color: hsl(var(--muted-foreground)); border-radius: 5px; }
@@ -353,6 +362,13 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .html-preview-handle { flex: none; align-self: stretch; width: 12px; margin-right: auto; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; }
 .html-preview-handle::after { content: ''; width: 4px; height: 40px; border-radius: 2px; background: hsl(var(--muted-foreground) / .5); }
 .html-preview-handle:hover::after, .html-preview-handle[data-active]::after, .html-preview-handle:focus-visible::after { background: hsl(var(--primary)); }
+.html-preview-devicebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px; font-size: 12px; color: hsl(var(--muted-foreground)); border-bottom: 1px solid hsl(var(--border) / .5); }
+.html-preview-full .html-preview-devicebar { padding: 0; border: 0; }
+.html-preview-devicebar select, .html-preview-devicebar input { height: 26px; background-color: transparent; color: hsl(var(--foreground)); padding: 0 8px; border: 1px solid hsl(var(--input)); border-radius: 5px; font-size: 12px; }
+.html-preview-devicebar select { padding-right: 24px; }
+.html-preview-devicebar option { background: var(--surface-editor); }
+.html-preview-devicebar input { width: 60px; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
+.html-preview-devicebar input::-webkit-inner-spin-button, .html-preview-devicebar input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .html-preview-full { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: hsl(var(--background)); }
 /* The overlay sits outside the workspace, so it clears the macOS window controls itself */
 body:has(.workspace[data-platform="darwin"]) .html-preview-full > .editor-toolbar { padding-left: 82px; }
@@ -362,13 +378,6 @@ body:has(.workspace[data-platform="darwin"]) .html-preview-full > .editor-toolba
 .workspace-notice[data-tone="success"] { color: hsl(var(--success)); }
 .workspace-help { border-top: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground)); max-height: 40%; overflow: auto; flex-shrink: 0; }
 .workspace-help .tool-help { border-top: 0; padding: 4px 16px; }
-.html-preview-devicebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px; font-size: 12px; color: hsl(var(--muted-foreground)); border-bottom: 1px solid hsl(var(--border) / .5); }
-.html-preview-full .html-preview-devicebar { padding: 0; border: 0; }
-.html-preview-devicebar select, .html-preview-devicebar input { height: 26px; background-color: transparent; color: hsl(var(--foreground)); padding: 0 8px; border: 1px solid hsl(var(--input)); border-radius: 5px; font-size: 12px; }
-.html-preview-devicebar select { padding-right: 24px; }
-.html-preview-devicebar option { background: var(--surface-editor); }
-.html-preview-devicebar input { width: 60px; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
-.html-preview-devicebar input::-webkit-inner-spin-button, .html-preview-devicebar input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 @media (max-width: 640px) { .result-row { grid-template-columns: 1fr auto; } .result-row-label { grid-column: 1 / -1; } }
 .shortcut-row > kbd.shortcut-fixed { justify-self: end; font-family: var(--font-ui); font-size: 12px; padding: 4px 8px; border-radius: 5px; border: 1px solid hsl(var(--input)); background: hsl(var(--muted)); color: hsl(var(--foreground)); white-space: nowrap; }
 .result-row-value.code-textarea { flex: none; overflow: hidden; word-break: break-all; padding: 2px 0; font-size: 12px; line-height: 18px; border-radius: 3px; }
@@ -413,7 +422,7 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
    border. The pane shows focus with an accent rule under its header, and the caret marks
    the spot. Text starts a gutter's width from the line numbers. */
 .code-input-wrap textarea { padding-left: 12px; }
-.code-input-wrap textarea:focus-visible, .code-textarea:not(.result-row-value):focus-visible { outline: none; }
+.code-input-wrap textarea:focus-visible, .code-textarea:not(.result-row-value):focus-visible { outline: none; box-shadow: none; }
 .editor-pane-header { position: relative; }
 .editor-pane:focus-within > .editor-pane-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: hsl(var(--ring)); }
 .result-row-value.code-textarea:focus-visible { outline-offset: 2px; }

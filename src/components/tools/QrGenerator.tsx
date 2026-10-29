@@ -312,7 +312,7 @@ export function QrGenerator() {
               <Input id="qr-wifi-ssid" {...inputProps} value={wifi.ssid} onChange={(e) => wifiField("ssid", e.target.value)} />
             </Field>
             <Field id="qr-wifi-security" label="Security">
-              <select id="qr-wifi-security" className="h-8 rounded-md border border-input bg-background px-2 text-sm" value={wifi.security}
+              <select id="qr-wifi-security" className="h-8 rounded-md border border-input bg-background px-2 pr-7 text-sm" value={wifi.security}
                 onChange={(e) => setWifi((state) => ({ ...state, security: e.target.value as WifiSecurity }))}>
                 <option value="WPA">WPA, WPA2 or WPA3</option>
                 <option value="WEP">WEP</option>

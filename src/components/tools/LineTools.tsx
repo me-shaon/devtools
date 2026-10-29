@@ -218,7 +218,7 @@ export function LineTools() {
           <div className="regex-field">
             <select
               aria-label="Filter mode"
-              className="h-7 rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
+              className="h-7 rounded-md border border-input bg-background px-1.5 pr-6 text-xs text-foreground"
               value={filterMode}
               onChange={(e) => setFilterMode(e.target.value as NonNullable<LineFilter["mode"]>)}
             >
