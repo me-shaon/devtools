@@ -111,6 +111,7 @@ export const ALL_TOOLS = [
   { icon: ShieldAlert, name: "Secret & PII Redactor", id: "secret-redactor", category: "AI Tools", keywords: ["redact", "secrets", "api key", "token", "password", "pii", "mask", "sanitize", "chatgpt", "privacy"] },
   { icon: Coins, name: "Token Counter", id: "token-counter", category: "AI Tools", keywords: ["tokens", "tokenizer", "gpt", "openai", "o200k", "llm", "prompt", "cost", "context window", "claude"] },
   { icon: Sparkles, name: "AI Text Cleaner", id: "ai-text-cleaner", category: "AI Tools", keywords: ["clean text", "invisible characters", "zero width", "smart quotes", "em dash", "citations", "markdown", "chatgpt", "normalize"] },
+  { icon: CodeXml, name: "XML Inspector", id: "xml-inspector", category: "Development Tools", keywords: ["xml", "xpath", "namespace", "format", "minify"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -124,6 +125,7 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  "xml-inspector": lazyNamed(() => import("@/components/tools/XmlInspector"), "XmlInspector"),
   "certificate-decoder": lazyNamed(() => import("@/components/tools/CertificateDecoder"), "CertificateDecoder"),
   "html-preview": lazyNamed(() => import("@/components/tools/HtmlPreview"), "HtmlPreview"),
   "html-to-jsx": lazyNamed(() => import("@/components/tools/HtmlToJsx"), "HtmlToJsx"),

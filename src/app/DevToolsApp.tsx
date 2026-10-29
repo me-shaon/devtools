@@ -67,7 +67,7 @@ const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
 const AUTO_UPDATE_STORAGE_KEY = "devtools-auto-update";
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
-const WORKSPACE_TOOL_IDS = new Set<string>(["json-viewer", "hash-generator", "text-compare", "json-diff", "har-viewer", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "video-metadata", "secret-redactor", "token-counter", "ai-text-cleaner", "json-typescript", "certificate-decoder", "html-preview", "html-to-jsx", "svg-to-css", "curl-to-code", "php-tools", "compression", "lorem-generator", "case-converter", "regex-generator", "qr-generator", "date-format", "json-schema", "key-generator"]);
+const WORKSPACE_TOOL_IDS = new Set<string>(["xml-inspector", "json-viewer", "hash-generator", "text-compare", "json-diff", "har-viewer", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "video-metadata", "secret-redactor", "token-counter", "ai-text-cleaner", "json-typescript", "certificate-decoder", "html-preview", "html-to-jsx", "svg-to-css", "curl-to-code", "php-tools", "compression", "lorem-generator", "case-converter", "regex-generator", "qr-generator", "date-format", "json-schema", "key-generator"]);
 const MAX_RECENT_TOOLS = 6;
 
 const FAVORITES_STORAGE_KEY = "devtools-favorites";

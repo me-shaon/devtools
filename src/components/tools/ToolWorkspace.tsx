@@ -9,6 +9,8 @@ interface ToolWorkspaceProps {
   id: string;
   /** Actions and options, left-aligned in the toolbar. */
   toolbar?: ReactNode;
+  /** Allow dense option groups to wrap in narrow windows. */
+  wrapToolbar?: boolean;
   /** A second toolbar row, for example a query or key field. */
   secondaryToolbar?: ReactNode;
   /** Errors and notices shown between the toolbar and the panes. */
@@ -35,7 +37,7 @@ const readLayout = (id: string): PaneLayout => {
  * The editor layout every text-in, text-out tool shares: a toolbar, an input
  * pane and a result pane that can sit side by side or stacked, and a status bar.
  */
-export function ToolWorkspace({ id, toolbar, secondaryToolbar, notice, first, second, status, help }: ToolWorkspaceProps) {
+export function ToolWorkspace({ id, toolbar, wrapToolbar = false, secondaryToolbar, notice, first, second, status, help }: ToolWorkspaceProps) {
   const [layout, setLayout] = useState<PaneLayout>(() => readLayout(id));
 
   const changeLayout = (next: PaneLayout) => {
@@ -50,7 +52,7 @@ export function ToolWorkspace({ id, toolbar, secondaryToolbar, notice, first, se
   return (
     <div className="json-workspace tool-workspace">
       <div className="editor-toolbar">
-        <div className="toolbar-actions">{toolbar}</div>
+        <div className={`toolbar-actions ${wrapToolbar ? "flex-wrap min-w-0" : ""}`}>{toolbar}</div>
         <div className="layout-switch" role="group" aria-label="Result layout">
           <button type="button" aria-pressed={layout === "side"} onClick={() => changeLayout("side")}>
             <Columns2 size={14} aria-hidden="true" />Side
