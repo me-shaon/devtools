@@ -38,6 +38,35 @@ describe("HtmlPreview", () => {
     expect(screen.getByRole("button", { name: "Mobile" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("resizes the frame with the handle keys and resets on double-click", async () => {
+    render(<HtmlPreview />);
+    fireEvent.change(screen.getByLabelText("HTML"), { target: { value: "<p>x</p>" } });
+    await waitFor(() => expect(screen.getByTitle("HTML preview")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Tablet" }));
+    const handle = screen.getByRole("separator", { name: "Preview width" });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(frame().style.width).toBe("778px");
+    fireEvent.keyDown(handle, { key: "ArrowLeft", shiftKey: true });
+    expect(frame().style.width).toBe("728px");
+    expect(screen.getByRole("button", { name: "Tablet" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.doubleClick(handle);
+    expect(frame().style.width).toBe("");
+    expect(screen.getByRole("button", { name: "Desktop" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("opens the preview in full screen and closes it with Escape", async () => {
+    render(<HtmlPreview />);
+    expect(screen.getByRole("button", { name: "Full screen" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("HTML"), { target: { value: "<p>x</p>" } });
+    await waitFor(() => expect(screen.getByTitle("HTML preview")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    const dialog = screen.getByRole("dialog", { name: "HTML preview, full screen" });
+    expect(dialog).toContainElement(frame());
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(frame()).toBeInTheDocument();
+  });
+
   it("puts the policy first and removes refreshes and link targets", () => {
     const doc = buildPreviewDocument(
       '<!doctype html><html><head><meta http-equiv="refresh" content="0;url=https://example.com"><link rel="stylesheet" href="https://example.com/a.css"></head><body><a href="https://example.com" target="_self">x</a></body></html>',

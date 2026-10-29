@@ -342,6 +342,13 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .result-row-label { font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); }
 .result-row-value { min-width: 0; font: 12px/18px var(--font-code); overflow-wrap: anywhere; color: hsl(var(--foreground)); user-select: text; }
 .result-row-value:empty::before { content: '—'; color: hsl(var(--muted-foreground)); }
+/* HTML preview: a centered frame with a width handle, and a full screen overlay. */
+.html-preview-stage { display: flex; flex: 1; min-height: 0; overflow: auto; background: hsl(var(--muted)); }
+.html-preview-stage > iframe { margin-left: auto; }
+.html-preview-handle { flex: none; margin-right: auto; width: 12px; display: flex; align-items: center; justify-content: center; cursor: ew-resize; touch-action: none; }
+.html-preview-handle::after { content: ''; width: 4px; height: 40px; border-radius: 2px; background: hsl(var(--muted-foreground) / .5); }
+.html-preview-handle:hover::after, .html-preview-handle[data-active]::after, .html-preview-handle:focus-visible::after { background: hsl(var(--primary)); }
+.html-preview-full { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: hsl(var(--background)); }
 .copy-button[data-copied] { color: hsl(var(--success)); }
 .workspace-notice { padding: 8px 16px; font-size: 12px; border-bottom: 1px solid hsl(var(--border) / .5); }
 .workspace-notice[data-tone="error"] { color: hsl(var(--destructive)); }
