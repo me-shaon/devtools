@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   Plus,
@@ -42,6 +43,7 @@ import { buildToolManifest } from "@/utils/tool-manifest";
 import { Switch } from "@/components/ui/switch";
 import { detectPastedContent, type PasteSuggestion } from "@/utils/clipboard-detect";
 import { PasteSuggestions } from "@/components/app/PasteSuggestions";
+import { TabContextMenu, type TabContextMenuItem } from "@/components/app/TabContextMenu";
 import { loadGlobalShortcut, saveGlobalShortcut, toAccelerator, type GlobalShortcut } from "@/utils/global-shortcut";
 import { convertMarkdown } from "@/utils/markdown";
 import {
@@ -656,16 +658,40 @@ const DevToolsApp = () => {
     if (selectedTool) document.getElementById(`tab-${selectedTool.id}`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [selectedTool]);
 
-  const closeTool = useCallback((tool: ToolDefinition) => {
-    const remaining = openTools.filter((entry) => entry.id !== tool.id);
+  // Close several tabs at once. When the selected tab closes, select `fallback` or the nearest tab left open.
+  const closeTools = useCallback((ids: ReadonlySet<string>, fallback?: ToolDefinition) => {
+    const remaining = openTools.filter((entry) => !ids.has(entry.id));
     setOpenTools(remaining);
-    if (selectedTool?.id === tool.id) {
-      const index = openTools.findIndex((entry) => entry.id === tool.id);
-      const next = remaining[Math.min(index, remaining.length - 1)] ?? null;
+    if (selectedTool && ids.has(selectedTool.id)) {
+      const index = openTools.findIndex((entry) => entry.id === selectedTool.id);
+      const after = openTools.slice(index + 1).find((entry) => !ids.has(entry.id));
+      const before = openTools.slice(0, index).reverse().find((entry) => !ids.has(entry.id));
+      const next = (fallback && !ids.has(fallback.id) ? fallback : after ?? before) ?? null;
       setSelectedTool(next);
       requestAnimationFrame(() => document.getElementById(next ? `tab-${next.id}` : "workspace-home")?.focus());
     }
   }, [openTools, selectedTool]);
+  const closeTool = useCallback((tool: ToolDefinition) => closeTools(new Set([tool.id])), [closeTools]);
+
+  const [tabMenu, setTabMenu] = useState<{ tool: ToolDefinition; x: number; y: number } | null>(null);
+  const closeTabMenu = useCallback(() => setTabMenu(null), []);
+  const openTabMenu = (event: ReactMouseEvent<HTMLElement>, tool: ToolDefinition) => {
+    event.preventDefault();
+    // The keyboard menu key reports no pointer position, so anchor the menu under the tab.
+    const anchor = event.clientX || event.clientY ? null : event.currentTarget.getBoundingClientRect();
+    setTabMenu({ tool, x: anchor ? anchor.left : event.clientX, y: anchor ? anchor.bottom : event.clientY });
+  };
+  const tabMenuItems = (tool: ToolDefinition): TabContextMenuItem[] => {
+    const index = openTools.findIndex((entry) => entry.id === tool.id);
+    const others = openTools.filter((entry) => entry.id !== tool.id);
+    const toRight = openTools.slice(index + 1);
+    return [
+      { label: "Close", onSelect: () => closeTool(tool) },
+      { label: "Close other tabs", disabled: others.length === 0, onSelect: () => closeTools(new Set(others.map((entry) => entry.id)), tool) },
+      { label: "Close tabs to the right", disabled: toRight.length === 0, onSelect: () => closeTools(new Set(toRight.map((entry) => entry.id)), tool) },
+      { label: "Close all tabs", onSelect: () => closeTools(new Set(openTools.map((entry) => entry.id))) },
+    ];
+  };
 
   useEffect(() => {
     // Browser previews retain the browser's own tab/window shortcuts.
@@ -951,7 +977,7 @@ const DevToolsApp = () => {
           <div className="workspace-tabs" role="tablist" aria-label="Open tools" ref={tabStripRef} data-overflow={tabsOverflow || undefined}>
             {openTools.length === 0 && <span className="workspace-tab-placeholder">Workspace</span>}
             {openTools.map((tool) => (
-              <div className="workspace-tab-wrap" role="presentation" key={tool.id}>
+              <div className="workspace-tab-wrap" role="presentation" key={tool.id} onContextMenu={(event) => openTabMenu(event, tool)}>
                 <button type="button" role="tab" id={`tab-${tool.id}`} aria-controls={`panel-${tool.id}`} aria-selected={selectedTool?.id === tool.id}
                   tabIndex={selectedTool?.id === tool.id ? 0 : -1}
                   onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); closeTool(tool); } }}
@@ -975,6 +1001,7 @@ const DevToolsApp = () => {
               </div>
             ))}
           </div>
+          {tabMenu && <TabContextMenu x={tabMenu.x} y={tabMenu.y} label={`${tabMenu.tool.name} tab`} items={tabMenuItems(tabMenu.tool)} onClose={closeTabMenu} />}
           <button type="button" className="chrome-button" aria-label="Open a tool" title="Open a tool" onClick={openCommandPalette}><Plus size={17} /></button>
           <div className="ml-auto flex shrink-0 items-center gap-1">
             {selectedTool && <button type="button" className="chrome-button" aria-label={favorites.includes(selectedTool.id) ? "Remove from favorites" : "Add to favorites"} onClick={() => toggleFavorite(selectedTool.id)}><Star size={15} className={favorites.includes(selectedTool.id) ? "fill-current text-primary" : ""} /></button>}

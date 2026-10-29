@@ -440,3 +440,7 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .schema-issue-path { font: 12px/18px var(--font-code); color: hsl(var(--destructive)); overflow-wrap: anywhere; }
 .schema-issue-message { min-width: 0; }
 .schema-issue-keyword { font: 11px/18px var(--font-code); color: hsl(var(--muted-foreground)); }
+.tab-context-menu { position: fixed; z-index: 70; min-width: 190px; padding: 4px; border-radius: 8px; background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); box-shadow: 0 0 0 1px hsl(var(--foreground) / .1), 0 10px 30px rgb(0 0 0 / .18); }
+.tab-context-menu-item { display: block; width: 100%; padding: 6px 10px; border-radius: 5px; text-align: left; font-size: 13px; }
+.tab-context-menu-item:hover:not([aria-disabled="true"]), .tab-context-menu-item:focus-visible { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); outline: none; }
+.tab-context-menu-item[aria-disabled="true"] { color: hsl(var(--muted-foreground)); opacity: .6; cursor: default; }
