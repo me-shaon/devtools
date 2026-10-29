@@ -97,7 +97,7 @@ export const ALL_TOOLS = [
   { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule", "builder", "quartz"] },
   { icon: CalendarCog, name: "Date Format Translator", id: "date-format", category: "Time & Date", keywords: ["strftime", "golang time format", "go layout", "simpledateformat", "datetimeformatter", "moment format", "dayjs", "date-fns", "php date", "dotnet", "date format"] },
   { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["gradient", "css gradient", "color", "colour", "hex", "rgb", "hsl", "hwb", "oklch", "alpha", "picker", "contrast", "wcag", "color blind", "colorblind", "protanopia", "deuteranopia", "tritanopia", "cvd", "accessibility"] },
-  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize"] },
+  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize", "crop", "rotate", "flip"] },
   { icon: ScanLine, name: "QR Reader", id: "qr-reader", category: "Media", keywords: ["qr", "scan", "decode", "read"] },
   { icon: AlignLeft, name: "Text Compare", id: "text-compare", category: "Text Tools", keywords: ["diff", "compare", "difference"] },
   { icon: Shield, name: "JWT Decoder", id: "jwt-decoder", category: "Text Tools", keywords: ["jwt", "token", "bearer", "decode", "verify"] },
