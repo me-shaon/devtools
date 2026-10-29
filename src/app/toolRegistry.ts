@@ -94,7 +94,7 @@ export const ALL_TOOLS = [
   { icon: FileSearch, name: "HAR Viewer", id: "har-viewer", category: "Network", keywords: ["har", "http archive", "network log", "devtools export", "waterfall", "requests", "curl", "sanitize"] },
   { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time", "milliseconds", "iso 8601", "time zone", "utc"] },
   { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date", keywords: ["days", "between", "duration"] },
-  { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule"] },
+  { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule", "builder", "quartz"] },
   { icon: CalendarCog, name: "Date Format Translator", id: "date-format", category: "Time & Date", keywords: ["strftime", "golang time format", "go layout", "simpledateformat", "datetimeformatter", "moment format", "dayjs", "date-fns", "php date", "dotnet", "date format"] },
   { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["color", "colour", "hex", "rgb", "hsl", "hwb", "oklch", "alpha", "picker", "contrast", "wcag", "color blind", "colorblind", "protanopia", "deuteranopia", "tritanopia", "cvd", "accessibility"] },
   { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize"] },

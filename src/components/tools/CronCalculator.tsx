@@ -1,3 +1,4 @@
+import { CronBuilder } from "./CronBuilder";
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -240,6 +241,7 @@ export function CronCalculator() {
         </CardContent>
       </Card>
 
+      <CronBuilder input={input} onChange={setInput} />
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
           <div className="space-y-1.5">

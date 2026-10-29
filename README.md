@@ -123,7 +123,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 - **Timestamp** - Convert Unix timestamps (seconds to nanoseconds) and date strings as you type, with offsets such as now - 1d and extra time zones
 - **Date Difference** - Calculate the difference between two dates
-- **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone
+- **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone. Build a schedule one field at a time in the visual builder
 - **Date Format Translator** - Translate date format strings between Go, strftime, Java, date-fns, Moment.js, PHP, and .NET, with a live preview
 - **Stopwatch** - Record laps and split times, and copy or export them as CSV. The stopwatch keeps running while you use other tools
 
