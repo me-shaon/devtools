@@ -1,3 +1,4 @@
+import { TextTransform } from "./TextTransform";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMemo, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -9,6 +10,7 @@ import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { compareLists, processLines, type LineFilter, type LineSort, type LineToolResult } from "@/utils/line-tools";
+import { DEFAULT_TRANSFORM_OPTIONS } from "@/utils/text-transform";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
@@ -42,7 +44,7 @@ const SORTS: { value: LineSort; label: string }[] = [
   { value: "shuffle", label: "Shuffle" },
 ];
 
-type Mode = "process" | "compare";
+type Mode = "process" | "compare" | "transform";
 type CompareSet = "onlyA" | "onlyB" | "both" | "union";
 
 const COMPARE_SETS: { value: CompareSet; label: string }[] = [
@@ -86,6 +88,7 @@ export function LineTools() {
   const [filterRegex, setFilterRegex] = useState(false);
   // Changing the nonce runs the shuffle again.
   const [shuffleNonce, setShuffleNonce] = useState(0);
+  const [transformOptions, setTransformOptions] = useState(DEFAULT_TRANSFORM_OPTIONS);
   const text = useDebouncedValue(input);
   const pattern = useDebouncedValue(filterPattern);
 
@@ -118,18 +121,37 @@ export function LineTools() {
   const compareOutput = compared ? compared[compareSet].join(compared.eol) : "";
   const compareLabel = COMPARE_SETS.find((s) => s.value === compareSet)?.label ?? "";
 
+  const modeTabs = (
+    <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+      <TabsList aria-label="Mode">
+        <TabsTrigger value="process">Process</TabsTrigger>
+        <TabsTrigger value="compare">Compare</TabsTrigger>
+        <TabsTrigger value="transform">Transform</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  if (mode === "transform") {
+    // Transform works on the same text as Process.
+    return (
+      <TextTransform
+        navigation={modeTabs}
+        input={input}
+        onInputChange={setInput}
+        options={transformOptions}
+        onOptionsChange={setTransformOptions}
+      />
+    );
+  }
+
   if (mode === "compare") {
     return (
       <ToolWorkspace
+        wrapToolbar
         id="line-tools"
         toolbar={
           <>
-            <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-              <TabsList aria-label="Mode">
-                <TabsTrigger value="process">Process</TabsTrigger>
-                <TabsTrigger value="compare">Compare</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {modeTabs}
             <Tabs value={compareSet} onValueChange={(v) => setCompareSet(v as CompareSet)}>
               <TabsList aria-label="Result set">
                 {COMPARE_SETS.map((s) => (
@@ -189,15 +211,11 @@ export function LineTools() {
 
   return (
     <ToolWorkspace
+      wrapToolbar
       id="line-tools"
       toolbar={
         <>
-          <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
-            <TabsList aria-label="Mode">
-              <TabsTrigger value="process">Process</TabsTrigger>
-              <TabsTrigger value="compare">Compare</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {modeTabs}
           <Tabs value={sort} onValueChange={(v) => setSort(v as LineSort)}>
             <TabsList aria-label="Sort">
               {SORTS.map((s) => (
