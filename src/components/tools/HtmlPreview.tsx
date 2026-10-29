@@ -201,9 +201,9 @@ export function HtmlPreview() {
             createPortal(
               <div className="html-preview-full" role="dialog" aria-modal="true" aria-label="HTML preview, full screen">
                 <div className="editor-toolbar">
-                  <div className="toolbar-actions">
+                  <div className="toolbar-actions ml-auto">
+                    {width && <span className="text-xs tabular-nums text-muted-foreground">{widthLabel}</span>}
                     <ViewportSwitch width={width} onChange={setWidth} />
-                    <span className="text-xs text-muted-foreground">{widthLabel}</span>
                   </div>
                   <button type="button" className="toolbar-text-button" onClick={() => setFullScreen(false)} autoFocus>
                     <Minimize2 size={13} aria-hidden="true" />

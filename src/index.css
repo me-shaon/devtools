@@ -351,6 +351,8 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .html-preview-handle::after { content: ''; width: 4px; height: 40px; border-radius: 2px; background: hsl(var(--muted-foreground) / .5); }
 .html-preview-handle:hover::after, .html-preview-handle[data-active]::after, .html-preview-handle:focus-visible::after { background: hsl(var(--primary)); }
 .html-preview-full { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: hsl(var(--background)); }
+/* The overlay sits outside the workspace, so it clears the macOS window controls itself */
+body:has(.workspace[data-platform="darwin"]) .html-preview-full > .editor-toolbar { padding-left: 82px; }
 .copy-button[data-copied] { color: hsl(var(--success)); }
 .workspace-notice { padding: 8px 16px; font-size: 12px; border-bottom: 1px solid hsl(var(--border) / .5); }
 .workspace-notice[data-tone="error"] { color: hsl(var(--destructive)); }
