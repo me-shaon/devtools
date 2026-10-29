@@ -556,6 +556,44 @@ export function generateShades(color: Color, count: number): Color[] {
   return shades;
 }
 
+/** Normalize a 3- or 6-digit hex color, with or without a leading #. */
+function normalizeHex(input: string): string | null {
+  const text = input.trim().replace(/^#/, "");
+  if (!/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(text)) return null;
+  const full = text.length === 3 ? text.split("").map((digit) => digit + digit).join("") : text;
+  return `#${full.toLowerCase()}`;
+}
+
+/**
+ * A base color followed by lighter and darker shades in 10% lightness steps.
+ * Lightness clamps at 0 and 100, so steps that repeat a color (for example,
+ * every tint of white) are skipped instead of producing duplicate swatches.
+ * Returns null when the input is not a 3- or 6-digit hex color.
+ */
+export function generateShadePalette(input: string, count = 5): Color[] | null {
+  const hex = normalizeHex(input);
+  const base = hex ? parseColor(hex) : null;
+  if (!base) return null;
+
+  const h = Math.round(base.hsl.h);
+  const s = Math.round(base.hsl.s);
+  const l = Math.round(base.hsl.l);
+  const seen = new Set([base.hex]);
+  const palette = [base];
+
+  const addShade = (lightness: number) => {
+    const rgb = hslToRgb(h, s, Math.max(0, Math.min(100, lightness)));
+    const color = parseColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+    if (!color || seen.has(color.hex)) return;
+    seen.add(color.hex);
+    palette.push(color);
+  };
+
+  for (let i = 1; i <= count; i++) addShade(l + i * 10);
+  for (let i = 1; i <= count; i++) addShade(l - i * 10);
+  return palette;
+}
+
 /**
  * Adjust color brightness
  */
