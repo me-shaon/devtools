@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { GradientBuilder } from "@/components/tools/GradientBuilder";
 import { ColorPalette } from "@/components/tools/ColorPalette";
 
@@ -32,5 +32,54 @@ describe("GradientBuilder", () => {
     expect(panel).not.toBeVisible();
     fireEvent.mouseDown(gradientTab, { button: 0 });
     expect(screen.getByLabelText("Stop 3 color")).toBeInTheDocument();
+  });
+
+  it("applies a starter preset to the stops and angle", () => {
+    render(<GradientBuilder />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply Sunset gradient" }),
+    );
+    const css = screen.getByText(/background: linear/);
+    expect(css).toHaveTextContent("45deg");
+    expect(css).toHaveTextContent("#F12711 0%");
+    expect(css).toHaveTextContent("#F5AF19 100%");
+    expect(screen.getByLabelText("Stop 1 color")).toHaveValue("#f12711");
+  });
+
+  it("paints a stop with the native color picker without losing its hex field", () => {
+    render(<GradientBuilder />);
+    change("Pick color for stop 1", "#ff0000");
+    expect(screen.getByLabelText("Stop 1 color")).toHaveValue("#ff0000");
+    expect(screen.getByText(/background: linear/)).toHaveTextContent("#FF0000 0%");
+  });
+
+  it("adds a stop where the gradient bar is clicked", () => {
+    render(<GradientBuilder />);
+    const track = screen.getByRole("group", {
+      name: /Click to add a color stop/,
+    });
+    vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      width: 100,
+    } as DOMRect);
+    fireEvent.pointerDown(track, { clientX: 50, pointerId: 1 });
+    fireEvent.pointerUp(track, { pointerId: 1 });
+    expect(screen.getByLabelText("Stop 3 position")).toHaveValue(50);
+  });
+
+  it("drags a handle to reposition its stop", () => {
+    render(<GradientBuilder />);
+    const track = screen.getByRole("group", {
+      name: /Click to add a color stop/,
+    });
+    vi.spyOn(track, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      width: 100,
+    } as DOMRect);
+    const handle = screen.getByRole("button", { name: "Stop 1 at 0 percent" });
+    fireEvent.pointerDown(handle, { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(track, { clientX: 70, pointerId: 1 });
+    fireEvent.pointerUp(track, { pointerId: 1 });
+    expect(screen.getByLabelText("Stop 1 position")).toHaveValue(70);
   });
 });
