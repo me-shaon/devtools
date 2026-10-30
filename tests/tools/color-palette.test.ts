@@ -15,6 +15,9 @@ import {
   getTriadicColors,
   getSplitComplementaryColors,
   generateShadePalette,
+  buildPalette,
+  paletteToCss,
+  paletteToJson,
   adjustBrightness,
   adjustSaturation,
   getContrastRatio,
@@ -182,6 +185,58 @@ describe('Color Utils', () => {
       const palette = shades('rgb(255 0 0 / 50%)');
       expect(palette[0].hex).toBe('#ff0000');
       expect(palette.every((c) => c.alpha === 1)).toBe(true);
+    });
+  });
+
+  describe('buildPalette', () => {
+    const red = parseColor('#ff0000')!;
+    const hexes = (mode: Parameters<typeof buildPalette>[1], color = red) => buildPalette(color, mode).map((c) => c.hex);
+
+    it('puts the color first in every mode', () => {
+      for (const mode of ['tints', 'complementary', 'analogous', 'triadic', 'split-complementary', 'monochromatic'] as const) {
+        expect(hexes(mode)[0]).toBe('#ff0000');
+      }
+    });
+
+    it('rotates the hue for the harmonies', () => {
+      expect(hexes('complementary')).toEqual(['#ff0000', '#00ffff']);
+      expect(hexes('analogous')).toEqual(['#ff0000', '#ff8000', '#ffff00']);
+      expect(hexes('triadic')).toEqual(['#ff0000', '#00ff00', '#0000ff']);
+      expect(hexes('split-complementary')).toEqual(['#ff0000', '#00ff80', '#007fff']);
+    });
+
+    it('keeps the hue and changes the lightness for monochromatic', () => {
+      const palette = buildPalette(red, 'monochromatic');
+      expect(palette).toHaveLength(7);
+      expect(palette.slice(1).map((c) => Math.round(c.hsl.l))).toEqual([90, 75, 60, 45, 30, 15]);
+      expect(palette.slice(1).every((c) => Math.round(c.hsl.h) === 0)).toBe(true);
+    });
+
+    it('matches the shade palette for tints', () => {
+      expect(hexes('tints')).toEqual(generateShadePalette(red).map((c) => c.hex));
+    });
+
+    it('removes harmonies that repeat a gray', () => {
+      expect(hexes('triadic', parseColor('#808080')!)).toEqual(['#808080']);
+    });
+
+    it('builds an opaque palette', () => {
+      expect(buildPalette(parseColor('rgb(255 0 0 / 50%)')!, 'triadic').every((c) => c.alpha === 1)).toBe(true);
+    });
+  });
+
+  describe('palette export', () => {
+    const palette = buildPalette(parseColor('#ff0000')!, 'complementary');
+
+    it('writes one CSS custom property per swatch', () => {
+      expect(paletteToCss(palette)).toBe(':root {\n  --color-1: #ff0000;\n  --color-2: #00ffff;\n}');
+    });
+
+    it('writes one JSON entry per swatch', () => {
+      expect(JSON.parse(paletteToJson(palette))).toEqual([
+        { name: '--color-1', value: '#ff0000' },
+        { name: '--color-2', value: '#00ffff' },
+      ]);
     });
   });
 

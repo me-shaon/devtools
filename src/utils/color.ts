@@ -540,6 +540,64 @@ export function generateShadePalette(color: Color, count = 5): Color[] {
   return palette;
 }
 
+export type PaletteMode = 'tints' | 'complementary' | 'analogous' | 'triadic' | 'split-complementary' | 'monochromatic';
+
+export const PALETTE_MODES: { id: PaletteMode; label: string }[] = [
+  { id: 'tints', label: 'Tints and shades' },
+  { id: 'complementary', label: 'Complementary' },
+  { id: 'analogous', label: 'Analogous' },
+  { id: 'triadic', label: 'Triadic' },
+  { id: 'split-complementary', label: 'Split complementary' },
+  { id: 'monochromatic', label: 'Monochromatic' },
+];
+
+const MONOCHROMATIC_LIGHTNESS = [90, 75, 60, 45, 30, 15];
+
+/**
+ * A palette for a color: the color first, then the swatches of the mode, without duplicates.
+ * The palette is opaque: the alpha value of the color is not used.
+ */
+export function buildPalette(color: Color, mode: PaletteMode): Color[] {
+  const base = makeColor(color.rgb);
+  let colors: Color[];
+  switch (mode) {
+    case 'complementary':
+      colors = [base, getComplementaryColor(base)];
+      break;
+    case 'analogous':
+      colors = [base, ...getAnalogousColors(base, 2)];
+      break;
+    case 'triadic':
+      colors = [base, ...getTriadicColors(base)];
+      break;
+    case 'split-complementary':
+      colors = [base, ...getSplitComplementaryColors(base)];
+      break;
+    case 'monochromatic':
+      colors = [base, ...MONOCHROMATIC_LIGHTNESS.map((l) => makeColor(hslToRgb(base.hsl.h, base.hsl.s, l)))];
+      break;
+    default:
+      return generateShadePalette(base);
+  }
+  // A gray has no hue, so its harmonies repeat the color.
+  const seen = new Set<string>();
+  return colors.filter((c) => {
+    if (seen.has(c.hex)) return false;
+    seen.add(c.hex);
+    return true;
+  });
+}
+
+/** The palette as CSS custom properties, one per swatch in palette order. */
+export function paletteToCss(colors: Color[]): string {
+  return `:root {\n${colors.map((c, i) => `  --color-${i + 1}: ${c.hex};`).join('\n')}\n}`;
+}
+
+/** The palette as JSON, one entry per swatch with its custom property name. */
+export function paletteToJson(colors: Color[]): string {
+  return JSON.stringify(colors.map((c, i) => ({ name: `--color-${i + 1}`, value: c.hex })), null, 2);
+}
+
 /**
  * Adjust color brightness
  */

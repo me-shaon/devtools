@@ -103,6 +103,20 @@ describe("ColorPalette palette", () => {
     expect(screen.getByLabelText("Color")).toHaveValue("#ffffff");
   });
 
+  it("switches the palette type", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    fireEvent.change(screen.getByLabelText("Palette type"), { target: { value: "complementary" } });
+    expect(screen.getByRole("button", { name: "Use #00ffff" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use #ffffff" })).toBeNull();
+  });
+
+  it("offers the palette as CSS variables and JSON", () => {
+    render(<ColorPalette />);
+    expect(screen.getByRole("button", { name: /Copy CSS variables/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copy JSON/ })).toBeInTheDocument();
+  });
+
   it("shows a hint when the working color is not valid", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Color"), { target: { value: "nope" } });

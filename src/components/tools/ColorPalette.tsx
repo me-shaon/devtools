@@ -17,18 +17,22 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
-  generateShadePalette,
+  PALETTE_MODES,
+  buildPalette,
   getContrastRatio,
   meetsWcagAALarge,
   meetsWcagAANormal,
   meetsWcagAAALarge,
   meetsWcagAAANormal,
   parseColor,
+  paletteToCss,
+  paletteToJson,
   parseColorList,
   simulateCvd,
   simulateCvdPixels,
   type Color as ParsedColor,
   type CvdType,
+  type PaletteMode,
 } from "@/utils/color";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
@@ -691,7 +695,7 @@ function CvdImage({ severity }: { severity: number }) {
   );
 }
 
-/** Tints and shades of the working color. Selecting a swatch makes it the working color. */
+/** Palettes of the working color. Selecting a swatch makes it the working color. */
 function PaletteGenerator({
   color,
   onApply,
@@ -701,15 +705,31 @@ function PaletteGenerator({
   onApply: (color: ParsedColor) => void;
   onCompare: (colors: ParsedColor[]) => void;
 }) {
-  const palette = color ? generateShadePalette(color) : [];
+  const [mode, setMode] = useState<PaletteMode>("tints");
+  const palette = color ? buildPalette(color, mode) : [];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Color Palette Generator</CardTitle>
-        <CardDescription>Tints and shades of the color above. Select a swatch to use it.</CardDescription>
+        <CardDescription>Shades and color harmonies of the color above. Select a swatch to use it.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="palette-mode">Palette type</Label>
+          <select
+            id="palette-mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as PaletteMode)}
+            className="rounded-md border bg-background px-2 pr-7 py-1 text-sm"
+          >
+            {PALETTE_MODES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
         {palette.length === 0 ? (
           <p className="text-sm text-muted-foreground">Enter a valid color above to see its palette.</p>
         ) : (
@@ -749,9 +769,13 @@ function PaletteGenerator({
                 </Card>
               ))}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => onCompare(palette)}>
-              Compare these colors for color blindness
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <CopyButton value={paletteToCss(palette)} label="Copy CSS variables" />
+              <CopyButton value={paletteToJson(palette)} label="Copy JSON" />
+              <Button type="button" variant="outline" size="sm" onClick={() => onCompare(palette)}>
+                Compare these colors for color blindness
+              </Button>
+            </div>
           </>
         )}
       </CardContent>
