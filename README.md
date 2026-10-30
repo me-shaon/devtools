@@ -129,7 +129,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 ### Media
 
-- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, create color schemes, and simulate color blindness on colors and images. Build linear and radial CSS gradients in the Gradient tab
+- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha. Build shades and harmony palettes from that color and copy them as CSS variables or JSON. Check WCAG contrast with a suggested fix, simulate color blindness on colors and images, and reuse the last 8 colors. Build linear and radial CSS gradients in the Gradient tab
 - **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally. Crop, resize, rotate, and flip an image in the Edit Image tab
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
