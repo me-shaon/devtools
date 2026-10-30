@@ -124,6 +124,31 @@ describe("ColorPalette palette", () => {
   });
 });
 
+describe("ColorPalette contrast suggestions", () => {
+  it("suggests a foreground for a failing pair and applies it", () => {
+    render(<ColorPalette />);
+    const suggestion = screen.getByTestId("contrast-suggestion");
+    expect(suggestion).toHaveTextContent(/A foreground of #[0-9a-f]{6} reaches 4\.\d\d:1 for AA normal text/);
+    fireEvent.click(within(suggestion).getByRole("button", { name: "Use this foreground" }));
+    expect(screen.getByLabelText("Foreground")).not.toHaveValue("#777777");
+    expect(screen.getByText("This pair meets AA normal text.")).toBeInTheDocument();
+  });
+
+  it("follows the selected target", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Target for suggestions"), { target: { value: "aa-large" } });
+    expect(screen.getByText("This pair meets AA large text.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Target for suggestions"), { target: { value: "aaa-normal" } });
+    expect(screen.getByTestId("contrast-suggestion")).toHaveTextContent(/for AAA normal text/);
+  });
+
+  it("says when no lightness change can reach the target", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "rgb(0 0 0 / 10%)" } });
+    expect(screen.getByText(/No lightness change of the foreground or the background/)).toBeInTheDocument();
+  });
+});
+
 describe("ColorPalette contrast checker and working color", () => {
   it("uses the working color as the foreground or the background", () => {
     render(<ColorPalette />);

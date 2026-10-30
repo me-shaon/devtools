@@ -18,6 +18,7 @@ import {
   findConfusablePairs,
   formatColor,
   PALETTE_MODES,
+  WCAG_TARGETS,
   buildPalette,
   getContrastRatio,
   meetsWcagAALarge,
@@ -30,7 +31,10 @@ import {
   parseColorList,
   simulateCvd,
   simulateCvdPixels,
+  suggestContrastColor,
+  toHexWithAlpha,
   type Color as ParsedColor,
+  type ContrastTarget,
   type CvdType,
   type PaletteMode,
 } from "@/utils/color";
@@ -197,6 +201,10 @@ function ContrastChecker({
   const settledBg = useDebouncedValue(bg, 400);
   const fgError = settledFg === fg && fg.trim() !== "" && !fgColor;
   const bgError = settledBg === bg && bg.trim() !== "" && !bgColor;
+  const [targetId, setTargetId] = useState<ContrastTarget>("aa-normal");
+  const target = WCAG_TARGETS.find((item) => item.id === targetId)!;
+  const failsTarget = ratio !== null && ratio < target.ratio;
+  const suggestion = failsTarget && fgInput && bgInput ? suggestContrastColor(fgInput, bgInput, target.ratio) : null;
 
   const checks =
     fgColor && bgColor
@@ -299,6 +307,49 @@ function ContrastChecker({
                 </li>
               ))}
             </ul>
+            <div className="space-y-2">
+              <Label htmlFor="contrast-target">Target for suggestions</Label>
+              <select
+                id="contrast-target"
+                value={targetId}
+                onChange={(e) => setTargetId(e.target.value as ContrastTarget)}
+                className="rounded-md border bg-background px-2 pr-7 py-1 text-sm"
+              >
+                {WCAG_TARGETS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}, {item.ratio}:1
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!failsTarget ? (
+              <p className="text-sm text-success" role="status">
+                This pair meets {target.label}.
+              </p>
+            ) : suggestion ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border p-3" data-testid="contrast-suggestion">
+                <span
+                  className="h-6 w-10 shrink-0 rounded border"
+                  style={swatchStyle(cssOf(suggestion.color))}
+                  aria-hidden="true"
+                />
+                <p className="flex-1 text-sm">
+                  A {suggestion.side} of <code>{toHexWithAlpha(suggestion.color)}</code> reaches{" "}
+                  {formatRatio(suggestion.ratio)} for {target.label}.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => (suggestion.side === "foreground" ? setFg : setBg)(toHexWithAlpha(suggestion.color))}
+                >
+                  Use this {suggestion.side}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-destructive" role="status">
+                No lightness change of the foreground or the background reaches {target.label}.
+              </p>
+            )}
           </div>
         )}
       </CardContent>

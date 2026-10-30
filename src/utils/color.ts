@@ -661,6 +661,61 @@ export function meetsWcagAAALarge(color1: Color, color2: Color): boolean {
   return getContrastRatio(color1, color2) >= 4.5;
 }
 
+export type ContrastTarget = 'aa-normal' | 'aa-large' | 'aaa-normal' | 'aaa-large';
+
+export const WCAG_TARGETS: { id: ContrastTarget; label: string; ratio: number }[] = [
+  { id: 'aa-normal', label: 'AA normal text', ratio: 4.5 },
+  { id: 'aa-large', label: 'AA large text', ratio: 3 },
+  { id: 'aaa-normal', label: 'AAA normal text', ratio: 7 },
+  { id: 'aaa-large', label: 'AAA large text', ratio: 4.5 },
+];
+
+/** HEX with the alpha byte added when the color is not opaque. */
+export function toHexWithAlpha(color: Color): string {
+  const byte = Math.round(color.alpha * 255);
+  return byte >= 255 ? color.hex : color.hex + byte.toString(16).padStart(2, '0');
+}
+
+/** Contrast as a browser paints the pair: the background is opaque and a translucent foreground blends over it. */
+function paintedContrast(fg: Color, bg: Color): number {
+  const background = makeColor(bg.rgb);
+  return getContrastRatio(fg.alpha < 1 ? compositeOver(fg, background) : fg, background);
+}
+
+/** The closest lightness of one side of the pair that reaches the ratio, with its distance in lightness. */
+function closestPassing(fg: Color, bg: Color, required: number, side: 'foreground' | 'background') {
+  const color = side === 'foreground' ? fg : bg;
+  const { h, s, l } = color.hsl;
+  for (let distance = 1; distance <= 100; distance++) {
+    let best: { color: Color; ratio: number } | null = null;
+    for (const lightness of [l - distance, l + distance]) {
+      if (lightness < 0 || lightness > 100) continue;
+      const candidate = makeColor(hslToRgb(h, s, lightness), color.alpha);
+      const ratio = side === 'foreground' ? paintedContrast(candidate, bg) : paintedContrast(fg, candidate);
+      if (ratio >= required && (!best || ratio > best.ratio)) best = { color: candidate, ratio };
+    }
+    if (best) return { ...best, distance };
+  }
+  return null;
+}
+
+/**
+ * Suggest the smallest lightness change of the foreground or the background that makes the pair
+ * reach the ratio. The foreground wins a tie. Returns null when no lightness change can reach it.
+ */
+export function suggestContrastColor(
+  fg: Color,
+  bg: Color,
+  required: number,
+): { side: 'foreground' | 'background'; color: Color; ratio: number } | null {
+  const foreground = closestPassing(fg, bg, required, 'foreground');
+  const background = closestPassing(fg, bg, required, 'background');
+  if (foreground && (!background || foreground.distance <= background.distance)) {
+    return { side: 'foreground', color: foreground.color, ratio: foreground.ratio };
+  }
+  return background ? { side: 'background', color: background.color, ratio: background.ratio } : null;
+}
+
 /** @deprecated misspelled alias: this checks the AA large text threshold. */
 export const meetsWCAAALarge = meetsWcagAALarge;
 

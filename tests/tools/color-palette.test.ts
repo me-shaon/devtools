@@ -18,6 +18,8 @@ import {
   buildPalette,
   paletteToCss,
   paletteToJson,
+  suggestContrastColor,
+  toHexWithAlpha,
   adjustBrightness,
   adjustSaturation,
   getContrastRatio,
@@ -237,6 +239,42 @@ describe('Color Utils', () => {
         { name: '--color-1', value: '#ff0000' },
         { name: '--color-2', value: '#00ffff' },
       ]);
+    });
+  });
+
+  describe('suggestContrastColor', () => {
+    const gray = parseColor('#777777')!;
+    const white = parseColor('#ffffff')!;
+
+    it('suggests the closest lightness that reaches the ratio', () => {
+      const suggestion = suggestContrastColor(gray, white, 4.5)!;
+      expect(suggestion.side).toBe('foreground');
+      expect(suggestion.ratio).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(suggestion.color, white)).toBe(suggestion.ratio);
+      expect(suggestion.color.hsl.l).toBeLessThan(gray.hsl.l);
+      expect(Math.round(gray.hsl.l - suggestion.color.hsl.l)).toBe(1);
+    });
+
+    it('changes the background when only the background can reach the ratio', () => {
+      const suggestion = suggestContrastColor(parseColor('#ffffff')!, parseColor('#bbbbbb')!, 7)!;
+      expect(suggestion.side).toBe('background');
+      expect(suggestion.ratio).toBeGreaterThanOrEqual(7);
+    });
+
+    it('keeps the alpha of a translucent foreground', () => {
+      const suggestion = suggestContrastColor(parseColor('rgb(119 119 119 / 90%)')!, white, 4.5)!;
+      expect(suggestion.color.alpha).toBe(0.9);
+    });
+
+    it('returns null when no lightness change can reach the ratio', () => {
+      expect(suggestContrastColor(parseColor('rgb(0 0 0 / 10%)')!, white, 4.5)).toBeNull();
+    });
+  });
+
+  describe('toHexWithAlpha', () => {
+    it('adds the alpha byte only for a translucent color', () => {
+      expect(toHexWithAlpha(parseColor('#ff0000')!)).toBe('#ff0000');
+      expect(toHexWithAlpha(parseColor('rgb(255 0 0 / 50%)')!)).toBe('#ff000080');
     });
   });
 
