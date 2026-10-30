@@ -30,6 +30,30 @@ describe("ColorPalette converter", () => {
     expect(screen.getByLabelText("Color")).toHaveValue("#ff000080");
   });
 
+  it("picks an opaque color when the current color is fully transparent", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "transparent" } });
+    fireEvent.input(screen.getByLabelText("Pick a color"), { target: { value: "#ff0000" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#ff0000");
+    expect(codeFor("RGB")).toHaveTextContent("rgb(255, 0, 0)");
+  });
+
+  it("marks and describes an invalid color", async () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "not a color" } });
+    // The field stays valid while typing, until the error shows.
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(await screen.findByText("Not a valid CSS color.")).toHaveAttribute("id", "color-convert-error");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("aria-describedby", "color-convert-error");
+  });
+
+  it("labels the preview as an image", () => {
+    render(<ColorPalette />);
+    expect(screen.getByRole("img", { name: "Color preview" })).toBeInTheDocument();
+  });
+
   it("shows an error for an invalid color after typing stops", async () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Color"), { target: { value: "not a color" } });
@@ -50,6 +74,17 @@ describe("ColorPalette contrast checker", () => {
     fireEvent.change(screen.getByLabelText("Background"), { target: { value: "white" } });
     expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("1.00:1");
     expect(screen.getByText(/blends the foreground over the background/)).toBeInTheDocument();
+  });
+
+  it("marks an invalid contrast color and links the message after typing stops", async () => {
+    render(<ColorPalette />);
+    const fg = screen.getByLabelText("Foreground");
+    fireEvent.change(fg, { target: { value: "nope" } });
+    expect(fg).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByText("Invalid color.")).toBeNull();
+    expect(await screen.findByText("Invalid color.")).toHaveAttribute("id", "contrast-fg-error");
+    expect(fg).toHaveAttribute("aria-invalid", "true");
+    expect(fg).toHaveAttribute("aria-describedby", "contrast-fg-error");
   });
 });
 
@@ -83,6 +118,13 @@ describe("ColorPalette color blindness simulator", () => {
     expect(within(alerts).queryByText(/^Normal vision/)).toBeNull();
   });
 
+  it("lists the look-alike pairs as list items", () => {
+    render(<ColorPalette />);
+    const alert = screen.getByRole("alert", { name: "Hard to tell apart" });
+    expect(within(alert).getByRole("list")).toBeInTheDocument();
+    expect(within(alert).getAllByRole("listitem").length).toBeGreaterThan(0);
+  });
+
   it("says when every pair stays distinct", async () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: "black, white" } });
@@ -104,8 +146,36 @@ describe("ColorPalette color blindness simulator", () => {
 
   it("fills the compare list from a generated palette", () => {
     render(<ColorPalette />);
-    fireEvent.change(screen.getByPlaceholderText("#000000 or 000000"), { target: { value: "#3b82f6" } });
+    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "#3b82f6" } });
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
-    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#3b82f6, #/);
+    const values = screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value.split(", ");
+    expect(values).toHaveLength(10);
+    expect(new Set(values).size).toBe(10);
+    expect(values[0]).toBe("#3b82f6");
+  });
+
+  it("trims the base color before generating", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "  #f00  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#ff0000, #/);
+  });
+
+  it("generates a palette from a named color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "tomato" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#ff6347, #/);
+  });
+
+  it("generates no duplicate swatches or false look-alike warnings for white", async () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "#ffffff" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    const values = screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value.split(", ");
+    expect(values).toHaveLength(6);
+    expect(new Set(values).size).toBe(6);
+    await waitFor(() => expect(screen.getByText(/Every pair stays distinct/)).toBeInTheDocument());
+    expect(screen.queryByRole("alert", { name: "Hard to tell apart" })).toBeNull();
   });
 });

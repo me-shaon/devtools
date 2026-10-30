@@ -18,6 +18,7 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
+  generateShadePalette,
   getContrastRatio,
   meetsWcagAALarge,
   meetsWcagAANormal,
@@ -30,12 +31,6 @@ import {
   type Color as ParsedColor,
   type CvdType,
 } from "@/utils/color";
-
-interface Color {
-  hex: string;
-  rgb: string;
-  hsl: string;
-}
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
@@ -94,7 +89,10 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
   const cssValue = values?.find((v) => v.label === "RGB")?.value ?? "transparent";
 
   const pick = (hex: string) => {
-    const alpha = color && color.alpha < 1 ? Math.round(color.alpha * 255).toString(16).padStart(2, "0") : "";
+    // The native picker has no alpha channel. Keep a translucent color's alpha,
+    // but not a fully transparent one, where the picked color would stay invisible.
+    const alphaByte = color ? Math.round(color.alpha * 255) : 0;
+    const alpha = alphaByte > 0 && alphaByte < 255 ? alphaByte.toString(16).padStart(2, "0") : "";
     setInput(hex + alpha);
   };
 
@@ -116,6 +114,8 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               className="font-mono"
               spellCheck={false}
               autoComplete="off"
+              aria-invalid={showError}
+              aria-describedby={showError ? "color-convert-error" : undefined}
             />
             <input
               type="color"
@@ -126,7 +126,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
             />
           </div>
           {showError && (
-            <p className="text-xs text-destructive" role="alert">
+            <p id="color-convert-error" className="text-xs text-destructive" role="alert">
               Not a valid CSS color.
             </p>
           )}
@@ -136,6 +136,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
             <div
               className="h-24 w-full rounded-md border"
               style={swatchStyle(cssValue)}
+              role="img"
               aria-label="Color preview"
               data-testid="color-preview"
             />
@@ -183,6 +184,11 @@ function ContrastChecker({
 }) {
   const { fgInput, bgInput, fgColor, bgColor } = resolveContrastPair(fg, bg);
   const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
+  // Wait until typing stops before an error shows, so a half-typed color is not announced.
+  const settledFg = useDebouncedValue(fg, 400);
+  const settledBg = useDebouncedValue(bg, 400);
+  const fgError = settledFg === fg && fg.trim() !== "" && !fgColor;
+  const bgError = settledBg === bg && bg.trim() !== "" && !bgColor;
 
   const checks =
     fgColor && bgColor
@@ -209,8 +215,14 @@ function ContrastChecker({
               value={fg}
               onChange={(e) => setFg(e.target.value)}
               className="font-mono"
+              aria-invalid={fgError}
+              aria-describedby={fgError ? "contrast-fg-error" : undefined}
             />
-            {fg.trim() && !fgColor && <p className="text-xs text-destructive">Invalid color.</p>}
+            {fgError && (
+              <p id="contrast-fg-error" className="text-xs text-destructive" role="alert">
+                Invalid color.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="contrast-bg">Background</Label>
@@ -219,8 +231,14 @@ function ContrastChecker({
               value={bg}
               onChange={(e) => setBg(e.target.value)}
               className="font-mono"
+              aria-invalid={bgError}
+              aria-describedby={bgError ? "contrast-bg-error" : undefined}
             />
-            {bg.trim() && !bgColor && <p className="text-xs text-destructive">Invalid color.</p>}
+            {bgError && (
+              <p id="contrast-bg-error" className="text-xs text-destructive" role="alert">
+                Invalid color.
+              </p>
+            )}
           </div>
         </div>
         {ratio !== null && fgColor && bgColor && (
@@ -441,16 +459,18 @@ function ColorVision({
           )}
           {listColors.length > 1 &&
             (conflicts.length > 0 ? (
-              <ul className="space-y-1 text-xs text-destructive" role="alert" aria-label="Hard to tell apart">
-                {conflicts.flatMap(({ vision, pairs }) =>
-                  pairs.map((pair) => (
-                    <li key={`${vision}-${pair.a}-${pair.b}`}>
-                      {visionLabel(vision, severity)}: {list.colors[pair.a].input} and {list.colors[pair.b].input}{" "}
-                      look alike (ΔE {pair.distance.toFixed(1)})
-                    </li>
-                  )),
-                )}
-              </ul>
+              <div role="alert" aria-label="Hard to tell apart">
+                <ul className="space-y-1 text-xs text-destructive">
+                  {conflicts.flatMap(({ vision, pairs }) =>
+                    pairs.map((pair) => (
+                      <li key={`${vision}-${pair.a}-${pair.b}`}>
+                        {visionLabel(vision, severity)}: {list.colors[pair.a].input} and {list.colors[pair.b].input}{" "}
+                        look alike (ΔE {pair.distance.toFixed(1)})
+                      </li>
+                    )),
+                  )}
+                </ul>
+              </div>
             ) : (
               <p className="text-xs text-success" role="status">
                 Every pair stays distinct for every vision type (ΔE {CONFUSION_THRESHOLD} or more).
@@ -654,200 +674,18 @@ export function ColorPalette() {
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
-  const [hexInput, setHexInput] = useState("");
-  const [colors, setColors] = useState<Color[]>([]);
+  const [baseInput, setBaseInput] = useState("");
+  const [colors, setColors] = useState<ParsedColor[]>([]);
 
-  const hexToRgb = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-      ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16),
-        }
-      : null;
-  };
-
-  const rgbToHsl = (r: number, g: number, b: number) => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-      switch (max) {
-        case r:
-          h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-          break;
-        case g:
-          h = ((b - r) / d + 2) / 6;
-          break;
-        case b:
-          h = ((r - g) / d + 4) / 6;
-          break;
-      }
-    }
-
-    return {
-      h: Math.round(h * 360),
-      s: Math.round(s * 100),
-      l: Math.round(l * 100),
-    };
-  };
-
-  const generatePalette = (baseHex: string) => {
-    let hex = baseHex.replace("#", "");
-
-    // Handle 3-character hex codes
-    if (hex.length === 3) {
-      hex = hex
-        .split("")
-        .map((c) => c + c)
-        .join("");
-    }
-
-    if (!/^([0-9A-Fa-f]{6})$/.test(hex)) {
-      toast.error("Invalid hex color");
+  const generatePalette = (base: string) => {
+    const palette = generateShadePalette(base);
+    if (!palette) {
+      toast.error("Enter an opaque CSS color, such as #3b82f6 or tomato.");
       return;
     }
-
-    const rgb = hexToRgb("#" + hex);
-    if (!rgb) {
-      toast.error("Invalid hex color");
-      return;
-    }
-
-    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-    const newColors: Color[] = [];
-
-    // Generate variations
-    // Original color
-    newColors.push({
-      hex: "#" + hex,
-      rgb: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
-      hsl: `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`,
-    });
-
-    // Lighter shades (increase lightness)
-    for (let i = 1; i <= 5; i++) {
-      const newL = Math.min(100, hsl.l + i * 10);
-      newColors.push({
-        hex: hslToHex(hsl.h, hsl.s, newL),
-        rgb: hslToRgb(hsl.h, hsl.s, newL),
-        hsl: `hsl(${hsl.h}, ${hsl.s}%, ${newL}%)`,
-      });
-    }
-
-    // Darker shades (decrease lightness)
-    for (let i = 1; i <= 5; i++) {
-      const newL = Math.max(0, hsl.l - i * 10);
-      newColors.push({
-        hex: hslToHex(hsl.h, hsl.s, newL),
-        rgb: hslToRgb(hsl.h, hsl.s, newL),
-        hsl: `hsl(${hsl.h}, ${hsl.s}%, ${newL}%)`,
-      });
-    }
-
-    setColors(newColors);
-    setCompareText(newColors.map((c) => c.hex).join(", "));
+    setColors(palette);
+    setCompareText(palette.map((color) => color.hex).join(", "));
   };
-
-  const hslToHex = (h: number, s: number, l: number) => {
-    s /= 100;
-    l /= 100;
-
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let r = 0,
-      g = 0,
-      b = 0;
-
-    if (h >= 0 && h < 60) {
-      r = c;
-      g = x;
-      b = 0;
-    } else if (h >= 60 && h < 120) {
-      r = x;
-      g = c;
-      b = 0;
-    } else if (h >= 120 && h < 180) {
-      r = 0;
-      g = c;
-      b = x;
-    } else if (h >= 180 && h < 240) {
-      r = 0;
-      g = x;
-      b = c;
-    } else if (h >= 240 && h < 300) {
-      r = x;
-      g = 0;
-      b = c;
-    } else if (h >= 300 && h < 360) {
-      r = c;
-      g = 0;
-      b = x;
-    }
-
-    const toHex = (n: number) => {
-      const hex = Math.round((n + m) * 255).toString(16);
-      return hex.length === 1 ? "0" + hex : hex;
-    };
-
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  };
-
-  const hslToRgb = (h: number, s: number, l: number) => {
-    s /= 100;
-    l /= 100;
-
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = l - c / 2;
-    let r = 0,
-      g = 0,
-      b = 0;
-
-    if (h >= 0 && h < 60) {
-      r = c;
-      g = x;
-      b = 0;
-    } else if (h >= 60 && h < 120) {
-      r = x;
-      g = c;
-      b = 0;
-    } else if (h >= 120 && h < 180) {
-      r = 0;
-      g = c;
-      b = x;
-    } else if (h >= 180 && h < 240) {
-      r = 0;
-      g = x;
-      b = c;
-    } else if (h >= 240 && h < 300) {
-      r = x;
-      g = 0;
-      b = c;
-    } else if (h >= 300 && h < 360) {
-      r = c;
-      g = 0;
-      b = x;
-    }
-
-    const toValue = (n: number) => Math.round((n + m) * 255);
-
-    return `rgb(${toValue(r)}, ${toValue(g)}, ${toValue(b)})`;
-  };
-
 
   return (
     <div className="space-y-6">
@@ -866,15 +704,17 @@ export function ColorPalette() {
           <CardTitle>Color Palette Generator</CardTitle>
           <CardDescription>Generate a color palette from a base color</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
+          <Label htmlFor="palette-base-input">Base color</Label>
           <div className="flex gap-2">
             <Input
-              placeholder="#000000 or 000000"
-              value={hexInput}
-              onChange={(e) => setHexInput(e.target.value)}
+              id="palette-base-input"
+              placeholder="#3b82f6, 3b82f6, or tomato"
+              value={baseInput}
+              onChange={(e) => setBaseInput(e.target.value)}
               className="font-mono"
             />
-            <Button onClick={() => generatePalette(hexInput)} size="lg">
+            <Button onClick={() => generatePalette(baseInput)} size="lg">
               Generate
             </Button>
           </div>
@@ -883,8 +723,8 @@ export function ColorPalette() {
 
       {colors.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {colors.map((color, index) => (
-            <Card key={index} className="overflow-hidden">
+          {colors.map((color) => (
+            <Card key={color.hex} className="overflow-hidden">
               <div
                 className="h-24 w-full"
                 style={{ backgroundColor: color.hex }}
@@ -899,11 +739,15 @@ export function ColorPalette() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">RGB</Label>
-                  <code className="text-xs block truncate">{color.rgb}</code>
+                  <code className="text-xs block truncate">
+                    {`rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`}
+                  </code>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">HSL</Label>
-                  <code className="text-xs block truncate">{color.hsl}</code>
+                  <code className="text-xs block truncate">
+                    {`hsl(${Math.round(color.hsl.h)}, ${Math.round(color.hsl.s)}%, ${Math.round(color.hsl.l)}%)`}
+                  </code>
                 </div>
               </CardContent>
             </Card>

@@ -14,8 +14,7 @@ import {
   getAnalogousColors,
   getTriadicColors,
   getSplitComplementaryColors,
-  generateColorPalette,
-  generateShades,
+  generateShadePalette,
   adjustBrightness,
   adjustSaturation,
   getContrastRatio,
@@ -158,32 +157,40 @@ describe('Color Utils', () => {
     });
   });
 
-  describe('generateColorPalette', () => {
-    it('should generate complete palette', () => {
-      const result = generateColorPalette('#ff0000');
-      expect(result).not.toBeNull();
-      expect(result?.palette).toBeDefined();
-      expect(result?.complementary).toBeDefined();
+  describe('generateShadePalette', () => {
+    it('starts with the base color and adds lighter then darker steps', () => {
+      const palette = generateShadePalette('#3b82f6')!;
+      expect(palette[0].hex).toBe('#3b82f6');
+      expect(palette).toHaveLength(10);
+      const lightnesses = palette.map((c) => Math.round(c.hsl.l));
+      expect(lightnesses).toEqual([60, 70, 80, 90, 100, 50, 40, 30, 20, 10]);
     });
 
-    it('should return null for invalid color', () => {
-      const result = generateColorPalette('invalid');
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('generateShades', () => {
-    it('should generate color shades', () => {
-      const color = parseColor('#ff0000')!;
-      const result = generateShades(color, 5);
-      expect(result).toHaveLength(5);
+    it('accepts 3-digit hex, missing #, whitespace, and uppercase', () => {
+      expect(generateShadePalette('f00')![0].hex).toBe('#ff0000');
+      expect(generateShadePalette('  #3B82F6  ')![0].hex).toBe('#3b82f6');
     });
 
-    it('should vary lightness', () => {
-      const color = parseColor('#808080')!;
-      const result = generateShades(color, 3);
-      const lightnesses = result.map((c) => c.hsl.l);
-      expect(Math.min(...lightnesses)).toBeLessThan(Math.max(...lightnesses));
+    it('never repeats a swatch when lightness clamps', () => {
+      for (const input of ['#3b82f6', '#ffffff', '#000000', '#f5f5f5']) {
+        const palette = generateShadePalette(input)!;
+        expect(new Set(palette.map((c) => c.hex)).size).toBe(palette.length);
+      }
+      expect(generateShadePalette('#ffffff')).toHaveLength(6);
+      expect(generateShadePalette('#000000')).toHaveLength(6);
+      expect(generateShadePalette('#f5f5f5')).toHaveLength(7);
+    });
+
+    it('accepts any opaque CSS color', () => {
+      expect(generateShadePalette('tomato')![0].hex).toBe('#ff6347');
+      expect(generateShadePalette('rgb(255 0 0)')![0].hex).toBe('#ff0000');
+      expect(generateShadePalette('#ff0000ff')![0].hex).toBe('#ff0000');
+    });
+
+    it('rejects input that is not an opaque CSS color', () => {
+      for (const input of ['', '  ', '#ff000080', 'rgba(0, 0, 0, 0.5)', 'transparent', 'not a color', '#ggg', '#12345']) {
+        expect(generateShadePalette(input)).toBeNull();
+      }
     });
   });
 
