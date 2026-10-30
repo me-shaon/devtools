@@ -5,10 +5,12 @@ import { ImageConverter } from "@/components/tools/ImageConverter";
 const mocks = vi.hoisted(() => ({
   saveFile: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
+  encodeWithWasm: vi.fn(),
 }));
 
 vi.mock("@/lib/desktop", () => ({ saveFile: mocks.saveFile }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/utils/wasm-encoders", () => ({ encodeWithWasm: mocks.encodeWithWasm }));
 
 // jsdom cannot decode or encode images, so stub the image and canvas steps.
 class LoadedImage {
@@ -48,7 +50,12 @@ beforeEach(() => {
     },
   );
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
-    return { canvas: this, fillRect: vi.fn(), drawImage: vi.fn() } as unknown as CanvasRenderingContext2D;
+    return {
+      canvas: this,
+      fillRect: vi.fn(),
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(64), width: 4, height: 4 }),
+    } as unknown as CanvasRenderingContext2D;
   });
   vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(compressedBlob()));
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -60,12 +67,14 @@ afterEach(() => {
   mocks.saveFile.mockReset();
   mocks.toast.success.mockReset();
   mocks.toast.error.mockReset();
+  mocks.encodeWithWasm.mockReset();
 });
 
 const compressSingleImage = async () => {
   render(<ImageConverter />);
   fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
   const download = await screen.findByRole("button", { name: "Download Image" });
+  await waitFor(() => expect(download).toBeEnabled());
   fireEvent.click(download);
 };
 
@@ -97,6 +106,30 @@ describe("ImageConverter single download", () => {
     await waitFor(() =>
       expect(mocks.toast.error).toHaveBeenCalledWith("Unable to save the compressed image."),
     );
+  });
+});
+
+describe("ImageConverter WebP output", () => {
+  it("encodes WebP with WASM when the web view writes PNG instead", async () => {
+    // The macOS web view ignores image/webp in toBlob and returns a PNG.
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) =>
+      callback(new Blob(["png bytes"], { type: "image/png" })),
+    );
+    mocks.encodeWithWasm.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    mocks.saveFile.mockResolvedValue(true);
+
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [new File(["webp"], "banner.webp", { type: "image/webp" })] } });
+    const download = await screen.findByRole("button", { name: "Download Image" });
+    await waitFor(() => expect(download).toBeEnabled());
+    fireEvent.click(download);
+
+    await waitFor(() => expect(mocks.saveFile).toHaveBeenCalled());
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("webp", expect.objectContaining({ width: 4, height: 4 }), expect.any(Number));
+    const [blob, name] = mocks.saveFile.mock.calls[0] as [Blob, string];
+    expect(blob.type).toBe("image/webp");
+    expect(blob.size).toBe(3);
+    expect(name).toBe("banner.webp");
   });
 });
 

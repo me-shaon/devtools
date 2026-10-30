@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveFile } from "@/lib/desktop";
+import { encodeCanvas } from "@/utils/image-reencode";
 import {
   buildOutputFilename,
   formatSavingsLabel,
@@ -34,6 +35,7 @@ import {
 
 interface ProcessedImage {
   blob: Blob;
+  bytes: Uint8Array;
   format: ImageFormat;
   width: number;
   height: number;
@@ -52,6 +54,7 @@ interface BulkCompressionResult {
   savingsPercent?: number;
   format?: ImageFormat;
   blob?: Blob;
+  bytes?: Uint8Array;
   error?: string;
 }
 
@@ -128,21 +131,18 @@ async function compressImage(
 
   context.drawImage(image, 0, 0);
 
-  const mimeType = getMimeTypeFromFormat(outputFormat);
-  const blob = await new Promise<Blob | null>((resolve) => {
-    context.canvas.toBlob(
-      resolve,
-      mimeType,
-      shouldShowQualityControl(file.type, target) ? quality / 100 : undefined,
-    );
-  });
-
-  if (!blob) {
+  // The macOS web view cannot write WebP and returns PNG instead, so encodeCanvas falls back to WASM.
+  let bytes: Uint8Array;
+  try {
+    bytes = await encodeCanvas(canvas, outputFormat, quality);
+  } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
   }
+  const blob = new Blob([bytes.slice()], { type: getMimeTypeFromFormat(outputFormat) });
 
   return {
     blob,
+    bytes,
     format: outputFormat,
     width: canvas.width,
     height: canvas.height,
@@ -291,6 +291,7 @@ export function ImageConverter() {
             ...nextResults[index],
             status: "done",
             blob: result.blob,
+            bytes: result.bytes,
             compressedSize: result.blob.size,
             savingsPercent: getSavingsPercent(file.size, result.blob.size),
             format: result.format,
@@ -382,8 +383,8 @@ export function ImageConverter() {
 
   const handleBulkDownload = async () => {
     const completedResults = bulkResults.filter(
-      (result): result is BulkCompressionResult & { blob: Blob; format: ImageFormat } =>
-        result.status === "done" && Boolean(result.blob) && Boolean(result.format),
+      (result): result is BulkCompressionResult & { bytes: Uint8Array; format: ImageFormat } =>
+        result.status === "done" && Boolean(result.bytes) && Boolean(result.format),
     );
 
     if (completedResults.length === 0) {
@@ -392,16 +393,10 @@ export function ImageConverter() {
 
     const usedNames = new Map<string, number>();
     const zipEntries = Object.fromEntries(
-      await Promise.all(
-        completedResults.map(async (result) => {
-          const outputName = getUniqueFileName(
-            buildOutputFilename(result.name, result.format),
-            usedNames,
-          );
-
-          return [outputName, new Uint8Array(await result.blob.arrayBuffer())];
-        }),
-      ),
+      completedResults.map((result) => [
+        getUniqueFileName(buildOutputFilename(result.name, result.format), usedNames),
+        result.bytes,
+      ]),
     );
 
     const zipBlob = new Blob([new Uint8Array(zipSync(zipEntries, { level: 6 }))], {
