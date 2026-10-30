@@ -17,6 +17,15 @@ describe("ColorPalette recent colors", () => {
     expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
   });
 
+  it("records the color when Enter commits it, without blurring", () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "tomato" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByRole("button", { name: "Use recent color #ff6347" })).toBeInTheDocument();
+    expect(document.activeElement).toBe(input);
+  });
+
   it("does not record an invalid color", () => {
     render(<ColorPalette />);
     const input = screen.getByLabelText("Color");

@@ -685,7 +685,7 @@ export function addRecentColor(recents: string[], color: Color): string[] {
   return [value, ...recents.filter((entry) => entry !== value)].slice(0, MAX_RECENT_COLORS);
 }
 
-/** Read the stored recent list. Entries that are not valid colors are skipped. */
+/** Read the stored recent list, normalized to canonical HEX. Entries that are not colors are skipped. */
 export function parseRecentColors(raw: string | null): string[] {
   let parsed: unknown;
   try {
@@ -694,8 +694,17 @@ export function parseRecentColors(raw: string | null): string[] {
     return [];
   }
   if (!Array.isArray(parsed)) return [];
-  const colors = parsed.filter((entry): entry is string => typeof entry === 'string' && parseColor(entry) !== null);
-  return [...new Set(colors)].slice(0, MAX_RECENT_COLORS);
+  // Normalize before de-duplicating, so "tomato" and "#ff6347" are recognized as one entry.
+  const colors: string[] = [];
+  for (const entry of parsed) {
+    if (typeof entry !== 'string') continue;
+    const color = parseColor(entry);
+    if (!color) continue;
+    const value = toHexWithAlpha(color);
+    if (!colors.includes(value)) colors.push(value);
+    if (colors.length === MAX_RECENT_COLORS) break;
+  }
+  return colors;
 }
 
 /** Contrast as a browser paints the pair: the background is opaque and a translucent foreground blends over it. */
