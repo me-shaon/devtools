@@ -512,21 +512,14 @@ export function getSplitComplementaryColors(color: Color): Color[] {
   return colors;
 }
 
-/** Parse a CSS color. A bare 3- or 6-digit hex value does not need the leading #. */
-function parseBaseColor(input: string): Color | null {
-  const text = input.trim();
-  return parseColor(/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? `#${text}` : text);
-}
-
 /**
- * A base color followed by lighter and darker shades in 10% lightness steps.
+ * A color followed by lighter and darker shades in 10% lightness steps.
  * Lightness clamps at 0 and 100, so steps that repeat a color (for example,
  * every tint of white) are skipped instead of producing duplicate swatches.
- * Returns null when the input is not a CSS color or is not opaque.
+ * The palette is opaque: the alpha value of the color is not used.
  */
-export function generateShadePalette(input: string, count = 5): Color[] | null {
-  const base = parseBaseColor(input);
-  if (!base || base.alpha < 1) return null;
+export function generateShadePalette(color: Color, count = 5): Color[] {
+  const base = makeColor(color.rgb);
 
   const h = Math.round(base.hsl.h);
   const s = Math.round(base.hsl.s);

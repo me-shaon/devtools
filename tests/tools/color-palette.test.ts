@@ -158,39 +158,30 @@ describe('Color Utils', () => {
   });
 
   describe('generateShadePalette', () => {
+    const shades = (input: string) => generateShadePalette(parseColor(input)!);
+
     it('starts with the base color and adds lighter then darker steps', () => {
-      const palette = generateShadePalette('#3b82f6')!;
+      const palette = shades('#3b82f6');
       expect(palette[0].hex).toBe('#3b82f6');
       expect(palette).toHaveLength(10);
       const lightnesses = palette.map((c) => Math.round(c.hsl.l));
       expect(lightnesses).toEqual([60, 70, 80, 90, 100, 50, 40, 30, 20, 10]);
     });
 
-    it('accepts 3-digit hex, missing #, whitespace, and uppercase', () => {
-      expect(generateShadePalette('f00')![0].hex).toBe('#ff0000');
-      expect(generateShadePalette('  #3B82F6  ')![0].hex).toBe('#3b82f6');
-    });
-
     it('never repeats a swatch when lightness clamps', () => {
       for (const input of ['#3b82f6', '#ffffff', '#000000', '#f5f5f5']) {
-        const palette = generateShadePalette(input)!;
+        const palette = shades(input);
         expect(new Set(palette.map((c) => c.hex)).size).toBe(palette.length);
       }
-      expect(generateShadePalette('#ffffff')).toHaveLength(6);
-      expect(generateShadePalette('#000000')).toHaveLength(6);
-      expect(generateShadePalette('#f5f5f5')).toHaveLength(7);
+      expect(shades('#ffffff')).toHaveLength(6);
+      expect(shades('#000000')).toHaveLength(6);
+      expect(shades('#f5f5f5')).toHaveLength(7);
     });
 
-    it('accepts any opaque CSS color', () => {
-      expect(generateShadePalette('tomato')![0].hex).toBe('#ff6347');
-      expect(generateShadePalette('rgb(255 0 0)')![0].hex).toBe('#ff0000');
-      expect(generateShadePalette('#ff0000ff')![0].hex).toBe('#ff0000');
-    });
-
-    it('rejects input that is not an opaque CSS color', () => {
-      for (const input of ['', '  ', '#ff000080', 'rgba(0, 0, 0, 0.5)', 'transparent', 'not a color', '#ggg', '#12345']) {
-        expect(generateShadePalette(input)).toBeNull();
-      }
+    it('builds an opaque palette from a translucent color', () => {
+      const palette = shades('rgb(255 0 0 / 50%)');
+      expect(palette[0].hex).toBe('#ff0000');
+      expect(palette.every((c) => c.alpha === 1)).toBe(true);
     });
   });
 

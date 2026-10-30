@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUp } from "lucide-react";
-import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -100,7 +99,9 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
     <Card>
       <CardHeader>
         <CardTitle>Color Converter</CardTitle>
-        <CardDescription>Enter or paste any CSS color, or pick one</CardDescription>
+        <CardDescription>
+          Enter or paste any CSS color, or pick one. The palette and the tools below use this color.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -176,11 +177,14 @@ function ContrastChecker({
   setFg,
   bg,
   setBg,
+  working,
 }: {
   fg: string;
   setFg: (value: string) => void;
   bg: string;
   setBg: (value: string) => void;
+  /** The working color as typed, or null when it is not valid. */
+  working: string | null;
 }) {
   const { fgInput, bgInput, fgColor, bgColor } = resolveContrastPair(fg, bg);
   const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
@@ -240,6 +244,25 @@ function ContrastChecker({
               </p>
             )}
           </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFg(bg);
+              setBg(fg);
+            }}
+          >
+            Swap
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={!working} onClick={() => working && setFg(working)}>
+            Use working color as foreground
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={!working} onClick={() => working && setBg(working)}>
+            Use working color as background
+          </Button>
         </div>
         {ratio !== null && fgColor && bgColor && (
           <div className="space-y-4">
@@ -668,24 +691,81 @@ function CvdImage({ severity }: { severity: number }) {
   );
 }
 
+/** Tints and shades of the working color. Selecting a swatch makes it the working color. */
+function PaletteGenerator({
+  color,
+  onApply,
+  onCompare,
+}: {
+  color: ParsedColor | null;
+  onApply: (color: ParsedColor) => void;
+  onCompare: (colors: ParsedColor[]) => void;
+}) {
+  const palette = color ? generateShadePalette(color) : [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Color Palette Generator</CardTitle>
+        <CardDescription>Tints and shades of the color above. Select a swatch to use it.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {palette.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Enter a valid color above to see its palette.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {palette.map((swatch) => (
+                <Card key={swatch.hex} className="overflow-hidden">
+                  <button
+                    type="button"
+                    className="block h-24 w-full"
+                    style={{ backgroundColor: swatch.hex }}
+                    onClick={() => onApply(swatch)}
+                    aria-label={`Use ${swatch.hex}`}
+                    title={`Use ${swatch.hex}`}
+                  />
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">HEX</Label>
+                        <CopyButton value={swatch.hex} label={`Copy ${swatch.hex}`} iconOnly />
+                      </div>
+                      <code className="text-xs block truncate">{swatch.hex}</code>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">RGB</Label>
+                      <code className="text-xs block truncate">
+                        {`rgb(${swatch.rgb.r}, ${swatch.rgb.g}, ${swatch.rgb.b})`}
+                      </code>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">HSL</Label>
+                      <code className="text-xs block truncate">
+                        {`hsl(${Math.round(swatch.hsl.h)}, ${Math.round(swatch.hsl.s)}%, ${Math.round(swatch.hsl.l)}%)`}
+                      </code>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => onCompare(palette)}>
+              Compare these colors for color blindness
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ColorPalette() {
   const [view, setView] = useState("colors");
   const [colorInput, setColorInput] = useState("#3b82f6");
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
-  const [baseInput, setBaseInput] = useState("");
-  const [colors, setColors] = useState<ParsedColor[]>([]);
-
-  const generatePalette = (base: string) => {
-    const palette = generateShadePalette(base);
-    if (!palette) {
-      toast.error("Enter an opaque CSS color, such as #3b82f6 or tomato.");
-      return;
-    }
-    setColors(palette);
-    setCompareText(palette.map((color) => color.hex).join(", "));
-  };
+  const working = parseColor(colorInput);
 
   return (
     <div className="space-y-6">
@@ -698,64 +778,14 @@ export function ColorPalette() {
       <TabsContent value="gradient" forceMount hidden={view !== "gradient"}><GradientBuilder /></TabsContent>
       <TabsContent value="colors" forceMount hidden={view !== "colors"} className="space-y-6">
       <ColorConverter input={colorInput} setInput={setColorInput} />
-      <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} />
-      <Card>
-        <CardHeader>
-          <CardTitle>Color Palette Generator</CardTitle>
-          <CardDescription>Generate a color palette from a base color</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Label htmlFor="palette-base-input">Base color</Label>
-          <div className="flex gap-2">
-            <Input
-              id="palette-base-input"
-              placeholder="#3b82f6, 3b82f6, or tomato"
-              value={baseInput}
-              onChange={(e) => setBaseInput(e.target.value)}
-              className="font-mono"
-            />
-            <Button onClick={() => generatePalette(baseInput)} size="lg">
-              Generate
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {colors.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {colors.map((color) => (
-            <Card key={color.hex} className="overflow-hidden">
-              <div
-                className="h-24 w-full"
-                style={{ backgroundColor: color.hex }}
-              />
-              <CardContent className="pt-4 space-y-2">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">HEX</Label>
-                    <CopyButton value={color.hex} label={`Copy ${color.hex}`} iconOnly />
-                  </div>
-                  <code className="text-xs block truncate">{color.hex}</code>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">RGB</Label>
-                  <code className="text-xs block truncate">
-                    {`rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`}
-                  </code>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">HSL</Label>
-                  <code className="text-xs block truncate">
-                    {`hsl(${Math.round(color.hsl.h)}, ${Math.round(color.hsl.s)}%, ${Math.round(color.hsl.l)}%)`}
-                  </code>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <PaletteGenerator
+        color={working}
+        onApply={(color) => setColorInput(color.hex)}
+        onCompare={(colors) => setCompareText(colors.map((color) => color.hex).join(", "))}
+      />
+      <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} working={working ? colorInput.trim() : null} />
       <ColorVision
-        color={parseColor(colorInput)}
+        color={working}
         fg={fg}
         bg={bg}
         compareText={compareText}
