@@ -433,7 +433,7 @@ export function ImageConverter() {
         <CardHeader>
           <CardTitle>Image Converter & Compressor</CardTitle>
           <CardDescription>
-            Compress a single image or process a batch locally with optional WebP output.
+            Compress a single image or a batch locally, and convert to JPEG, PNG, WebP, or AVIF.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -544,6 +544,7 @@ export function ImageConverter() {
                               <SelectItem value="jpeg">Convert to JPEG</SelectItem>
                               <SelectItem value="png">Convert to PNG</SelectItem>
                               <SelectItem value="webp">Convert to WebP</SelectItem>
+                              <SelectItem value="avif">Convert to AVIF</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -669,7 +670,10 @@ export function ImageConverter() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="original">Keep Original Format</SelectItem>
+                          <SelectItem value="jpeg">Convert to JPEG</SelectItem>
+                          <SelectItem value="png">Convert to PNG</SelectItem>
                           <SelectItem value="webp">Convert to WebP</SelectItem>
+                          <SelectItem value="avif">Convert to AVIF</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -767,7 +771,7 @@ export function ImageConverter() {
           <CardTitle className="text-base">Compression Notes</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 text-sm md:grid-cols-3">
+          <dl className="grid gap-4 text-sm md:grid-cols-2">
             <div>
               <dt className="font-medium">Keep Original Format</dt>
               <dd className="text-muted-foreground">
@@ -778,6 +782,12 @@ export function ImageConverter() {
               <dt className="font-medium">WebP Output</dt>
               <dd className="text-muted-foreground">
                 Usually gives the best size savings for photos and mixed-content images.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">AVIF Output</dt>
+              <dd className="text-muted-foreground">
+                Often the smallest file at the same quality. Encoding is slower, and older viewers may not open it.
               </dd>
             </div>
             <div>

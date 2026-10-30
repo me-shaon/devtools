@@ -4,6 +4,7 @@ import {
   formatFileSize,
   formatSavingsLabel,
   getEffectiveOutputFormat,
+  getMimeTypeFromFormat,
   getSavingsPercent,
   isSupportedImageType,
   shouldShowQualityControl,
@@ -25,6 +26,13 @@ describe("image utils", () => {
   it("formats output file names with the expected extension", () => {
     expect(buildOutputFilename("photo.png", "webp")).toBe("photo.webp");
     expect(buildOutputFilename("summer-trip.jpeg", "jpeg")).toBe("summer-trip.jpg");
+  });
+
+  it("supports AVIF output with a quality setting", () => {
+    expect(getEffectiveOutputFormat("image/png", "avif")).toBe("avif");
+    expect(getMimeTypeFromFormat("avif")).toBe("image/avif");
+    expect(shouldShowQualityControl("image/png", "avif")).toBe(true);
+    expect(buildOutputFilename("banner.png", "avif")).toBe("banner.avif");
   });
 
   it("formats file sizes and savings", () => {

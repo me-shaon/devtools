@@ -1,4 +1,4 @@
-export type ImageFormat = "jpeg" | "png" | "webp";
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif";
 export type CompressionTarget = "original" | ImageFormat;
 
 export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -29,6 +29,8 @@ export function getMimeTypeFromFormat(format: ImageFormat): string {
       return "image/png";
     case "webp":
       return "image/webp";
+    case "avif":
+      return "image/avif";
   }
 }
 
@@ -44,7 +46,7 @@ export function getEffectiveOutputFormat(
 }
 
 export function canAdjustQuality(format: ImageFormat): boolean {
-  return format === "jpeg" || format === "webp";
+  return format !== "png";
 }
 
 export function shouldShowQualityControl(
