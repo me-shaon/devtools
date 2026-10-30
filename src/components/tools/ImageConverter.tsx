@@ -131,13 +131,13 @@ async function compressImage(
 
   context.drawImage(image, 0, 0);
 
-  // JPEG uses MozJPEG, which writes smaller files than the browser encoder at the same quality.
+  // JPEG uses MozJPEG and PNG uses OxiPNG, which write smaller files than the browser encoders.
   // The macOS web view cannot write WebP and returns PNG instead, so encodeCanvas falls back to WASM.
   let bytes: Uint8Array;
   try {
     bytes =
-      outputFormat === "jpeg"
-        ? await encodeWasm("jpeg", canvasPixels(canvas), quality)
+      outputFormat === "jpeg" || outputFormat === "png"
+        ? await encodeWasm(outputFormat, canvasPixels(canvas), quality)
         : await encodeCanvas(canvas, outputFormat, quality);
   } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
@@ -569,8 +569,7 @@ export function ImageConverter() {
                           </div>
                         ) : (
                           <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-                            PNG output is re-encoded locally, but browser-only PNG compression gains
-                            are usually limited.
+                            PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                           </div>
                         )}
                       </div>
@@ -695,8 +694,7 @@ export function ImageConverter() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        PNG files can be re-encoded in bulk, but the biggest savings usually come
-                        from JPEG or WebP output.
+                        PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                       </p>
                     )}
 
@@ -795,9 +793,9 @@ export function ImageConverter() {
               </dd>
             </div>
             <div>
-              <dt className="font-medium">PNG Re-encoding</dt>
+              <dt className="font-medium">PNG Output</dt>
               <dd className="text-muted-foreground">
-                PNG compression is limited in browser-only mode, so savings may be modest.
+                OxiPNG compresses PNG without loss, so the savings depend on the image.
               </dd>
             </div>
           </dl>

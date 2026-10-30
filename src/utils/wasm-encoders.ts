@@ -9,14 +9,16 @@
 import avifFactory from "@jsquash/avif/codec/enc/avif_enc.js";
 import mozjpegFactory from "@jsquash/jpeg/codec/enc/mozjpeg_enc.js";
 import webpFactory from "@jsquash/webp/codec/enc/webp_enc.js";
+import initOxipng, { optimise_raw as oxipngOptimiseRaw } from "@jsquash/oxipng/codec/pkg/squoosh_oxipng.js";
 import { defaultOptions as avifDefaults } from "@jsquash/avif/meta.js";
 import { defaultOptions as mozjpegDefaults } from "@jsquash/jpeg/meta.js";
 import { defaultOptions as webpDefaults } from "@jsquash/webp/meta.js";
 import avifWasmUrl from "@jsquash/avif/codec/enc/avif_enc.wasm?url";
 import mozjpegWasmUrl from "@jsquash/jpeg/codec/enc/mozjpeg_enc.wasm?url";
+import oxipngWasmUrl from "@jsquash/oxipng/codec/pkg/squoosh_oxipng_bg.wasm?url";
 import webpWasmUrl from "@jsquash/webp/codec/enc/webp_enc.wasm?url";
 
-export type WasmFormat = "avif" | "webp" | "jpeg";
+export type WasmFormat = "avif" | "webp" | "jpeg" | "png";
 
 export interface RgbaImage {
   data: Uint8ClampedArray;
@@ -30,9 +32,12 @@ interface EncoderModule {
 
 type Factory = (options: object) => Promise<EncoderModule>;
 
-const modules: Partial<Record<WasmFormat, Promise<EncoderModule>>> = {};
+type EncoderFormat = Exclude<WasmFormat, "png">;
 
-const load = (format: WasmFormat) => {
+const modules: Partial<Record<EncoderFormat, Promise<EncoderModule>>> = {};
+let oxipngReady: Promise<unknown> | null = null;
+
+const load = (format: EncoderFormat) => {
   if (!modules[format]) {
     const factory = { avif: avifFactory, webp: webpFactory, jpeg: mozjpegFactory }[format] as unknown as Factory;
     const url = { avif: avifWasmUrl, webp: webpWasmUrl, jpeg: mozjpegWasmUrl }[format];
@@ -41,8 +46,14 @@ const load = (format: WasmFormat) => {
   return modules[format]!;
 };
 
-/** Encodes RGBA pixels as AVIF, WebP, or JPEG (MozJPEG). Quality is 1 to 100. */
+/** Encodes RGBA pixels as AVIF, WebP, JPEG (MozJPEG), or PNG (OxiPNG). Quality is 1 to 100 and PNG ignores it. */
 export async function encodeWithWasm(format: WasmFormat, image: RgbaImage, quality: number): Promise<Uint8Array> {
+  if (format === "png") {
+    oxipngReady ??= initOxipng(oxipngWasmUrl);
+    await oxipngReady;
+    // Level 2 is the OxiPNG default. Alpha stays exact, so hidden pixels keep their color.
+    return new Uint8Array(oxipngOptimiseRaw(image.data, image.width, image.height, 2, false, false));
+  }
   const module = await load(format);
   const output =
     format === "avif"

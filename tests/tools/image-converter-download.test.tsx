@@ -137,6 +137,23 @@ describe("ImageConverter WebP output", () => {
   });
 });
 
+describe("ImageConverter PNG output", () => {
+  it("optimizes PNG with OxiPNG", async () => {
+    mocks.saveFile.mockResolvedValue(true);
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [new File(["png"], "logo.png", { type: "image/png" })] } });
+    const download = await screen.findByRole("button", { name: "Download Image" });
+    await waitFor(() => expect(download).toBeEnabled());
+    fireEvent.click(download);
+
+    await waitFor(() => expect(mocks.saveFile).toHaveBeenCalled());
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("png", expect.objectContaining({ width: 4, height: 4 }), expect.any(Number));
+    const [blob, name] = mocks.saveFile.mock.calls[0] as [Blob, string];
+    expect(blob.type).toBe("image/png");
+    expect(name).toBe("logo.png");
+  });
+});
+
 describe("ImageConverter bulk download", () => {
   const compressBulkImages = async () => {
     render(<ImageConverter />);
