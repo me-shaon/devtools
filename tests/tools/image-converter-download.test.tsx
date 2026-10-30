@@ -6,11 +6,13 @@ const mocks = vi.hoisted(() => ({
   saveFile: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
   encodeWithWasm: vi.fn(),
+  resize: vi.fn((_data: Uint8Array, _w: number, _h: number, ow: number, oh: number) => new Uint8ClampedArray(ow * oh * 4)),
 }));
 
 vi.mock("@/lib/desktop", () => ({ saveFile: mocks.saveFile }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("@/utils/wasm-encoders", () => ({ encodeWithWasm: mocks.encodeWithWasm }));
+vi.mock("@jsquash/resize/lib/resize/pkg/squoosh_resize.js", () => ({ default: async () => {}, resize: mocks.resize }));
 
 // jsdom cannot decode or encode images, so stub the image and canvas steps.
 class LoadedImage {
@@ -69,6 +71,7 @@ afterEach(() => {
   mocks.toast.success.mockReset();
   mocks.toast.error.mockReset();
   mocks.encodeWithWasm.mockReset();
+  mocks.resize.mockClear();
 });
 
 const compressSingleImage = async () => {
@@ -151,6 +154,23 @@ describe("ImageConverter PNG output", () => {
     const [blob, name] = mocks.saveFile.mock.calls[0] as [Blob, string];
     expect(blob.type).toBe("image/png");
     expect(name).toBe("logo.png");
+  });
+});
+
+describe("ImageConverter resize", () => {
+  it("resizes a single image to the typed width and keeps the aspect ratio", async () => {
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Image" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("switch", { name: "Resize" }));
+    const width = await screen.findByLabelText("Width");
+    expect(width).toHaveValue(4);
+    fireEvent.change(width, { target: { value: "2" } });
+    expect(screen.getByLabelText("Height")).toHaveValue(2);
+
+    await waitFor(() => expect(mocks.resize).toHaveBeenCalledWith(expect.any(Uint8Array), 4, 4, 2, 2, 3, true, true));
+    await waitFor(() => expect(screen.getByText("2 × 2")).toBeInTheDocument());
   });
 });
 

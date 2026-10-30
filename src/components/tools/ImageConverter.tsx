@@ -1,4 +1,5 @@
 import { ImageEditor } from "./ImageEditor";
+import { ImageResizeControls } from "./ImageResizeControls";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { zipSync } from "fflate";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveFile } from "@/lib/desktop";
-import { canvasPixels, encodeCanvas, encodeWasm } from "@/utils/image-reencode";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { canvasPixels, processWasm } from "@/utils/image-reencode";
 import {
   buildOutputFilename,
+  DEFAULT_RESIZE,
   formatSavingsLabel,
   formatFileSize,
   getEffectiveOutputFormat,
@@ -27,10 +30,12 @@ import {
   getMimeTypeFromFormat,
   getSavingsPercent,
   isSupportedImageType,
+  resizeTarget,
   shouldShowQualityControl,
   SUPPORTED_IMAGE_TYPES,
   type CompressionTarget,
   type ImageFormat,
+  type ResizeSettings,
 } from "@/utils/image";
 
 interface ProcessedImage {
@@ -106,6 +111,7 @@ async function compressImage(
   file: File,
   target: CompressionTarget,
   quality: number,
+  resize: ResizeSettings = DEFAULT_RESIZE,
 ): Promise<ProcessedImage> {
   const outputFormat = getEffectiveOutputFormat(file.type, target);
 
@@ -131,25 +137,29 @@ async function compressImage(
 
   context.drawImage(image, 0, 0);
 
-  // JPEG uses MozJPEG and PNG uses OxiPNG, which write smaller files than the browser encoders.
-  // The macOS web view cannot write WebP and returns PNG instead, so encodeCanvas falls back to WASM.
-  let bytes: Uint8Array;
+  // Every format uses a WASM encoder: MozJPEG, OxiPNG, WebP, or AVIF. They write smaller files than
+  // the browser encoders, and the macOS web view cannot write WebP at all.
+  const size = resizeTarget(canvas.width, canvas.height, resize);
+  let result;
   try {
-    bytes =
-      outputFormat === "jpeg" || outputFormat === "png"
-        ? await encodeWasm(outputFormat, canvasPixels(canvas), quality)
-        : await encodeCanvas(canvas, outputFormat, quality);
+    result = await processWasm(canvasPixels(canvas), {
+      format: outputFormat,
+      quality,
+      resize: size
+        ? { ...size, method: resize.method, premultiply: resize.premultiply, linearRgb: resize.linearRgb }
+        : undefined,
+    });
   } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
   }
-  const blob = new Blob([bytes.slice()], { type: getMimeTypeFromFormat(outputFormat) });
+  const blob = new Blob([result.bytes.slice()], { type: getMimeTypeFromFormat(outputFormat) });
 
   return {
     blob,
-    bytes,
+    bytes: result.bytes,
     format: outputFormat,
-    width: canvas.width,
-    height: canvas.height,
+    width: result.width,
+    height: result.height,
   };
 }
 
@@ -175,6 +185,8 @@ export function ImageConverter() {
   const [singleFile, setSingleFile] = useState<File | null>(null);
   const [singleTarget, setSingleTarget] = useState<CompressionTarget>("original");
   const [singleQuality, setSingleQuality] = useState([82]);
+  const [singleResize, setSingleResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
+  const [singleSource, setSingleSource] = useState<{ width: number; height: number } | null>(null);
   const [singleOriginalPreviewUrl, setSingleOriginalPreviewUrl] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<SingleCompressionResult | null>(null);
   const [singleProcessing, setSingleProcessing] = useState(false);
@@ -183,11 +195,34 @@ export function ImageConverter() {
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkTarget, setBulkTarget] = useState<CompressionTarget>("original");
   const [bulkQuality, setBulkQuality] = useState([82]);
+  const [bulkResize, setBulkResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
   const [bulkResults, setBulkResults] = useState<BulkCompressionResult[]>([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkCompletedCount, setBulkCompletedCount] = useState(0);
   const singleInputRef = useRef<HTMLInputElement>(null);
   const bulkInputRef = useRef<HTMLInputElement>(null);
+  // Typing a width runs the encoder once the value settles, not on every keystroke.
+  const singleResizeSettled = useDebouncedValue(singleResize, 300);
+  const bulkResizeSettled = useDebouncedValue(bulkResize, 300);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSingleSource(null);
+    // A custom size belongs to the previous image, so a new image starts from the percent.
+    setSingleResize((previous) =>
+      previous.width === null && previous.height === null ? previous : { ...previous, width: null, height: null },
+    );
+    if (singleFile) {
+      loadImage(singleFile)
+        .then((image) => {
+          if (!cancelled) setSingleSource({ width: image.naturalWidth || image.width, height: image.naturalHeight || image.height });
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [singleFile]);
 
   useEffect(() => {
     if (!singleFile) {
@@ -218,7 +253,7 @@ export function ImageConverter() {
     setSingleError(null);
     setSingleResult(null);
 
-    compressImage(singleFile, singleTarget, singleQuality[0])
+    compressImage(singleFile, singleTarget, singleQuality[0], singleResizeSettled)
       .then((result) => {
         if (cancelled) {
           return;
@@ -247,7 +282,7 @@ export function ImageConverter() {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [singleFile, singleQuality, singleTarget]);
+  }, [singleFile, singleQuality, singleTarget, singleResizeSettled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,7 +320,7 @@ export function ImageConverter() {
         setBulkResults([...nextResults]);
 
         try {
-          const result = await compressImage(file, bulkTarget, bulkQuality[0]);
+          const result = await compressImage(file, bulkTarget, bulkQuality[0], bulkResizeSettled);
 
           if (cancelled) {
             return;
@@ -326,7 +361,7 @@ export function ImageConverter() {
     return () => {
       cancelled = true;
     };
-  }, [bulkFiles, bulkQuality, bulkTarget]);
+  }, [bulkFiles, bulkQuality, bulkTarget, bulkResizeSettled]);
 
   const handleSingleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -572,6 +607,13 @@ export function ImageConverter() {
                             PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                           </div>
                         )}
+
+                        <ImageResizeControls
+                          id="single"
+                          value={singleResize}
+                          onChange={setSingleResize}
+                          source={singleSource}
+                        />
                       </div>
                     </div>
                   </div>
@@ -697,6 +739,8 @@ export function ImageConverter() {
                         PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                       </p>
                     )}
+
+                    <ImageResizeControls id="bulk" value={bulkResize} onChange={setBulkResize} />
 
                     <Button
                       onClick={() => void handleBulkDownload()}
