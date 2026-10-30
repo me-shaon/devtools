@@ -106,6 +106,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .tab-close:hover { background: hsl(var(--foreground) / .1); }
 .workspace-content { flex: 1; min-height: 0; overflow: auto; background: hsl(var(--card)); }
 .workspace-home { padding: 40px 28px; }
+/* Relative for the same reason as .pane-body: form panels scroll, and their sr-only inputs must stay inside them. */
+.tool-panel { position: relative; }
 .tool-panel[hidden] { display: none; }
 .tool-panel-editor { height: 100%; }
 .tool-panel-form { max-width: 1100px; margin: 0 auto; padding: 28px 32px; }
@@ -341,7 +343,8 @@ body:has(.workspace[data-platform="darwin"]) #root,
 /* Shared tool workspace: panes for text-in, text-out tools. */
 .tool-panel-workspace { padding: 0; }
 .pane-actions { display: flex; align-items: center; gap: 2px; }
-.pane-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Relative so that absolute children such as sr-only labels scroll and clip with the pane, and do not stretch the page. */
+.pane-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .pane-body-scroll { overflow: auto; }
 .code-textarea { flex: 1; width: 100%; min-height: 0; resize: none; border: 0; padding: 14px 16px; background: transparent; color: hsl(var(--foreground)); font: 13px/22px var(--font-code); tab-size: 2; }
 .code-textarea:focus-visible { outline-offset: -2px; }
