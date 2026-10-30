@@ -344,7 +344,7 @@ function ContrastChecker({
                 </li>
               ))}
             </ul>
-            <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Label htmlFor="contrast-target">Target for suggestions</Label>
               <select
                 id="contrast-target"
@@ -803,7 +803,7 @@ function PaletteGenerator({
         <CardDescription>Shades and color harmonies of the color above. Select a swatch to use it.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Label htmlFor="palette-mode">Palette type</Label>
           <select
             id="palette-mode"
@@ -827,7 +827,7 @@ function PaletteGenerator({
                 <Card key={swatch.hex} className="overflow-hidden">
                   <button
                     type="button"
-                    className="block h-24 w-full"
+                    className="block h-24 w-full border-b"
                     style={{ backgroundColor: swatch.hex }}
                     onClick={() => onApply(swatch)}
                     aria-label={`Use ${swatch.hex}`}
