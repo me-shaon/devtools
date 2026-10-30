@@ -528,7 +528,8 @@ function ColorVision({
             </tbody>
           </table>
           <p className="mt-2 text-xs text-muted-foreground">
-            Color comes from the converter. Text and background come from the contrast checker.
+            Color comes from the converter. The sample text is the contrast checker's foreground on its
+            background, and that foreground follows the converter color until you edit it.
           </p>
         </div>
 
@@ -877,8 +878,6 @@ function PaletteGenerator({
 export function ColorPalette() {
   const [view, setView] = useState("colors");
   const [colorInput, setColorInput] = useState(DEFAULT_COLOR);
-  // Seed the contrast foreground with the working color so the pair, and the vision table that
-  // reads it, is chromatic on load. An achromatic default (gray on white) never shifts under CVD.
   const [fg, setFg] = useState(DEFAULT_COLOR);
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
@@ -890,6 +889,18 @@ export function ColorPalette() {
       return [];
     }
   });
+
+  // The contrast foreground tracks the working color until the user edits it, so the vision
+  // table's sample always shows the color being analyzed instead of a stale default. The ref
+  // holds the last working color pushed into fg: while fg still equals it the user has not taken
+  // over, so the next valid working color replaces fg; any other fg value is left alone.
+  const syncedWorking = useRef(DEFAULT_COLOR);
+  useEffect(() => {
+    if (!parseColor(colorInput)) return;
+    const previous = syncedWorking.current;
+    syncedWorking.current = colorInput;
+    setFg((current) => (current === previous ? colorInput : current));
+  }, [colorInput]);
 
   const remember = (color: ParsedColor) => {
     const next = addRecentColor(recents, color);

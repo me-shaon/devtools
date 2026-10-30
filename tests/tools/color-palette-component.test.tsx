@@ -232,6 +232,16 @@ describe("ColorPalette color blindness simulator", () => {
     expect(deutan).not.toBe(normal);
   });
 
+  it("keeps the contrast foreground on the working color until it is edited", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#57e389" } });
+    expect(screen.getByLabelText("Foreground")).toHaveValue("#57e389");
+    // Taking over the foreground stops the follow, so a later converter change leaves it alone.
+    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "black" } });
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    expect(screen.getByLabelText("Foreground")).toHaveValue("black");
+  });
+
   it("shows the simulated contrast of the checker pair", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
