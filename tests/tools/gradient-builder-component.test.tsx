@@ -5,6 +5,11 @@ import { ColorPalette } from "@/components/tools/ColorPalette";
 
 const change = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
+// jsdom has no PointerEvent, so RTL's pointer helpers drop clientX. React only needs the event
+// type string and a clientX, which a named MouseEvent carries.
+const pointer = (el: Element, type: string, clientX: number) =>
+  fireEvent(el, new MouseEvent(type, { bubbles: true, clientX }));
+
 describe("GradientBuilder", () => {
   it("edits stops with numeric controls and keeps at least two stops", () => {
     render(<GradientBuilder />);
@@ -62,8 +67,8 @@ describe("GradientBuilder", () => {
       left: 0,
       width: 100,
     } as DOMRect);
-    fireEvent.pointerDown(track, { clientX: 50, pointerId: 1 });
-    fireEvent.pointerUp(track, { pointerId: 1 });
+    pointer(track, "pointerdown", 50);
+    pointer(track, "pointerup", 50);
     expect(screen.getByLabelText("Stop 3 position")).toHaveValue(50);
   });
 
@@ -77,9 +82,9 @@ describe("GradientBuilder", () => {
       width: 100,
     } as DOMRect);
     const handle = screen.getByRole("button", { name: "Stop 1 at 0 percent" });
-    fireEvent.pointerDown(handle, { clientX: 0, pointerId: 1 });
-    fireEvent.pointerMove(track, { clientX: 70, pointerId: 1 });
-    fireEvent.pointerUp(track, { pointerId: 1 });
+    pointer(handle, "pointerdown", 0);
+    pointer(track, "pointermove", 70);
+    pointer(track, "pointerup", 70);
     expect(screen.getByLabelText("Stop 1 position")).toHaveValue(70);
   });
 });
