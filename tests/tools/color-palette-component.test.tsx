@@ -23,7 +23,7 @@ describe("ColorPalette recent colors", () => {
     fireEvent.change(input, { target: { value: "tomato" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(screen.getByRole("button", { name: "Use recent color #ff6347" })).toBeInTheDocument();
-    expect(document.activeElement).toBe(input);
+    expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
   });
 
   it("does not record an invalid color", () => {
