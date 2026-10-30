@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUp } from "lucide-react";
-import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -18,18 +17,29 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
-  generateShadePalette,
+  PALETTE_MODES,
+  RECENT_COLORS_STORAGE_KEY,
+  WCAG_TARGETS,
+  addRecentColor,
+  buildPalette,
   getContrastRatio,
   meetsWcagAALarge,
   meetsWcagAANormal,
   meetsWcagAAALarge,
   meetsWcagAAANormal,
   parseColor,
+  paletteToCss,
+  paletteToJson,
+  parseRecentColors,
   parseColorList,
   simulateCvd,
   simulateCvdPixels,
+  suggestContrastColor,
+  toHexWithAlpha,
   type Color as ParsedColor,
+  type ContrastTarget,
   type CvdType,
+  type PaletteMode,
 } from "@/utils/color";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
@@ -55,7 +65,7 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
   {
     q: "How does the color blindness simulator work?",
-    a: "It uses the model of Machado, Oliveira, and Fernandes (2009, IEEE TVCG). The tool converts each sRGB color to linear RGB, applies the matrix for the type and severity, and converts the result back to sRGB. Achromatopsia keeps only the luminance of each color.",
+    a: "It uses the model of Machado, Oliveira, and Fernandes (2009, IEEE TVCG). The tool converts each sRGB color to linear RGB, applies the matrix for the type and severity, and converts the result back to sRGB. Achromatopsia keeps only the luminance of each color. Below 100%, achromatomaly removes only part of the color.",
   },
   {
     q: "What does the severity slider change?",
@@ -80,7 +90,18 @@ const swatchStyle = (css: string) => ({
   background: `linear-gradient(${css}, ${css}), repeating-conic-gradient(#d4d4d4 0 25%, #ffffff 0 50%) 0 0 / 16px 16px`,
 });
 
-function ColorConverter({ input, setInput }: { input: string; setInput: (value: string) => void }) {
+function ColorConverter({
+  input,
+  setInput,
+  recents,
+  onCommit,
+}: {
+  input: string;
+  setInput: (value: string) => void;
+  recents: string[];
+  /** Records a color the user settled on in the recent list. */
+  onCommit: (color: ParsedColor) => void;
+}) {
   const color = parseColor(input);
   const values = color ? formatColor(color) : null;
   // Wait until typing stops before the error shows, so a half-typed color does not flash an error.
@@ -100,7 +121,9 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
     <Card>
       <CardHeader>
         <CardTitle>Color Converter</CardTitle>
-        <CardDescription>Enter or paste any CSS color, or pick one</CardDescription>
+        <CardDescription>
+          Enter or paste any CSS color, or pick one. The palette and the tools below use this color.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -111,6 +134,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               placeholder="#3b82f6, rgb(59 130 246 / 50%), oklch(62% 0.19 260), tomato"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onBlur={() => color && onCommit(color)}
               className="font-mono"
               spellCheck={false}
               autoComplete="off"
@@ -122,6 +146,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               aria-label="Pick a color"
               value={color ? color.hex : "#000000"}
               onChange={(e) => pick(e.target.value)}
+              onBlur={() => color && onCommit(color)}
               className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-transparent p-1"
             />
           </div>
@@ -131,6 +156,27 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
             </p>
           )}
         </div>
+        {recents.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Recent colors</p>
+            <div className="flex flex-wrap gap-2">
+              {recents.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="h-8 w-8 rounded-md border"
+                  style={swatchStyle(value)}
+                  onClick={() => {
+                    setInput(value);
+                    onCommit(parseColor(value)!);
+                  }}
+                  aria-label={`Use recent color ${value}`}
+                  title={value}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {color && values && (
           <div className="grid grid-cols-1 md:grid-cols-[6rem,1fr] gap-4">
             <div
@@ -176,11 +222,14 @@ function ContrastChecker({
   setFg,
   bg,
   setBg,
+  working,
 }: {
   fg: string;
   setFg: (value: string) => void;
   bg: string;
   setBg: (value: string) => void;
+  /** The working color as typed, or null when it is not valid. */
+  working: string | null;
 }) {
   const { fgInput, bgInput, fgColor, bgColor } = resolveContrastPair(fg, bg);
   const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
@@ -189,6 +238,10 @@ function ContrastChecker({
   const settledBg = useDebouncedValue(bg, 400);
   const fgError = settledFg === fg && fg.trim() !== "" && !fgColor;
   const bgError = settledBg === bg && bg.trim() !== "" && !bgColor;
+  const [targetId, setTargetId] = useState<ContrastTarget>("aa-normal");
+  const target = WCAG_TARGETS.find((item) => item.id === targetId)!;
+  const failsTarget = ratio !== null && ratio < target.ratio;
+  const suggestion = failsTarget && fgInput && bgInput ? suggestContrastColor(fgInput, bgInput, target.ratio) : null;
 
   const checks =
     fgColor && bgColor
@@ -241,6 +294,25 @@ function ContrastChecker({
             )}
           </div>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFg(bg);
+              setBg(fg);
+            }}
+          >
+            Swap
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={!working} onClick={() => working && setFg(working)}>
+            Use working color as foreground
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={!working} onClick={() => working && setBg(working)}>
+            Use working color as background
+          </Button>
+        </div>
         {ratio !== null && fgColor && bgColor && (
           <div className="space-y-4">
             <div
@@ -272,6 +344,49 @@ function ContrastChecker({
                 </li>
               ))}
             </ul>
+            <div className="flex flex-wrap items-center gap-2">
+              <Label htmlFor="contrast-target">Target for suggestions</Label>
+              <select
+                id="contrast-target"
+                value={targetId}
+                onChange={(e) => setTargetId(e.target.value as ContrastTarget)}
+                className="rounded-md border bg-background px-2 pr-7 py-1 text-sm"
+              >
+                {WCAG_TARGETS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}, {item.ratio}:1
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!failsTarget ? (
+              <p className="text-sm text-success" role="status">
+                This pair meets {target.label}.
+              </p>
+            ) : suggestion ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border p-3" data-testid="contrast-suggestion">
+                <span
+                  className="h-6 w-10 shrink-0 rounded border"
+                  style={swatchStyle(cssOf(suggestion.color))}
+                  aria-hidden="true"
+                />
+                <p className="flex-1 text-sm">
+                  A {suggestion.side} of <code>{toHexWithAlpha(suggestion.color)}</code> reaches{" "}
+                  {formatRatio(suggestion.ratio)} for {target.label}.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => (suggestion.side === "foreground" ? setFg : setBg)(toHexWithAlpha(suggestion.color))}
+                >
+                  Use this {suggestion.side}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-destructive" role="status">
+                No lightness change of the foreground or the background reaches {target.label}.
+              </p>
+            )}
           </div>
         )}
       </CardContent>
@@ -341,8 +456,8 @@ function ColorVision({
             className="w-full accent-primary"
           />
           <p className="text-xs text-muted-foreground">
-            100% shows the full forms (protanopia, deuteranopia, tritanopia). Lower values show the milder
-            anomaly forms. Achromatopsia is always full.
+            100% shows the full forms (protanopia, deuteranopia, tritanopia, achromatopsia). Lower values show
+            the milder anomaly forms.
           </p>
         </div>
 
@@ -668,23 +783,117 @@ function CvdImage({ severity }: { severity: number }) {
   );
 }
 
+/** Palettes of the working color. Selecting a swatch makes it the working color. */
+function PaletteGenerator({
+  color,
+  onApply,
+  onCompare,
+}: {
+  color: ParsedColor | null;
+  onApply: (color: ParsedColor) => void;
+  onCompare: (colors: ParsedColor[]) => void;
+}) {
+  const [mode, setMode] = useState<PaletteMode>("tints");
+  const palette = color ? buildPalette(color, mode) : [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Color Palette Generator</CardTitle>
+        <CardDescription>Shades and color harmonies of the color above. Select a swatch to use it.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Label htmlFor="palette-mode">Palette type</Label>
+          <select
+            id="palette-mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as PaletteMode)}
+            className="rounded-md border bg-background px-2 pr-7 py-1 text-sm"
+          >
+            {PALETTE_MODES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {palette.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Enter a valid color above to see its palette.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {palette.map((swatch) => (
+                <Card key={swatch.hex} className="overflow-hidden">
+                  <button
+                    type="button"
+                    className="block h-24 w-full border-b"
+                    style={{ backgroundColor: swatch.hex }}
+                    onClick={() => onApply(swatch)}
+                    aria-label={`Use ${swatch.hex}`}
+                    title={`Use ${swatch.hex}`}
+                  />
+                  <CardContent className="pt-4 space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">HEX</Label>
+                        <CopyButton value={swatch.hex} label={`Copy ${swatch.hex}`} iconOnly />
+                      </div>
+                      <code className="text-xs block truncate">{swatch.hex}</code>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">RGB</Label>
+                      <code className="text-xs block truncate">
+                        {`rgb(${swatch.rgb.r}, ${swatch.rgb.g}, ${swatch.rgb.b})`}
+                      </code>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">HSL</Label>
+                      <code className="text-xs block truncate">
+                        {`hsl(${Math.round(swatch.hsl.h)}, ${Math.round(swatch.hsl.s)}%, ${Math.round(swatch.hsl.l)}%)`}
+                      </code>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <CopyButton value={paletteToCss(palette)} label="Copy CSS variables" />
+              <CopyButton value={paletteToJson(palette)} label="Copy JSON" />
+              <Button type="button" variant="outline" size="sm" onClick={() => onCompare(palette)}>
+                Compare these colors for color blindness
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ColorPalette() {
   const [view, setView] = useState("colors");
   const [colorInput, setColorInput] = useState("#3b82f6");
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
-  const [baseInput, setBaseInput] = useState("");
-  const [colors, setColors] = useState<ParsedColor[]>([]);
-
-  const generatePalette = (base: string) => {
-    const palette = generateShadePalette(base);
-    if (!palette) {
-      toast.error("Enter an opaque CSS color, such as #3b82f6 or tomato.");
-      return;
+  const working = parseColor(colorInput);
+  const [recents, setRecents] = useState<string[]>(() => {
+    try {
+      return parseRecentColors(localStorage.getItem(RECENT_COLORS_STORAGE_KEY));
+    } catch {
+      return [];
     }
-    setColors(palette);
-    setCompareText(palette.map((color) => color.hex).join(", "));
+  });
+
+  const remember = (color: ParsedColor) => {
+    const next = addRecentColor(recents, color);
+    setRecents(next);
+    try {
+      localStorage.setItem(RECENT_COLORS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage can be full or blocked. The list still works for this session.
+    }
   };
 
   return (
@@ -697,65 +906,18 @@ export function ColorPalette() {
       {/* Both panels stay mounted so each keeps its state. */}
       <TabsContent value="gradient" forceMount hidden={view !== "gradient"}><GradientBuilder /></TabsContent>
       <TabsContent value="colors" forceMount hidden={view !== "colors"} className="space-y-6">
-      <ColorConverter input={colorInput} setInput={setColorInput} />
-      <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} />
-      <Card>
-        <CardHeader>
-          <CardTitle>Color Palette Generator</CardTitle>
-          <CardDescription>Generate a color palette from a base color</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Label htmlFor="palette-base-input">Base color</Label>
-          <div className="flex gap-2">
-            <Input
-              id="palette-base-input"
-              placeholder="#3b82f6, 3b82f6, or tomato"
-              value={baseInput}
-              onChange={(e) => setBaseInput(e.target.value)}
-              className="font-mono"
-            />
-            <Button onClick={() => generatePalette(baseInput)} size="lg">
-              Generate
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {colors.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {colors.map((color) => (
-            <Card key={color.hex} className="overflow-hidden">
-              <div
-                className="h-24 w-full"
-                style={{ backgroundColor: color.hex }}
-              />
-              <CardContent className="pt-4 space-y-2">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">HEX</Label>
-                    <CopyButton value={color.hex} label={`Copy ${color.hex}`} iconOnly />
-                  </div>
-                  <code className="text-xs block truncate">{color.hex}</code>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">RGB</Label>
-                  <code className="text-xs block truncate">
-                    {`rgb(${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b})`}
-                  </code>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">HSL</Label>
-                  <code className="text-xs block truncate">
-                    {`hsl(${Math.round(color.hsl.h)}, ${Math.round(color.hsl.s)}%, ${Math.round(color.hsl.l)}%)`}
-                  </code>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <ColorConverter input={colorInput} setInput={setColorInput} recents={recents} onCommit={remember} />
+      <PaletteGenerator
+        color={working}
+        onApply={(color) => {
+          setColorInput(color.hex);
+          remember(color);
+        }}
+        onCompare={(colors) => setCompareText(colors.map((color) => color.hex).join(", "))}
+      />
+      <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} working={working ? colorInput.trim() : null} />
       <ColorVision
-        color={parseColor(colorInput)}
+        color={working}
         fg={fg}
         bg={bg}
         compareText={compareText}

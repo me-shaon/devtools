@@ -15,6 +15,14 @@ import {
   getTriadicColors,
   getSplitComplementaryColors,
   generateShadePalette,
+  buildPalette,
+  paletteToCss,
+  paletteToJson,
+  suggestContrastColor,
+  toHexWithAlpha,
+  addRecentColor,
+  parseRecentColors,
+  MAX_RECENT_COLORS,
   adjustBrightness,
   adjustSaturation,
   getContrastRatio,
@@ -158,39 +166,139 @@ describe('Color Utils', () => {
   });
 
   describe('generateShadePalette', () => {
+    const shades = (input: string) => generateShadePalette(parseColor(input)!);
+
     it('starts with the base color and adds lighter then darker steps', () => {
-      const palette = generateShadePalette('#3b82f6')!;
+      const palette = shades('#3b82f6');
       expect(palette[0].hex).toBe('#3b82f6');
       expect(palette).toHaveLength(10);
       const lightnesses = palette.map((c) => Math.round(c.hsl.l));
       expect(lightnesses).toEqual([60, 70, 80, 90, 100, 50, 40, 30, 20, 10]);
     });
 
-    it('accepts 3-digit hex, missing #, whitespace, and uppercase', () => {
-      expect(generateShadePalette('f00')![0].hex).toBe('#ff0000');
-      expect(generateShadePalette('  #3B82F6  ')![0].hex).toBe('#3b82f6');
-    });
-
     it('never repeats a swatch when lightness clamps', () => {
       for (const input of ['#3b82f6', '#ffffff', '#000000', '#f5f5f5']) {
-        const palette = generateShadePalette(input)!;
+        const palette = shades(input);
         expect(new Set(palette.map((c) => c.hex)).size).toBe(palette.length);
       }
-      expect(generateShadePalette('#ffffff')).toHaveLength(6);
-      expect(generateShadePalette('#000000')).toHaveLength(6);
-      expect(generateShadePalette('#f5f5f5')).toHaveLength(7);
+      expect(shades('#ffffff')).toHaveLength(6);
+      expect(shades('#000000')).toHaveLength(6);
+      expect(shades('#f5f5f5')).toHaveLength(7);
     });
 
-    it('accepts any opaque CSS color', () => {
-      expect(generateShadePalette('tomato')![0].hex).toBe('#ff6347');
-      expect(generateShadePalette('rgb(255 0 0)')![0].hex).toBe('#ff0000');
-      expect(generateShadePalette('#ff0000ff')![0].hex).toBe('#ff0000');
+    it('builds an opaque palette from a translucent color', () => {
+      const palette = shades('rgb(255 0 0 / 50%)');
+      expect(palette[0].hex).toBe('#ff0000');
+      expect(palette.every((c) => c.alpha === 1)).toBe(true);
     });
+  });
 
-    it('rejects input that is not an opaque CSS color', () => {
-      for (const input of ['', '  ', '#ff000080', 'rgba(0, 0, 0, 0.5)', 'transparent', 'not a color', '#ggg', '#12345']) {
-        expect(generateShadePalette(input)).toBeNull();
+  describe('buildPalette', () => {
+    const red = parseColor('#ff0000')!;
+    const hexes = (mode: Parameters<typeof buildPalette>[1], color = red) => buildPalette(color, mode).map((c) => c.hex);
+
+    it('puts the color first in every mode', () => {
+      for (const mode of ['tints', 'complementary', 'analogous', 'triadic', 'split-complementary', 'monochromatic'] as const) {
+        expect(hexes(mode)[0]).toBe('#ff0000');
       }
+    });
+
+    it('rotates the hue for the harmonies', () => {
+      expect(hexes('complementary')).toEqual(['#ff0000', '#00ffff']);
+      expect(hexes('analogous')).toEqual(['#ff0000', '#ff8000', '#ffff00']);
+      expect(hexes('triadic')).toEqual(['#ff0000', '#00ff00', '#0000ff']);
+      expect(hexes('split-complementary')).toEqual(['#ff0000', '#00ff80', '#007fff']);
+    });
+
+    it('keeps the hue and changes the lightness for monochromatic', () => {
+      const palette = buildPalette(red, 'monochromatic');
+      expect(palette).toHaveLength(7);
+      expect(palette.slice(1).map((c) => Math.round(c.hsl.l))).toEqual([90, 75, 60, 45, 30, 15]);
+      expect(palette.slice(1).every((c) => Math.round(c.hsl.h) === 0)).toBe(true);
+    });
+
+    it('matches the shade palette for tints', () => {
+      expect(hexes('tints')).toEqual(generateShadePalette(red).map((c) => c.hex));
+    });
+
+    it('removes harmonies that repeat a gray', () => {
+      expect(hexes('triadic', parseColor('#808080')!)).toEqual(['#808080']);
+    });
+
+    it('builds an opaque palette', () => {
+      expect(buildPalette(parseColor('rgb(255 0 0 / 50%)')!, 'triadic').every((c) => c.alpha === 1)).toBe(true);
+    });
+  });
+
+  describe('palette export', () => {
+    const palette = buildPalette(parseColor('#ff0000')!, 'complementary');
+
+    it('writes one CSS custom property per swatch', () => {
+      expect(paletteToCss(palette)).toBe(':root {\n  --color-1: #ff0000;\n  --color-2: #00ffff;\n}');
+    });
+
+    it('writes one JSON entry per swatch', () => {
+      expect(JSON.parse(paletteToJson(palette))).toEqual([
+        { name: '--color-1', value: '#ff0000' },
+        { name: '--color-2', value: '#00ffff' },
+      ]);
+    });
+  });
+
+  describe('suggestContrastColor', () => {
+    const gray = parseColor('#777777')!;
+    const white = parseColor('#ffffff')!;
+
+    it('suggests the closest lightness that reaches the ratio', () => {
+      const suggestion = suggestContrastColor(gray, white, 4.5)!;
+      expect(suggestion.side).toBe('foreground');
+      expect(suggestion.ratio).toBeGreaterThanOrEqual(4.5);
+      expect(getContrastRatio(suggestion.color, white)).toBe(suggestion.ratio);
+      expect(suggestion.color.hsl.l).toBeLessThan(gray.hsl.l);
+      expect(Math.round(gray.hsl.l - suggestion.color.hsl.l)).toBe(1);
+    });
+
+    it('changes the background when only the background can reach the ratio', () => {
+      const suggestion = suggestContrastColor(parseColor('#ffffff')!, parseColor('#bbbbbb')!, 7)!;
+      expect(suggestion.side).toBe('background');
+      expect(suggestion.ratio).toBeGreaterThanOrEqual(7);
+    });
+
+    it('keeps the alpha of a translucent foreground', () => {
+      const suggestion = suggestContrastColor(parseColor('rgb(119 119 119 / 90%)')!, white, 4.5)!;
+      expect(suggestion.color.alpha).toBe(0.9);
+    });
+
+    it('returns null when no lightness change can reach the ratio', () => {
+      expect(suggestContrastColor(parseColor('rgb(0 0 0 / 10%)')!, white, 4.5)).toBeNull();
+    });
+  });
+
+  describe('toHexWithAlpha', () => {
+    it('adds the alpha byte only for a translucent color', () => {
+      expect(toHexWithAlpha(parseColor('#ff0000')!)).toBe('#ff0000');
+      expect(toHexWithAlpha(parseColor('rgb(255 0 0 / 50%)')!)).toBe('#ff000080');
+    });
+  });
+
+  describe('recent colors', () => {
+    it('puts the newest color first without duplicates', () => {
+      const list = addRecentColor(['#00ff00', '#ff0000'], parseColor('red')!);
+      expect(list).toEqual(['#ff0000', '#00ff00']);
+    });
+
+    it('keeps alpha and limits the list length', () => {
+      let list: string[] = [];
+      for (let i = 0; i < MAX_RECENT_COLORS + 3; i++) list = addRecentColor(list, parseColor(`rgb(${i} 0 0)`)!);
+      expect(list).toHaveLength(MAX_RECENT_COLORS);
+      expect(addRecentColor([], parseColor('rgb(255 0 0 / 50%)')!)).toEqual(['#ff000080']);
+    });
+
+    it('reads stored data defensively', () => {
+      expect(parseRecentColors(null)).toEqual([]);
+      expect(parseRecentColors('not json')).toEqual([]);
+      expect(parseRecentColors('{"a":1}')).toEqual([]);
+      expect(parseRecentColors('["#ff0000", 4, "nope", "#ff0000", "tomato"]')).toEqual(['#ff0000', 'tomato']);
     });
   });
 

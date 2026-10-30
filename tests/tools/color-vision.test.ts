@@ -67,13 +67,26 @@ describe('simulateCvd', () => {
   });
 });
 
+describe('achromatopsia severity', () => {
+  it('removes part of the color below full severity', () => {
+    const blue = c('#3b82f6');
+    const full = simulateCvd(blue, 'achroma', 1);
+    const half = simulateCvd(blue, 'achroma', 0.5);
+    expect(full.hsl.s).toBeCloseTo(0, 0);
+    expect(half.hsl.s).toBeGreaterThan(5);
+    expect(half.hsl.s).toBeLessThan(blue.hsl.s);
+    expect(half.hex).not.toBe(full.hex);
+  });
+});
+
 describe('cvdLabel', () => {
   it('names the full and the partial forms', () => {
     expect(cvdLabel('protan')).toBe('Protanopia');
     expect(cvdLabel('deutan', 1)).toBe('Deuteranopia');
     expect(cvdLabel('tritan', 0.6)).toBe('Tritanomaly');
     expect(cvdLabel('deutan', 0.5)).toBe('Deuteranomaly');
-    expect(cvdLabel('achroma', 0.5)).toBe('Achromatopsia');
+    expect(cvdLabel('achroma')).toBe('Achromatopsia');
+    expect(cvdLabel('achroma', 0.5)).toBe('Achromatomaly');
   });
 });
 

@@ -512,21 +512,14 @@ export function getSplitComplementaryColors(color: Color): Color[] {
   return colors;
 }
 
-/** Parse a CSS color. A bare 3- or 6-digit hex value does not need the leading #. */
-function parseBaseColor(input: string): Color | null {
-  const text = input.trim();
-  return parseColor(/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? `#${text}` : text);
-}
-
 /**
- * A base color followed by lighter and darker shades in 10% lightness steps.
+ * A color followed by lighter and darker shades in 10% lightness steps.
  * Lightness clamps at 0 and 100, so steps that repeat a color (for example,
  * every tint of white) are skipped instead of producing duplicate swatches.
- * Returns null when the input is not a CSS color or is not opaque.
+ * The palette is opaque: the alpha value of the color is not used.
  */
-export function generateShadePalette(input: string, count = 5): Color[] | null {
-  const base = parseBaseColor(input);
-  if (!base || base.alpha < 1) return null;
+export function generateShadePalette(color: Color, count = 5): Color[] {
+  const base = makeColor(color.rgb);
 
   const h = Math.round(base.hsl.h);
   const s = Math.round(base.hsl.s);
@@ -545,6 +538,64 @@ export function generateShadePalette(input: string, count = 5): Color[] | null {
   for (let i = 1; i <= count; i++) addShade(l + i * 10);
   for (let i = 1; i <= count; i++) addShade(l - i * 10);
   return palette;
+}
+
+export type PaletteMode = 'tints' | 'complementary' | 'analogous' | 'triadic' | 'split-complementary' | 'monochromatic';
+
+export const PALETTE_MODES: { id: PaletteMode; label: string }[] = [
+  { id: 'tints', label: 'Tints and shades' },
+  { id: 'complementary', label: 'Complementary' },
+  { id: 'analogous', label: 'Analogous' },
+  { id: 'triadic', label: 'Triadic' },
+  { id: 'split-complementary', label: 'Split complementary' },
+  { id: 'monochromatic', label: 'Monochromatic' },
+];
+
+const MONOCHROMATIC_LIGHTNESS = [90, 75, 60, 45, 30, 15];
+
+/**
+ * A palette for a color: the color first, then the swatches of the mode, without duplicates.
+ * The palette is opaque: the alpha value of the color is not used.
+ */
+export function buildPalette(color: Color, mode: PaletteMode): Color[] {
+  const base = makeColor(color.rgb);
+  let colors: Color[];
+  switch (mode) {
+    case 'complementary':
+      colors = [base, getComplementaryColor(base)];
+      break;
+    case 'analogous':
+      colors = [base, ...getAnalogousColors(base, 2)];
+      break;
+    case 'triadic':
+      colors = [base, ...getTriadicColors(base)];
+      break;
+    case 'split-complementary':
+      colors = [base, ...getSplitComplementaryColors(base)];
+      break;
+    case 'monochromatic':
+      colors = [base, ...MONOCHROMATIC_LIGHTNESS.map((l) => makeColor(hslToRgb(base.hsl.h, base.hsl.s, l)))];
+      break;
+    default:
+      return generateShadePalette(base);
+  }
+  // A gray has no hue, so its harmonies repeat the color.
+  const seen = new Set<string>();
+  return colors.filter((c) => {
+    if (seen.has(c.hex)) return false;
+    seen.add(c.hex);
+    return true;
+  });
+}
+
+/** The palette as CSS custom properties, one per swatch in palette order. */
+export function paletteToCss(colors: Color[]): string {
+  return `:root {\n${colors.map((c, i) => `  --color-${i + 1}: ${c.hex};`).join('\n')}\n}`;
+}
+
+/** The palette as JSON, one entry per swatch with its custom property name. */
+export function paletteToJson(colors: Color[]): string {
+  return JSON.stringify(colors.map((c, i) => ({ name: `--color-${i + 1}`, value: c.hex })), null, 2);
 }
 
 /**
@@ -610,6 +661,83 @@ export function meetsWcagAAALarge(color1: Color, color2: Color): boolean {
   return getContrastRatio(color1, color2) >= 4.5;
 }
 
+export type ContrastTarget = 'aa-normal' | 'aa-large' | 'aaa-normal' | 'aaa-large';
+
+export const WCAG_TARGETS: { id: ContrastTarget; label: string; ratio: number }[] = [
+  { id: 'aa-normal', label: 'AA normal text', ratio: 4.5 },
+  { id: 'aa-large', label: 'AA large text', ratio: 3 },
+  { id: 'aaa-normal', label: 'AAA normal text', ratio: 7 },
+  { id: 'aaa-large', label: 'AAA large text', ratio: 4.5 },
+];
+
+/** HEX with the alpha byte added when the color is not opaque. */
+export function toHexWithAlpha(color: Color): string {
+  const byte = Math.round(color.alpha * 255);
+  return byte >= 255 ? color.hex : color.hex + byte.toString(16).padStart(2, '0');
+}
+
+export const RECENT_COLORS_STORAGE_KEY = 'devtools-color-recent-v1';
+export const MAX_RECENT_COLORS = 8;
+
+/** Put a color first in the recent list, remove its older entry, and keep the list short. */
+export function addRecentColor(recents: string[], color: Color): string[] {
+  const value = toHexWithAlpha(color);
+  return [value, ...recents.filter((entry) => entry !== value)].slice(0, MAX_RECENT_COLORS);
+}
+
+/** Read the stored recent list. Entries that are not valid colors are skipped. */
+export function parseRecentColors(raw: string | null): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw ?? '[]');
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const colors = parsed.filter((entry): entry is string => typeof entry === 'string' && parseColor(entry) !== null);
+  return [...new Set(colors)].slice(0, MAX_RECENT_COLORS);
+}
+
+/** Contrast as a browser paints the pair: the background is opaque and a translucent foreground blends over it. */
+function paintedContrast(fg: Color, bg: Color): number {
+  const background = makeColor(bg.rgb);
+  return getContrastRatio(fg.alpha < 1 ? compositeOver(fg, background) : fg, background);
+}
+
+/** The closest lightness of one side of the pair that reaches the ratio, with its distance in lightness. */
+function closestPassing(fg: Color, bg: Color, required: number, side: 'foreground' | 'background') {
+  const color = side === 'foreground' ? fg : bg;
+  const { h, s, l } = color.hsl;
+  for (let distance = 1; distance <= 100; distance++) {
+    let best: { color: Color; ratio: number } | null = null;
+    for (const lightness of [l - distance, l + distance]) {
+      if (lightness < 0 || lightness > 100) continue;
+      const candidate = makeColor(hslToRgb(h, s, lightness), color.alpha);
+      const ratio = side === 'foreground' ? paintedContrast(candidate, bg) : paintedContrast(fg, candidate);
+      if (ratio >= required && (!best || ratio > best.ratio)) best = { color: candidate, ratio };
+    }
+    if (best) return { ...best, distance };
+  }
+  return null;
+}
+
+/**
+ * Suggest the smallest lightness change of the foreground or the background that makes the pair
+ * reach the ratio. The foreground wins a tie. Returns null when no lightness change can reach it.
+ */
+export function suggestContrastColor(
+  fg: Color,
+  bg: Color,
+  required: number,
+): { side: 'foreground' | 'background'; color: Color; ratio: number } | null {
+  const foreground = closestPassing(fg, bg, required, 'foreground');
+  const background = closestPassing(fg, bg, required, 'background');
+  if (foreground && (!background || foreground.distance <= background.distance)) {
+    return { side: 'foreground', color: foreground.color, ratio: foreground.ratio };
+  }
+  return background ? { side: 'background', color: background.color, ratio: background.ratio } : null;
+}
+
 /** @deprecated misspelled alias: this checks the AA large text threshold. */
 export const meetsWCAAALarge = meetsWcagAALarge;
 
@@ -626,6 +754,7 @@ export const meetsWCAAANormal = meetsWcagAANormal;
  * The matrices apply to linear RGB, so each channel is linearized with the sRGB transfer
  * function first and encoded again after the matrix.
  * Achromatopsia (no cone color vision) maps each color to its linear luminance (Rec. 709 weights).
+ * Below full severity (achromatomaly), the matrix moves from the identity toward that luminance map.
  * ---------------------------------------------------------------------------------------------- */
 
 export type CvdType = 'protan' | 'deutan' | 'tritan' | 'achroma';
@@ -679,10 +808,10 @@ const ACHROMA = [0.2126, 0.7152, 0.0722, 0.2126, 0.7152, 0.0722, 0.2126, 0.7152,
 
 /**
  * The 3×3 linear RGB matrix (row-major) for a CVD type and a severity from 0 to 1.
- * Severity applies to protan, deutan, and tritan. Achromatopsia is always full.
+ * Severity applies to every type.
  */
 export function cvdMatrix(type: CvdType, severity = 1): number[] {
-  if (type === 'achroma') return ACHROMA;
+  if (type === 'achroma') return IDENTITY.map((v, i) => v + (ACHROMA[i] - v) * clamp01(severity));
   const s = clamp01(severity) * 10;
   const table = MACHADO[type];
   const low = Math.floor(s);
@@ -696,7 +825,7 @@ const CVD_STEMS: Record<CvdType, string> = { protan: 'Prot', deutan: 'Deuter', t
 
 /** A readable name: "Protanopia" at full severity, "Protanomaly" below it. */
 export function cvdLabel(type: CvdType, severity = 1): string {
-  if (type === 'achroma') return 'Achromatopsia';
+  if (type === 'achroma') return severity >= 1 ? 'Achromatopsia' : 'Achromatomaly';
   return `${CVD_STEMS[type]}${severity >= 1 ? 'anopia' : 'anomaly'}`;
 }
 
