@@ -1,4 +1,6 @@
 import { ImageEditor } from "./ImageEditor";
+import { ImagePaletteControls } from "./ImagePaletteControls";
+import { ImageResizeControls } from "./ImageResizeControls";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { zipSync } from "fflate";
 import { Button } from "@/components/ui/button";
@@ -17,8 +19,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveFile } from "@/lib/desktop";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { canvasPixels, processWasm } from "@/utils/image-reencode";
 import {
   buildOutputFilename,
+  DEFAULT_PALETTE,
+  DEFAULT_RESIZE,
   formatSavingsLabel,
   formatFileSize,
   getEffectiveOutputFormat,
@@ -26,14 +32,18 @@ import {
   getMimeTypeFromFormat,
   getSavingsPercent,
   isSupportedImageType,
+  resizeTarget,
   shouldShowQualityControl,
   SUPPORTED_IMAGE_TYPES,
   type CompressionTarget,
   type ImageFormat,
+  type PaletteSettings,
+  type ResizeSettings,
 } from "@/utils/image";
 
 interface ProcessedImage {
   blob: Blob;
+  bytes: Uint8Array;
   format: ImageFormat;
   width: number;
   height: number;
@@ -52,6 +62,7 @@ interface BulkCompressionResult {
   savingsPercent?: number;
   format?: ImageFormat;
   blob?: Blob;
+  bytes?: Uint8Array;
   error?: string;
 }
 
@@ -103,6 +114,8 @@ async function compressImage(
   file: File,
   target: CompressionTarget,
   quality: number,
+  resize: ResizeSettings = DEFAULT_RESIZE,
+  palette: PaletteSettings = DEFAULT_PALETTE,
 ): Promise<ProcessedImage> {
   const outputFormat = getEffectiveOutputFormat(file.type, target);
 
@@ -128,24 +141,30 @@ async function compressImage(
 
   context.drawImage(image, 0, 0);
 
-  const mimeType = getMimeTypeFromFormat(outputFormat);
-  const blob = await new Promise<Blob | null>((resolve) => {
-    context.canvas.toBlob(
-      resolve,
-      mimeType,
-      shouldShowQualityControl(file.type, target) ? quality / 100 : undefined,
-    );
-  });
-
-  if (!blob) {
+  // Every format uses a WASM encoder: MozJPEG, OxiPNG, WebP, or AVIF. They write smaller files than
+  // the browser encoders, and the macOS web view cannot write WebP at all.
+  const size = resizeTarget(canvas.width, canvas.height, resize);
+  let result;
+  try {
+    result = await processWasm(canvasPixels(canvas), {
+      format: outputFormat,
+      quality,
+      resize: size
+        ? { ...size, method: resize.method, premultiply: resize.premultiply, linearRgb: resize.linearRgb }
+        : undefined,
+      palette: palette.enabled ? { colors: palette.colors, dither: palette.dither } : undefined,
+    });
+  } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
   }
+  const blob = new Blob([result.bytes.slice()], { type: getMimeTypeFromFormat(outputFormat) });
 
   return {
     blob,
+    bytes: result.bytes,
     format: outputFormat,
-    width: canvas.width,
-    height: canvas.height,
+    width: result.width,
+    height: result.height,
   };
 }
 
@@ -171,6 +190,9 @@ export function ImageConverter() {
   const [singleFile, setSingleFile] = useState<File | null>(null);
   const [singleTarget, setSingleTarget] = useState<CompressionTarget>("original");
   const [singleQuality, setSingleQuality] = useState([82]);
+  const [singleResize, setSingleResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
+  const [singlePalette, setSinglePalette] = useState<PaletteSettings>(DEFAULT_PALETTE);
+  const [singleSource, setSingleSource] = useState<{ width: number; height: number } | null>(null);
   const [singleOriginalPreviewUrl, setSingleOriginalPreviewUrl] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<SingleCompressionResult | null>(null);
   const [singleProcessing, setSingleProcessing] = useState(false);
@@ -179,11 +201,37 @@ export function ImageConverter() {
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkTarget, setBulkTarget] = useState<CompressionTarget>("original");
   const [bulkQuality, setBulkQuality] = useState([82]);
+  const [bulkResize, setBulkResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
+  const [bulkPalette, setBulkPalette] = useState<PaletteSettings>(DEFAULT_PALETTE);
   const [bulkResults, setBulkResults] = useState<BulkCompressionResult[]>([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkCompletedCount, setBulkCompletedCount] = useState(0);
   const singleInputRef = useRef<HTMLInputElement>(null);
   const bulkInputRef = useRef<HTMLInputElement>(null);
+  // Typing a width or dragging the color slider runs the encoder once the value settles.
+  const singleResizeSettled = useDebouncedValue(singleResize, 300);
+  const bulkResizeSettled = useDebouncedValue(bulkResize, 300);
+  const singlePaletteSettled = useDebouncedValue(singlePalette, 300);
+  const bulkPaletteSettled = useDebouncedValue(bulkPalette, 300);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSingleSource(null);
+    // A custom size belongs to the previous image, so a new image starts from the percent.
+    setSingleResize((previous) =>
+      previous.width === null && previous.height === null ? previous : { ...previous, width: null, height: null },
+    );
+    if (singleFile) {
+      loadImage(singleFile)
+        .then((image) => {
+          if (!cancelled) setSingleSource({ width: image.naturalWidth || image.width, height: image.naturalHeight || image.height });
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [singleFile]);
 
   useEffect(() => {
     if (!singleFile) {
@@ -214,7 +262,7 @@ export function ImageConverter() {
     setSingleError(null);
     setSingleResult(null);
 
-    compressImage(singleFile, singleTarget, singleQuality[0])
+    compressImage(singleFile, singleTarget, singleQuality[0], singleResizeSettled, singlePaletteSettled)
       .then((result) => {
         if (cancelled) {
           return;
@@ -243,7 +291,7 @@ export function ImageConverter() {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [singleFile, singleQuality, singleTarget]);
+  }, [singleFile, singleQuality, singleTarget, singleResizeSettled, singlePaletteSettled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -281,7 +329,7 @@ export function ImageConverter() {
         setBulkResults([...nextResults]);
 
         try {
-          const result = await compressImage(file, bulkTarget, bulkQuality[0]);
+          const result = await compressImage(file, bulkTarget, bulkQuality[0], bulkResizeSettled, bulkPaletteSettled);
 
           if (cancelled) {
             return;
@@ -291,6 +339,7 @@ export function ImageConverter() {
             ...nextResults[index],
             status: "done",
             blob: result.blob,
+            bytes: result.bytes,
             compressedSize: result.blob.size,
             savingsPercent: getSavingsPercent(file.size, result.blob.size),
             format: result.format,
@@ -321,7 +370,7 @@ export function ImageConverter() {
     return () => {
       cancelled = true;
     };
-  }, [bulkFiles, bulkQuality, bulkTarget]);
+  }, [bulkFiles, bulkQuality, bulkTarget, bulkResizeSettled, bulkPaletteSettled]);
 
   const handleSingleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -382,8 +431,8 @@ export function ImageConverter() {
 
   const handleBulkDownload = async () => {
     const completedResults = bulkResults.filter(
-      (result): result is BulkCompressionResult & { blob: Blob; format: ImageFormat } =>
-        result.status === "done" && Boolean(result.blob) && Boolean(result.format),
+      (result): result is BulkCompressionResult & { bytes: Uint8Array; format: ImageFormat } =>
+        result.status === "done" && Boolean(result.bytes) && Boolean(result.format),
     );
 
     if (completedResults.length === 0) {
@@ -392,16 +441,10 @@ export function ImageConverter() {
 
     const usedNames = new Map<string, number>();
     const zipEntries = Object.fromEntries(
-      await Promise.all(
-        completedResults.map(async (result) => {
-          const outputName = getUniqueFileName(
-            buildOutputFilename(result.name, result.format),
-            usedNames,
-          );
-
-          return [outputName, new Uint8Array(await result.blob.arrayBuffer())];
-        }),
-      ),
+      completedResults.map((result) => [
+        getUniqueFileName(buildOutputFilename(result.name, result.format), usedNames),
+        result.bytes,
+      ]),
     );
 
     const zipBlob = new Blob([new Uint8Array(zipSync(zipEntries, { level: 6 }))], {
@@ -438,7 +481,7 @@ export function ImageConverter() {
         <CardHeader>
           <CardTitle>Image Converter & Compressor</CardTitle>
           <CardDescription>
-            Compress a single image or process a batch locally with optional WebP output.
+            Compress a single image or a batch locally, and convert to JPEG, PNG, WebP, or AVIF.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -549,6 +592,7 @@ export function ImageConverter() {
                               <SelectItem value="jpeg">Convert to JPEG</SelectItem>
                               <SelectItem value="png">Convert to PNG</SelectItem>
                               <SelectItem value="webp">Convert to WebP</SelectItem>
+                              <SelectItem value="avif">Convert to AVIF</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -569,10 +613,17 @@ export function ImageConverter() {
                           </div>
                         ) : (
                           <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-                            PNG output is re-encoded locally, but browser-only PNG compression gains
-                            are usually limited.
+                            PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                           </div>
                         )}
+
+                        <ImageResizeControls
+                          id="single"
+                          value={singleResize}
+                          onChange={setSingleResize}
+                          source={singleSource}
+                        />
+                        <ImagePaletteControls id="single" value={singlePalette} onChange={setSinglePalette} />
                       </div>
                     </div>
                   </div>
@@ -674,7 +725,10 @@ export function ImageConverter() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="original">Keep Original Format</SelectItem>
+                          <SelectItem value="jpeg">Convert to JPEG</SelectItem>
+                          <SelectItem value="png">Convert to PNG</SelectItem>
                           <SelectItem value="webp">Convert to WebP</SelectItem>
+                          <SelectItem value="avif">Convert to AVIF</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -692,10 +746,12 @@ export function ImageConverter() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        PNG files can be re-encoded in bulk, but the biggest savings usually come
-                        from JPEG or WebP output.
+                        PNG is lossless. OxiPNG finds the smallest PNG encoding for the same pixels.
                       </p>
                     )}
+
+                    <ImageResizeControls id="bulk" value={bulkResize} onChange={setBulkResize} />
+                    <ImagePaletteControls id="bulk" value={bulkPalette} onChange={setBulkPalette} />
 
                     <Button
                       onClick={() => void handleBulkDownload()}
@@ -772,7 +828,7 @@ export function ImageConverter() {
           <CardTitle className="text-base">Compression Notes</CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 text-sm md:grid-cols-3">
+          <dl className="grid gap-4 text-sm md:grid-cols-2">
             <div>
               <dt className="font-medium">Keep Original Format</dt>
               <dd className="text-muted-foreground">
@@ -786,9 +842,15 @@ export function ImageConverter() {
               </dd>
             </div>
             <div>
-              <dt className="font-medium">PNG Re-encoding</dt>
+              <dt className="font-medium">AVIF Output</dt>
               <dd className="text-muted-foreground">
-                PNG compression is limited in browser-only mode, so savings may be modest.
+                Often the smallest file at the same quality. Encoding is slower, and older viewers may not open it.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium">PNG Output</dt>
+              <dd className="text-muted-foreground">
+                OxiPNG compresses PNG without loss. For logos and screenshots, reduce the palette for much smaller files.
               </dd>
             </div>
           </dl>

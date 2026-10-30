@@ -5,10 +5,14 @@ import { ImageConverter } from "@/components/tools/ImageConverter";
 const mocks = vi.hoisted(() => ({
   saveFile: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
+  encodeWithWasm: vi.fn(),
+  resize: vi.fn((_data: Uint8Array, _w: number, _h: number, ow: number, oh: number) => new Uint8ClampedArray(ow * oh * 4)),
 }));
 
 vi.mock("@/lib/desktop", () => ({ saveFile: mocks.saveFile }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/utils/wasm-encoders", () => ({ encodeWithWasm: mocks.encodeWithWasm }));
+vi.mock("@jsquash/resize/lib/resize/pkg/squoosh_resize.js", () => ({ default: async () => {}, resize: mocks.resize }));
 
 // jsdom cannot decode or encode images, so stub the image and canvas steps.
 class LoadedImage {
@@ -48,10 +52,16 @@ beforeEach(() => {
     },
   );
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
-    return { canvas: this, fillRect: vi.fn(), drawImage: vi.fn() } as unknown as CanvasRenderingContext2D;
+    return {
+      canvas: this,
+      fillRect: vi.fn(),
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(64), width: 4, height: 4 }),
+    } as unknown as CanvasRenderingContext2D;
   });
   vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(compressedBlob()));
   vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.encodeWithWasm.mockResolvedValue(new TextEncoder().encode("compressed"));
 });
 
 afterEach(() => {
@@ -60,12 +70,15 @@ afterEach(() => {
   mocks.saveFile.mockReset();
   mocks.toast.success.mockReset();
   mocks.toast.error.mockReset();
+  mocks.encodeWithWasm.mockReset();
+  mocks.resize.mockClear();
 });
 
 const compressSingleImage = async () => {
   render(<ImageConverter />);
   fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
   const download = await screen.findByRole("button", { name: "Download Image" });
+  await waitFor(() => expect(download).toBeEnabled());
   fireEvent.click(download);
 };
 
@@ -77,6 +90,9 @@ describe("ImageConverter single download", () => {
 
     await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith("Compressed image downloaded."));
     expect(mocks.saveFile).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^photo.*\.jpe?g$/));
+    // JPEG output goes through MozJPEG, not the browser encoder.
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("jpeg", expect.objectContaining({ width: 4, height: 4 }), 82);
+    expect((mocks.saveFile.mock.calls[0][0] as Blob).type).toBe("image/jpeg");
   });
 
   it("shows nothing when the user cancels the save dialog", async () => {
@@ -97,6 +113,78 @@ describe("ImageConverter single download", () => {
     await waitFor(() =>
       expect(mocks.toast.error).toHaveBeenCalledWith("Unable to save the compressed image."),
     );
+  });
+});
+
+describe("ImageConverter WebP output", () => {
+  it("encodes WebP with WASM when the web view writes PNG instead", async () => {
+    // The macOS web view ignores image/webp in toBlob and returns a PNG.
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) =>
+      callback(new Blob(["png bytes"], { type: "image/png" })),
+    );
+    mocks.encodeWithWasm.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    mocks.saveFile.mockResolvedValue(true);
+
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [new File(["webp"], "banner.webp", { type: "image/webp" })] } });
+    const download = await screen.findByRole("button", { name: "Download Image" });
+    await waitFor(() => expect(download).toBeEnabled());
+    fireEvent.click(download);
+
+    await waitFor(() => expect(mocks.saveFile).toHaveBeenCalled());
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("webp", expect.objectContaining({ width: 4, height: 4 }), expect.any(Number));
+    const [blob, name] = mocks.saveFile.mock.calls[0] as [Blob, string];
+    expect(blob.type).toBe("image/webp");
+    expect(blob.size).toBe(3);
+    expect(name).toBe("banner.webp");
+  });
+});
+
+describe("ImageConverter PNG output", () => {
+  it("optimizes PNG with OxiPNG", async () => {
+    mocks.saveFile.mockResolvedValue(true);
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [new File(["png"], "logo.png", { type: "image/png" })] } });
+    const download = await screen.findByRole("button", { name: "Download Image" });
+    await waitFor(() => expect(download).toBeEnabled());
+    fireEvent.click(download);
+
+    await waitFor(() => expect(mocks.saveFile).toHaveBeenCalled());
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("png", expect.objectContaining({ width: 4, height: 4 }), expect.any(Number));
+    const [blob, name] = mocks.saveFile.mock.calls[0] as [Blob, string];
+    expect(blob.type).toBe("image/png");
+    expect(name).toBe("logo.png");
+  });
+});
+
+describe("ImageConverter resize", () => {
+  it("resizes a single image to the typed width and keeps the aspect ratio", async () => {
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Image" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("switch", { name: "Resize" }));
+    const width = await screen.findByLabelText("Width");
+    expect(width).toHaveValue(4);
+    fireEvent.change(width, { target: { value: "2" } });
+    expect(screen.getByLabelText("Height")).toHaveValue(2);
+
+    await waitFor(() => expect(mocks.resize).toHaveBeenCalledWith(expect.any(Uint8Array), 4, 4, 2, 2, 3, true, true));
+    await waitFor(() => expect(screen.getByText("2 × 2")).toBeInTheDocument());
+  });
+});
+
+describe("ImageConverter palette", () => {
+  it("shows the color and dithering settings and encodes again", async () => {
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Image" })).toBeEnabled());
+    const calls = mocks.encodeWithWasm.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("switch", { name: "Reduce palette" }));
+    expect(await screen.findByRole("slider", { name: "Colors" })).toHaveAttribute("aria-valuenow", "256");
+    expect(screen.getByRole("checkbox", { name: "Dithering" })).toBeChecked();
+    await waitFor(() => expect(mocks.encodeWithWasm.mock.calls.length).toBeGreaterThan(calls));
   });
 });
 
