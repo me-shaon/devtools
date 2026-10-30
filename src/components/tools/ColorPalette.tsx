@@ -18,7 +18,9 @@ import {
   findConfusablePairs,
   formatColor,
   PALETTE_MODES,
+  RECENT_COLORS_STORAGE_KEY,
   WCAG_TARGETS,
+  addRecentColor,
   buildPalette,
   getContrastRatio,
   meetsWcagAALarge,
@@ -28,6 +30,7 @@ import {
   parseColor,
   paletteToCss,
   paletteToJson,
+  parseRecentColors,
   parseColorList,
   simulateCvd,
   simulateCvdPixels,
@@ -87,7 +90,18 @@ const swatchStyle = (css: string) => ({
   background: `linear-gradient(${css}, ${css}), repeating-conic-gradient(#d4d4d4 0 25%, #ffffff 0 50%) 0 0 / 16px 16px`,
 });
 
-function ColorConverter({ input, setInput }: { input: string; setInput: (value: string) => void }) {
+function ColorConverter({
+  input,
+  setInput,
+  recents,
+  onCommit,
+}: {
+  input: string;
+  setInput: (value: string) => void;
+  recents: string[];
+  /** Records a color the user settled on in the recent list. */
+  onCommit: (color: ParsedColor) => void;
+}) {
   const color = parseColor(input);
   const values = color ? formatColor(color) : null;
   // Wait until typing stops before the error shows, so a half-typed color does not flash an error.
@@ -120,6 +134,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               placeholder="#3b82f6, rgb(59 130 246 / 50%), oklch(62% 0.19 260), tomato"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onBlur={() => color && onCommit(color)}
               className="font-mono"
               spellCheck={false}
               autoComplete="off"
@@ -131,6 +146,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               aria-label="Pick a color"
               value={color ? color.hex : "#000000"}
               onChange={(e) => pick(e.target.value)}
+              onBlur={() => color && onCommit(color)}
               className="h-10 w-12 shrink-0 cursor-pointer rounded-md border bg-transparent p-1"
             />
           </div>
@@ -140,6 +156,27 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
             </p>
           )}
         </div>
+        {recents.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Recent colors</p>
+            <div className="flex flex-wrap gap-2">
+              {recents.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="h-8 w-8 rounded-md border"
+                  style={swatchStyle(value)}
+                  onClick={() => {
+                    setInput(value);
+                    onCommit(parseColor(value)!);
+                  }}
+                  aria-label={`Use recent color ${value}`}
+                  title={value}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {color && values && (
           <div className="grid grid-cols-1 md:grid-cols-[6rem,1fr] gap-4">
             <div
@@ -841,6 +878,23 @@ export function ColorPalette() {
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
   const working = parseColor(colorInput);
+  const [recents, setRecents] = useState<string[]>(() => {
+    try {
+      return parseRecentColors(localStorage.getItem(RECENT_COLORS_STORAGE_KEY));
+    } catch {
+      return [];
+    }
+  });
+
+  const remember = (color: ParsedColor) => {
+    const next = addRecentColor(recents, color);
+    setRecents(next);
+    try {
+      localStorage.setItem(RECENT_COLORS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage can be full or blocked. The list still works for this session.
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -852,10 +906,13 @@ export function ColorPalette() {
       {/* Both panels stay mounted so each keeps its state. */}
       <TabsContent value="gradient" forceMount hidden={view !== "gradient"}><GradientBuilder /></TabsContent>
       <TabsContent value="colors" forceMount hidden={view !== "colors"} className="space-y-6">
-      <ColorConverter input={colorInput} setInput={setColorInput} />
+      <ColorConverter input={colorInput} setInput={setColorInput} recents={recents} onCommit={remember} />
       <PaletteGenerator
         color={working}
-        onApply={(color) => setColorInput(color.hex)}
+        onApply={(color) => {
+          setColorInput(color.hex);
+          remember(color);
+        }}
         onCompare={(colors) => setCompareText(colors.map((color) => color.hex).join(", "))}
       />
       <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} working={working ? colorInput.trim() : null} />

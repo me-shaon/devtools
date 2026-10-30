@@ -1,9 +1,44 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ColorPalette } from "@/components/tools/ColorPalette";
-import { getContrastRatio, parseColor, simulateCvd } from "@/utils/color";
+import { RECENT_COLORS_STORAGE_KEY, getContrastRatio, parseColor, simulateCvd } from "@/utils/color";
 
 const codeFor = (label: string) => screen.getByRole("button", { name: `Copy ${label}` }).parentElement!.querySelector("code")!;
+
+afterEach(() => localStorage.clear());
+
+describe("ColorPalette recent colors", () => {
+  it("records a color when the field loses focus and stores it", () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "tomato" } });
+    fireEvent.blur(input);
+    expect(screen.getByRole("button", { name: "Use recent color #ff6347" })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
+  });
+
+  it("does not record an invalid color", () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "nope" } });
+    fireEvent.blur(input);
+    expect(screen.queryByText("Recent colors")).toBeNull();
+  });
+
+  it("records a selected palette swatch", () => {
+    render(<ColorPalette />);
+    fireEvent.click(screen.getByRole("button", { name: "Use #ffffff" }));
+    expect(screen.getByRole("button", { name: "Use recent color #ffffff" })).toBeInTheDocument();
+  });
+
+  it("restores stored colors and applies one", () => {
+    localStorage.setItem(RECENT_COLORS_STORAGE_KEY, JSON.stringify(["#00ff00", "broken"]));
+    render(<ColorPalette />);
+    fireEvent.click(screen.getByRole("button", { name: "Use recent color #00ff00" }));
+    expect(screen.getByLabelText("Color")).toHaveValue("#00ff00");
+    expect(screen.queryByRole("button", { name: "Use recent color broken" })).toBeNull();
+  });
+});
 
 describe("ColorPalette converter", () => {
   it("shows every format for a named color", () => {

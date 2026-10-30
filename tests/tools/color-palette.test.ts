@@ -20,6 +20,9 @@ import {
   paletteToJson,
   suggestContrastColor,
   toHexWithAlpha,
+  addRecentColor,
+  parseRecentColors,
+  MAX_RECENT_COLORS,
   adjustBrightness,
   adjustSaturation,
   getContrastRatio,
@@ -275,6 +278,27 @@ describe('Color Utils', () => {
     it('adds the alpha byte only for a translucent color', () => {
       expect(toHexWithAlpha(parseColor('#ff0000')!)).toBe('#ff0000');
       expect(toHexWithAlpha(parseColor('rgb(255 0 0 / 50%)')!)).toBe('#ff000080');
+    });
+  });
+
+  describe('recent colors', () => {
+    it('puts the newest color first without duplicates', () => {
+      const list = addRecentColor(['#00ff00', '#ff0000'], parseColor('red')!);
+      expect(list).toEqual(['#ff0000', '#00ff00']);
+    });
+
+    it('keeps alpha and limits the list length', () => {
+      let list: string[] = [];
+      for (let i = 0; i < MAX_RECENT_COLORS + 3; i++) list = addRecentColor(list, parseColor(`rgb(${i} 0 0)`)!);
+      expect(list).toHaveLength(MAX_RECENT_COLORS);
+      expect(addRecentColor([], parseColor('rgb(255 0 0 / 50%)')!)).toEqual(['#ff000080']);
+    });
+
+    it('reads stored data defensively', () => {
+      expect(parseRecentColors(null)).toEqual([]);
+      expect(parseRecentColors('not json')).toEqual([]);
+      expect(parseRecentColors('{"a":1}')).toEqual([]);
+      expect(parseRecentColors('["#ff0000", 4, "nope", "#ff0000", "tomato"]')).toEqual(['#ff0000', 'tomato']);
     });
   });
 

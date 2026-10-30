@@ -676,6 +676,28 @@ export function toHexWithAlpha(color: Color): string {
   return byte >= 255 ? color.hex : color.hex + byte.toString(16).padStart(2, '0');
 }
 
+export const RECENT_COLORS_STORAGE_KEY = 'devtools-color-recent-v1';
+export const MAX_RECENT_COLORS = 8;
+
+/** Put a color first in the recent list, remove its older entry, and keep the list short. */
+export function addRecentColor(recents: string[], color: Color): string[] {
+  const value = toHexWithAlpha(color);
+  return [value, ...recents.filter((entry) => entry !== value)].slice(0, MAX_RECENT_COLORS);
+}
+
+/** Read the stored recent list. Entries that are not valid colors are skipped. */
+export function parseRecentColors(raw: string | null): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw ?? '[]');
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const colors = parsed.filter((entry): entry is string => typeof entry === 'string' && parseColor(entry) !== null);
+  return [...new Set(colors)].slice(0, MAX_RECENT_COLORS);
+}
+
 /** Contrast as a browser paints the pair: the background is opaque and a translucent foreground blends over it. */
 function paintedContrast(fg: Color, bg: Color): number {
   const background = makeColor(bg.rgb);
