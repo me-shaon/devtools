@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveFile } from "@/lib/desktop";
-import { encodeCanvas } from "@/utils/image-reencode";
+import { canvasPixels, encodeCanvas, encodeWasm } from "@/utils/image-reencode";
 import {
   buildOutputFilename,
   formatSavingsLabel,
@@ -131,10 +131,14 @@ async function compressImage(
 
   context.drawImage(image, 0, 0);
 
+  // JPEG uses MozJPEG, which writes smaller files than the browser encoder at the same quality.
   // The macOS web view cannot write WebP and returns PNG instead, so encodeCanvas falls back to WASM.
   let bytes: Uint8Array;
   try {
-    bytes = await encodeCanvas(canvas, outputFormat, quality);
+    bytes =
+      outputFormat === "jpeg"
+        ? await encodeWasm("jpeg", canvasPixels(canvas), quality)
+        : await encodeCanvas(canvas, outputFormat, quality);
   } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
   }

@@ -59,6 +59,7 @@ beforeEach(() => {
   });
   vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(compressedBlob()));
   vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.encodeWithWasm.mockResolvedValue(new TextEncoder().encode("compressed"));
 });
 
 afterEach(() => {
@@ -86,6 +87,9 @@ describe("ImageConverter single download", () => {
 
     await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith("Compressed image downloaded."));
     expect(mocks.saveFile).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^photo.*\.jpe?g$/));
+    // JPEG output goes through MozJPEG, not the browser encoder.
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("jpeg", expect.objectContaining({ width: 4, height: 4 }), 82);
+    expect((mocks.saveFile.mock.calls[0][0] as Blob).type).toBe("image/jpeg");
   });
 
   it("shows nothing when the user cancels the save dialog", async () => {

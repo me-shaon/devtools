@@ -158,7 +158,7 @@ export async function decodeToCanvas(blob: Blob, format: OutputFormat): Promise<
   return canvas;
 }
 
-const canvasPixels = (canvas: HTMLCanvasElement): RgbaImage => {
+export const canvasPixels = (canvas: HTMLCanvasElement): RgbaImage => {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Could not read the image pixels.");
   const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
