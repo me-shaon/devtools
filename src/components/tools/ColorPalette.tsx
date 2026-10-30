@@ -17,6 +17,7 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
+  MAX_COMPARE_COLORS,
   PALETTE_MODES,
   RECENT_COLORS_STORAGE_KEY,
   WCAG_TARGETS,
@@ -542,11 +543,16 @@ function ColorVision({
             />
             <p className="text-xs text-muted-foreground">
               Enter chart, status, or brand colors. Separate them with commas, spaces, or new lines. A generated palette
-              fills this list.
+              fills this list. Up to {MAX_COMPARE_COLORS} colors are simulated.
             </p>
             {list.invalid.length > 0 && (
               <p className="text-xs text-destructive" role="alert">
                 Not a valid CSS color: {list.invalid.join(", ")}
+              </p>
+            )}
+            {list.truncated > 0 && (
+              <p className="text-xs text-muted-foreground" role="status">
+                Only the first {MAX_COMPARE_COLORS} colors are simulated; {list.truncated} more were ignored.
               </p>
             )}
           </div>
@@ -561,6 +567,7 @@ function ColorVision({
                       return (
                         <span
                           key={index}
+                          data-testid="cvd-palette-swatch"
                           className="h-7 w-10 rounded border"
                           style={swatchStyle(cssOf(sim))}
                           title={`${list.colors[index].input} looks like ${sim.hex}`}

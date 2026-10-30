@@ -258,6 +258,16 @@ describe("ColorPalette color blindness simulator", () => {
     await waitFor(() => expect(screen.getByText("Not a valid CSS color: nope")).toBeInTheDocument());
   });
 
+  it("reports when the compare list is cut off at the color cap", async () => {
+    render(<ColorPalette />);
+    const text = Array.from({ length: 40 }, (_, i) => `#${i.toString(16).padStart(6, "0")}`).join(" ");
+    fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: text } });
+    await waitFor(() =>
+      expect(screen.getByText(/Only the first 32 colors are simulated; 8 more were ignored/)).toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId(/^cvd-palette-swatch$/)).toHaveLength(32 * 5);
+  });
+
   it("switches to the anomaly forms below full severity", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "60" } });
