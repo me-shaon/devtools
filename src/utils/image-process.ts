@@ -1,11 +1,13 @@
 /**
- * Pixel processing for the Image Converter: an optional resize, then the encoder.
+ * Pixel processing for the Image Converter: an optional resize, an optional palette reduction,
+ * then the encoder.
  *
  * This module loads the single-thread build of the jSquash resize codec directly, like
  * wasm-encoders. Load it only with import() or from the encode worker.
  */
 import initResize, { resize as wasmResize } from "@jsquash/resize/lib/resize/pkg/squoosh_resize.js";
 import resizeWasmUrl from "@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm?url";
+import { applyPaletteSync, buildPaletteSync, utils } from "image-q";
 import { encodeWithWasm, type RgbaImage, type WasmFormat } from "./wasm-encoders";
 
 export type ResizeMethod = "lanczos3" | "mitchell" | "catrom" | "triangle";
@@ -23,10 +25,18 @@ export interface ResizeOptions {
   linearRgb: boolean;
 }
 
+export interface PaletteOptions {
+  /** Number of colors, from 2 to 256. */
+  colors: number;
+  /** Spreads the color error to nearby pixels (Floyd-Steinberg), which hides banding in gradients. */
+  dither: boolean;
+}
+
 export interface ProcessOptions {
   format: WasmFormat;
   quality: number;
   resize?: ResizeOptions;
+  palette?: PaletteOptions;
 }
 
 export interface ProcessedPixels {
@@ -57,9 +67,22 @@ export async function resizePixels(image: RgbaImage, options: ResizeOptions): Pr
   return { data: new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength), width, height };
 }
 
-/** Resizes when asked, then encodes. */
+/** Reduces the image to a palette of at most the given number of colors. Alpha counts as part of each color. */
+export function reducePalette(image: RgbaImage, options: PaletteOptions): RgbaImage {
+  const colors = Math.min(256, Math.max(2, Math.round(options.colors)));
+  const points = utils.PointContainer.fromUint8Array(image.data, image.width, image.height);
+  const palette = buildPaletteSync([points], { colors, paletteQuantization: "wuquant", colorDistanceFormula: "euclidean-bt709" });
+  const output = applyPaletteSync(points, palette, {
+    imageQuantization: options.dither ? "floyd-steinberg" : "nearest",
+    colorDistanceFormula: "euclidean-bt709",
+  });
+  return { data: new Uint8ClampedArray(output.toUint8Array()), width: image.width, height: image.height };
+}
+
+/** Resizes and reduces the palette when asked, then encodes. */
 export async function processPixels(image: RgbaImage, options: ProcessOptions): Promise<ProcessedPixels> {
-  const pixels = options.resize ? await resizePixels(image, options.resize) : image;
+  const resized = options.resize ? await resizePixels(image, options.resize) : image;
+  const pixels = options.palette ? reducePalette(resized, options.palette) : resized;
   const bytes = await encodeWithWasm(options.format, pixels, options.quality);
   return { bytes, width: pixels.width, height: pixels.height };
 }

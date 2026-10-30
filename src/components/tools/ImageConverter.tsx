@@ -1,4 +1,5 @@
 import { ImageEditor } from "./ImageEditor";
+import { ImagePaletteControls } from "./ImagePaletteControls";
 import { ImageResizeControls } from "./ImageResizeControls";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { zipSync } from "fflate";
@@ -22,6 +23,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { canvasPixels, processWasm } from "@/utils/image-reencode";
 import {
   buildOutputFilename,
+  DEFAULT_PALETTE,
   DEFAULT_RESIZE,
   formatSavingsLabel,
   formatFileSize,
@@ -35,6 +37,7 @@ import {
   SUPPORTED_IMAGE_TYPES,
   type CompressionTarget,
   type ImageFormat,
+  type PaletteSettings,
   type ResizeSettings,
 } from "@/utils/image";
 
@@ -112,6 +115,7 @@ async function compressImage(
   target: CompressionTarget,
   quality: number,
   resize: ResizeSettings = DEFAULT_RESIZE,
+  palette: PaletteSettings = DEFAULT_PALETTE,
 ): Promise<ProcessedImage> {
   const outputFormat = getEffectiveOutputFormat(file.type, target);
 
@@ -148,6 +152,7 @@ async function compressImage(
       resize: size
         ? { ...size, method: resize.method, premultiply: resize.premultiply, linearRgb: resize.linearRgb }
         : undefined,
+      palette: palette.enabled ? { colors: palette.colors, dither: palette.dither } : undefined,
     });
   } catch {
     throw new Error(`Couldn't compress ${file.name}.`);
@@ -186,6 +191,7 @@ export function ImageConverter() {
   const [singleTarget, setSingleTarget] = useState<CompressionTarget>("original");
   const [singleQuality, setSingleQuality] = useState([82]);
   const [singleResize, setSingleResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
+  const [singlePalette, setSinglePalette] = useState<PaletteSettings>(DEFAULT_PALETTE);
   const [singleSource, setSingleSource] = useState<{ width: number; height: number } | null>(null);
   const [singleOriginalPreviewUrl, setSingleOriginalPreviewUrl] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<SingleCompressionResult | null>(null);
@@ -196,14 +202,17 @@ export function ImageConverter() {
   const [bulkTarget, setBulkTarget] = useState<CompressionTarget>("original");
   const [bulkQuality, setBulkQuality] = useState([82]);
   const [bulkResize, setBulkResize] = useState<ResizeSettings>(DEFAULT_RESIZE);
+  const [bulkPalette, setBulkPalette] = useState<PaletteSettings>(DEFAULT_PALETTE);
   const [bulkResults, setBulkResults] = useState<BulkCompressionResult[]>([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkCompletedCount, setBulkCompletedCount] = useState(0);
   const singleInputRef = useRef<HTMLInputElement>(null);
   const bulkInputRef = useRef<HTMLInputElement>(null);
-  // Typing a width runs the encoder once the value settles, not on every keystroke.
+  // Typing a width or dragging the color slider runs the encoder once the value settles.
   const singleResizeSettled = useDebouncedValue(singleResize, 300);
   const bulkResizeSettled = useDebouncedValue(bulkResize, 300);
+  const singlePaletteSettled = useDebouncedValue(singlePalette, 300);
+  const bulkPaletteSettled = useDebouncedValue(bulkPalette, 300);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,7 +262,7 @@ export function ImageConverter() {
     setSingleError(null);
     setSingleResult(null);
 
-    compressImage(singleFile, singleTarget, singleQuality[0], singleResizeSettled)
+    compressImage(singleFile, singleTarget, singleQuality[0], singleResizeSettled, singlePaletteSettled)
       .then((result) => {
         if (cancelled) {
           return;
@@ -282,7 +291,7 @@ export function ImageConverter() {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [singleFile, singleQuality, singleTarget, singleResizeSettled]);
+  }, [singleFile, singleQuality, singleTarget, singleResizeSettled, singlePaletteSettled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -320,7 +329,7 @@ export function ImageConverter() {
         setBulkResults([...nextResults]);
 
         try {
-          const result = await compressImage(file, bulkTarget, bulkQuality[0], bulkResizeSettled);
+          const result = await compressImage(file, bulkTarget, bulkQuality[0], bulkResizeSettled, bulkPaletteSettled);
 
           if (cancelled) {
             return;
@@ -361,7 +370,7 @@ export function ImageConverter() {
     return () => {
       cancelled = true;
     };
-  }, [bulkFiles, bulkQuality, bulkTarget, bulkResizeSettled]);
+  }, [bulkFiles, bulkQuality, bulkTarget, bulkResizeSettled, bulkPaletteSettled]);
 
   const handleSingleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -614,6 +623,7 @@ export function ImageConverter() {
                           onChange={setSingleResize}
                           source={singleSource}
                         />
+                        <ImagePaletteControls id="single" value={singlePalette} onChange={setSinglePalette} />
                       </div>
                     </div>
                   </div>
@@ -741,6 +751,7 @@ export function ImageConverter() {
                     )}
 
                     <ImageResizeControls id="bulk" value={bulkResize} onChange={setBulkResize} />
+                    <ImagePaletteControls id="bulk" value={bulkPalette} onChange={setBulkPalette} />
 
                     <Button
                       onClick={() => void handleBulkDownload()}
@@ -839,7 +850,7 @@ export function ImageConverter() {
             <div>
               <dt className="font-medium">PNG Output</dt>
               <dd className="text-muted-foreground">
-                OxiPNG compresses PNG without loss, so the savings depend on the image.
+                OxiPNG compresses PNG without loss. For logos and screenshots, reduce the palette for much smaller files.
               </dd>
             </div>
           </dl>

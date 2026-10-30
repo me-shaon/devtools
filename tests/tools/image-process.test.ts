@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@jsquash/resize/lib/resize/pkg/squoosh_resize.js", () => ({ default: mocks.init, resize: mocks.resize }));
 vi.mock("@/utils/wasm-encoders", () => ({ encodeWithWasm: mocks.encodeWithWasm }));
 
-import { processPixels, resizePixels } from "@/utils/image-process";
+import { processPixels, reducePalette, resizePixels } from "@/utils/image-process";
 
 const image = () => ({ data: new Uint8ClampedArray(4 * 3 * 4), width: 4, height: 3 });
 
@@ -44,5 +44,28 @@ describe("image processing", () => {
     const output = await resizePixels(input, { width: 4, height: 3, method: "lanczos3", premultiply: true, linearRgb: true });
     expect(output).toBe(input);
     expect(mocks.resize).not.toHaveBeenCalled();
+  });
+
+  it("reduces the image to the asked number of colors", () => {
+    // Four pixels: two reds and two blues that differ slightly.
+    const data = new Uint8ClampedArray([250, 0, 0, 255, 240, 10, 0, 255, 0, 0, 250, 255, 10, 0, 240, 255]);
+    const output = reducePalette({ data, width: 4, height: 1 }, { colors: 2, dither: false });
+    const unique = new Set(Array.from({ length: 4 }, (_, i) => output.data.slice(i * 4, i * 4 + 4).join(",")));
+    expect(unique.size).toBe(2);
+    expect(output.width).toBe(4);
+    // Each pixel keeps its side of the palette: red stays red, blue stays blue.
+    expect(output.data[0]).toBeGreaterThan(output.data[2]);
+    expect(output.data[10]).toBeGreaterThan(output.data[8]);
+  });
+
+  it("reduces the palette after the resize and before the encoder", async () => {
+    await processPixels(image(), {
+      format: "png",
+      quality: 80,
+      resize: { width: 2, height: 2, method: "lanczos3", premultiply: true, linearRgb: true },
+      palette: { colors: 2, dither: true },
+    });
+    expect(mocks.resize).toHaveBeenCalled();
+    expect(mocks.encodeWithWasm).toHaveBeenCalledWith("png", expect.objectContaining({ width: 2, height: 2 }), 80);
   });
 });

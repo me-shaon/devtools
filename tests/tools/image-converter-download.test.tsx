@@ -174,6 +174,20 @@ describe("ImageConverter resize", () => {
   });
 });
 
+describe("ImageConverter palette", () => {
+  it("shows the color and dithering settings and encodes again", async () => {
+    render(<ImageConverter />);
+    fireEvent.change(fileInputs()[0], { target: { files: [jpegFile("photo.jpg")] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download Image" })).toBeEnabled());
+    const calls = mocks.encodeWithWasm.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("switch", { name: "Reduce palette" }));
+    expect(await screen.findByRole("slider", { name: "Colors" })).toHaveAttribute("aria-valuenow", "256");
+    expect(screen.getByRole("checkbox", { name: "Dithering" })).toBeChecked();
+    await waitFor(() => expect(mocks.encodeWithWasm.mock.calls.length).toBeGreaterThan(calls));
+  });
+});
+
 describe("ImageConverter bulk download", () => {
   const compressBulkImages = async () => {
     render(<ImageConverter />);

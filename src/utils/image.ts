@@ -150,3 +150,11 @@ export function resizeTarget(
   const scale = settings.percent / 100;
   return { width: clampSide(sourceWidth * scale), height: clampSide(sourceHeight * scale) };
 }
+
+export interface PaletteSettings {
+  enabled: boolean;
+  colors: number;
+  dither: boolean;
+}
+
+export const DEFAULT_PALETTE: PaletteSettings = { enabled: false, colors: 256, dither: true };

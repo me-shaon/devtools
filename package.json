@@ -63,6 +63,7 @@
     "dompurify": "^3.4.17",
     "fflate": "^0.8.2",
     "gpt-tokenizer": "^4.0.0",
+    "image-q": "^4.0.0",
     "input-otp": "^1.4.2",
     "js-beautify": "^2.0.3",
     "lucide-react": "^0.462.0",
