@@ -65,7 +65,7 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   },
   {
     q: "How does the color blindness simulator work?",
-    a: "It uses the model of Machado, Oliveira, and Fernandes (2009, IEEE TVCG). The tool converts each sRGB color to linear RGB, applies the matrix for the type and severity, and converts the result back to sRGB. Achromatopsia keeps only the luminance of each color.",
+    a: "It uses the model of Machado, Oliveira, and Fernandes (2009, IEEE TVCG). The tool converts each sRGB color to linear RGB, applies the matrix for the type and severity, and converts the result back to sRGB. Achromatopsia keeps only the luminance of each color. Below 100%, achromatomaly removes only part of the color.",
   },
   {
     q: "What does the severity slider change?",
@@ -456,8 +456,8 @@ function ColorVision({
             className="w-full accent-primary"
           />
           <p className="text-xs text-muted-foreground">
-            100% shows the full forms (protanopia, deuteranopia, tritanopia). Lower values show the milder
-            anomaly forms. Achromatopsia is always full.
+            100% shows the full forms (protanopia, deuteranopia, tritanopia, achromatopsia). Lower values show
+            the milder anomaly forms.
           </p>
         </div>
 

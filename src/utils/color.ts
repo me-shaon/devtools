@@ -754,6 +754,7 @@ export const meetsWCAAANormal = meetsWcagAANormal;
  * The matrices apply to linear RGB, so each channel is linearized with the sRGB transfer
  * function first and encoded again after the matrix.
  * Achromatopsia (no cone color vision) maps each color to its linear luminance (Rec. 709 weights).
+ * Below full severity (achromatomaly), the matrix moves from the identity toward that luminance map.
  * ---------------------------------------------------------------------------------------------- */
 
 export type CvdType = 'protan' | 'deutan' | 'tritan' | 'achroma';
@@ -807,10 +808,10 @@ const ACHROMA = [0.2126, 0.7152, 0.0722, 0.2126, 0.7152, 0.0722, 0.2126, 0.7152,
 
 /**
  * The 3×3 linear RGB matrix (row-major) for a CVD type and a severity from 0 to 1.
- * Severity applies to protan, deutan, and tritan. Achromatopsia is always full.
+ * Severity applies to every type.
  */
 export function cvdMatrix(type: CvdType, severity = 1): number[] {
-  if (type === 'achroma') return ACHROMA;
+  if (type === 'achroma') return IDENTITY.map((v, i) => v + (ACHROMA[i] - v) * clamp01(severity));
   const s = clamp01(severity) * 10;
   const table = MACHADO[type];
   const low = Math.floor(s);
@@ -824,7 +825,7 @@ const CVD_STEMS: Record<CvdType, string> = { protan: 'Prot', deutan: 'Deuter', t
 
 /** A readable name: "Protanopia" at full severity, "Protanomaly" below it. */
 export function cvdLabel(type: CvdType, severity = 1): string {
-  if (type === 'achroma') return 'Achromatopsia';
+  if (type === 'achroma') return severity >= 1 ? 'Achromatopsia' : 'Achromatomaly';
   return `${CVD_STEMS[type]}${severity >= 1 ? 'anopia' : 'anomaly'}`;
 }
 
