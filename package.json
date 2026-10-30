@@ -22,6 +22,7 @@
     "icon": "npm run brand:build",
     "clean": "rm -rf node_modules/.vite dist src-tauri/target",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "preview": "vite preview",
     "release:prepare": "node scripts/prepare-release.mjs",
     "release:check": "node scripts/check-release.mjs",
