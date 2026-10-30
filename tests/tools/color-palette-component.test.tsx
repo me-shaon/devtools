@@ -311,7 +311,7 @@ describe("channel and alpha editing", () => {
     fireEvent.blur(screen.getByLabelText("Red"));
     expect(screen.getByLabelText("Red")).toHaveValue("300");
     expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByRole("alert")).toHaveTextContent("Use 0 to 255.");
+    expect(within(screen.getByTestId("channel-editor")).getByRole("alert")).toHaveTextContent("Use 0 to 255.");
     expect(codeFor("HEX").textContent).toBe(hexBefore);
   });
 
@@ -321,7 +321,7 @@ describe("channel and alpha editing", () => {
     fireEvent.keyDown(screen.getByLabelText("Hue"), { key: "Enter" });
     expect(screen.getByLabelText("Saturation")).toHaveValue("91");
     expect(screen.getByLabelText("Lightness")).toHaveValue("60");
-    expect(screen.getByLabelText("Color")).toHaveValue("#0ee5a8");
+    expect(screen.getByLabelText("Color")).toHaveValue("#3bf6f6");
   });
 
   it("round-trips the alpha slider through 8-digit hex and rgba output", () => {
