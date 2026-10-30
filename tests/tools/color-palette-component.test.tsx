@@ -42,8 +42,10 @@ describe("ColorPalette converter", () => {
     render(<ColorPalette />);
     const input = screen.getByLabelText("Color");
     fireEvent.change(input, { target: { value: "not a color" } });
-    expect(input).toHaveAttribute("aria-invalid", "true");
+    // The field stays valid while typing, until the error shows.
+    expect(input).toHaveAttribute("aria-invalid", "false");
     expect(await screen.findByText("Not a valid CSS color.")).toHaveAttribute("id", "color-convert-error");
+    expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAttribute("aria-describedby", "color-convert-error");
   });
 
@@ -74,13 +76,15 @@ describe("ColorPalette contrast checker", () => {
     expect(screen.getByText(/blends the foreground over the background/)).toBeInTheDocument();
   });
 
-  it("marks an invalid contrast color and links the message", () => {
+  it("marks an invalid contrast color and links the message after typing stops", async () => {
     render(<ColorPalette />);
     const fg = screen.getByLabelText("Foreground");
     fireEvent.change(fg, { target: { value: "nope" } });
+    expect(fg).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByText("Invalid color.")).toBeNull();
+    expect(await screen.findByText("Invalid color.")).toHaveAttribute("id", "contrast-fg-error");
     expect(fg).toHaveAttribute("aria-invalid", "true");
     expect(fg).toHaveAttribute("aria-describedby", "contrast-fg-error");
-    expect(screen.getByText("Invalid color.")).toHaveAttribute("id", "contrast-fg-error");
   });
 });
 
@@ -155,6 +159,13 @@ describe("ColorPalette color blindness simulator", () => {
     fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "  #f00  " } });
     fireEvent.click(screen.getByRole("button", { name: "Generate" }));
     expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#ff0000, #/);
+  });
+
+  it("generates a palette from a named color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Base color"), { target: { value: "tomato" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Colors to compare").value).toMatch(/^#ff6347, #/);
   });
 
   it("generates no duplicate swatches or false look-alike warnings for white", async () => {

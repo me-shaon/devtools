@@ -112,7 +112,7 @@ function ColorConverter({ input, setInput }: { input: string; setInput: (value: 
               className="font-mono"
               spellCheck={false}
               autoComplete="off"
-              aria-invalid={input.trim() !== "" && !color}
+              aria-invalid={showError}
               aria-describedby={showError ? "color-convert-error" : undefined}
             />
             <input
@@ -182,6 +182,11 @@ function ContrastChecker({
 }) {
   const { fgInput, bgInput, fgColor, bgColor } = resolveContrastPair(fg, bg);
   const ratio = fgColor && bgColor ? getContrastRatio(fgColor, bgColor) : null;
+  // Wait until typing stops before an error shows, so a half-typed color is not announced.
+  const settledFg = useDebouncedValue(fg, 400);
+  const settledBg = useDebouncedValue(bg, 400);
+  const fgError = settledFg === fg && fg.trim() !== "" && !fgColor;
+  const bgError = settledBg === bg && bg.trim() !== "" && !bgColor;
 
   const checks =
     fgColor && bgColor
@@ -208,10 +213,10 @@ function ContrastChecker({
               value={fg}
               onChange={(e) => setFg(e.target.value)}
               className="font-mono"
-              aria-invalid={fg.trim() !== "" && !fgColor}
-              aria-describedby={fg.trim() && !fgColor ? "contrast-fg-error" : undefined}
+              aria-invalid={fgError}
+              aria-describedby={fgError ? "contrast-fg-error" : undefined}
             />
-            {fg.trim() && !fgColor && (
+            {fgError && (
               <p id="contrast-fg-error" className="text-xs text-destructive" role="alert">
                 Invalid color.
               </p>
@@ -224,10 +229,10 @@ function ContrastChecker({
               value={bg}
               onChange={(e) => setBg(e.target.value)}
               className="font-mono"
-              aria-invalid={bg.trim() !== "" && !bgColor}
-              aria-describedby={bg.trim() && !bgColor ? "contrast-bg-error" : undefined}
+              aria-invalid={bgError}
+              aria-describedby={bgError ? "contrast-bg-error" : undefined}
             />
-            {bg.trim() && !bgColor && (
+            {bgError && (
               <p id="contrast-bg-error" className="text-xs text-destructive" role="alert">
                 Invalid color.
               </p>
@@ -666,13 +671,13 @@ export function ColorPalette() {
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
-  const [hexInput, setHexInput] = useState("");
+  const [baseInput, setBaseInput] = useState("");
   const [colors, setColors] = useState<ParsedColor[]>([]);
 
-  const generatePalette = (baseHex: string) => {
-    const palette = generateShadePalette(baseHex);
+  const generatePalette = (base: string) => {
+    const palette = generateShadePalette(base);
     if (!palette) {
-      toast.error("Enter a 3- or 6-digit hex color, such as #3b82f6.");
+      toast.error("Enter an opaque CSS color, such as #3b82f6 or tomato.");
       return;
     }
     setColors(palette);
@@ -693,12 +698,12 @@ export function ColorPalette() {
           <div className="flex gap-2">
             <Input
               id="palette-base-input"
-              placeholder="#000000 or 000000"
-              value={hexInput}
-              onChange={(e) => setHexInput(e.target.value)}
+              placeholder="#3b82f6, 3b82f6, or tomato"
+              value={baseInput}
+              onChange={(e) => setBaseInput(e.target.value)}
               className="font-mono"
             />
-            <Button onClick={() => generatePalette(hexInput)} size="lg">
+            <Button onClick={() => generatePalette(baseInput)} size="lg">
               Generate
             </Button>
           </div>

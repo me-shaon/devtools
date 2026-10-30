@@ -14,8 +14,6 @@ import {
   getAnalogousColors,
   getTriadicColors,
   getSplitComplementaryColors,
-  generateColorPalette,
-  generateShades,
   generateShadePalette,
   adjustBrightness,
   adjustSaturation,
@@ -159,35 +157,6 @@ describe('Color Utils', () => {
     });
   });
 
-  describe('generateColorPalette', () => {
-    it('should generate complete palette', () => {
-      const result = generateColorPalette('#ff0000');
-      expect(result).not.toBeNull();
-      expect(result?.palette).toBeDefined();
-      expect(result?.complementary).toBeDefined();
-    });
-
-    it('should return null for invalid color', () => {
-      const result = generateColorPalette('invalid');
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('generateShades', () => {
-    it('should generate color shades', () => {
-      const color = parseColor('#ff0000')!;
-      const result = generateShades(color, 5);
-      expect(result).toHaveLength(5);
-    });
-
-    it('should vary lightness', () => {
-      const color = parseColor('#808080')!;
-      const result = generateShades(color, 3);
-      const lightnesses = result.map((c) => c.hsl.l);
-      expect(Math.min(...lightnesses)).toBeLessThan(Math.max(...lightnesses));
-    });
-  });
-
   describe('generateShadePalette', () => {
     it('starts with the base color and adds lighter then darker steps', () => {
       const palette = generateShadePalette('#3b82f6')!;
@@ -212,8 +181,14 @@ describe('Color Utils', () => {
       expect(generateShadePalette('#f5f5f5')).toHaveLength(7);
     });
 
-    it('rejects anything that is not a 3- or 6-digit hex color', () => {
-      for (const input of ['', '  ', '#ff000080', '#f008', 'rgba(0, 0, 0, 1)', 'tomato', '#ggg', '#12345']) {
+    it('accepts any opaque CSS color', () => {
+      expect(generateShadePalette('tomato')![0].hex).toBe('#ff6347');
+      expect(generateShadePalette('rgb(255 0 0)')![0].hex).toBe('#ff0000');
+      expect(generateShadePalette('#ff0000ff')![0].hex).toBe('#ff0000');
+    });
+
+    it('rejects input that is not an opaque CSS color', () => {
+      for (const input of ['', '  ', '#ff000080', 'rgba(0, 0, 0, 0.5)', 'transparent', 'not a color', '#ggg', '#12345']) {
         expect(generateShadePalette(input)).toBeNull();
       }
     });
