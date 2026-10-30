@@ -99,7 +99,7 @@ describe("ColorPalette converter", () => {
 describe("ColorPalette contrast checker", () => {
   it("keeps the WCAG checks", () => {
     render(<ColorPalette />);
-    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.47:1");
+    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("3.67:1");
     expect(screen.getByText("AA normal text (4.5:1)").nextSibling).toHaveTextContent("Fail");
   });
 
@@ -165,7 +165,7 @@ describe("ColorPalette contrast suggestions", () => {
     const suggestion = screen.getByTestId("contrast-suggestion");
     expect(suggestion).toHaveTextContent(/A foreground of #[0-9a-f]{6} reaches 4\.\d\d:1 for AA normal text/);
     fireEvent.click(within(suggestion).getByRole("button", { name: "Use this foreground" }));
-    expect(screen.getByLabelText("Foreground")).not.toHaveValue("#777777");
+    expect(screen.getByLabelText("Foreground")).not.toHaveValue("#3b82f6");
     expect(screen.getByText("This pair meets AA normal text.")).toBeInTheDocument();
   });
 
@@ -199,7 +199,7 @@ describe("ColorPalette contrast checker and working color", () => {
     render(<ColorPalette />);
     fireEvent.click(screen.getByRole("button", { name: "Swap" }));
     expect(screen.getByLabelText("Foreground")).toHaveValue("#ffffff");
-    expect(screen.getByLabelText("Background")).toHaveValue("#777777");
+    expect(screen.getByLabelText("Background")).toHaveValue("#3b82f6");
   });
 
   it("disables the working color buttons for an invalid color", () => {
@@ -218,6 +218,18 @@ describe("ColorPalette color blindness simulator", () => {
     expect(within(screen.getByTestId("cvd-row-protan")).getByText("#6d5f00")).toBeInTheDocument();
     const achroma = within(screen.getByTestId("cvd-row-achroma")).getByText(/^#/).textContent!;
     expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
+  });
+
+  it("shows a live default pair, not a frozen achromatic one", () => {
+    render(<ColorPalette />);
+    // The contrast foreground defaults to the working color, so the simulated pair shifts per
+    // vision. A gray-on-white default left every row at the same ratio, which read as broken.
+    const normal = screen.getByTestId("cvd-contrast-normal").textContent!;
+    const protan = screen.getByTestId("cvd-contrast-protan").textContent!;
+    const deutan = screen.getByTestId("cvd-contrast-deutan").textContent!;
+    expect(normal).toContain("3.67:1");
+    expect(protan).not.toBe(normal);
+    expect(deutan).not.toBe(normal);
   });
 
   it("shows the simulated contrast of the checker pair", () => {

@@ -408,6 +408,9 @@ const simulate = (color: ParsedColor, vision: Vision, severity: number) =>
 /** Default list: typical error, success, info, and warning colors. Red and green collide for deutans. */
 const DEFAULT_COMPARE = "#d32f2f, #388e3c, #1976d2, #f9a825";
 
+/** The color shown on first load, before the user picks one. Also seeds the contrast foreground. */
+const DEFAULT_COLOR = "#3b82f6";
+
 function ColorVision({
   color,
   fg,
@@ -873,8 +876,10 @@ function PaletteGenerator({
 
 export function ColorPalette() {
   const [view, setView] = useState("colors");
-  const [colorInput, setColorInput] = useState("#3b82f6");
-  const [fg, setFg] = useState("#777777");
+  const [colorInput, setColorInput] = useState(DEFAULT_COLOR);
+  // Seed the contrast foreground with the working color so the pair, and the vision table that
+  // reads it, is chromatic on load. An achromatic default (gray on white) never shifts under CVD.
+  const [fg, setFg] = useState(DEFAULT_COLOR);
   const [bg, setBg] = useState("#ffffff");
   const [compareText, setCompareText] = useState(DEFAULT_COMPARE);
   const working = parseColor(colorInput);
