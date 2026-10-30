@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CronCalculator } from "@/components/tools/CronCalculator";
 
@@ -72,5 +72,19 @@ describe("CronCalculator", () => {
     type("0 0 30 2 *");
 
     expect(screen.getByText(/never runs/)).toBeInTheDocument();
+  });
+});
+
+describe("CronCalculator visual builder", () => {
+  it("builds one field without replacing the other fields", async () => {
+    render(<CronCalculator />);
+    fireEvent.click(screen.getByText("Visual builder"));
+    const change = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    change("Minute builder mode", "interval");
+    change("Minute start", "0");
+    change("Minute interval", "15");
+    fireEvent.click(screen.getByText("Apply minute"));
+    expect(screen.getByLabelText("Cron expression")).toHaveValue("0/15 9 * * MON-FRI");
+    await waitFor(() => expect(screen.getByLabelText("Minute field")).toHaveValue("0/15"));
   });
 });

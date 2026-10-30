@@ -1,3 +1,5 @@
+import { GradientBuilder } from "./GradientBuilder";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -647,6 +649,7 @@ function CvdImage({ severity }: { severity: number }) {
 }
 
 export function ColorPalette() {
+  const [view, setView] = useState("colors");
   const [colorInput, setColorInput] = useState("#3b82f6");
   const [fg, setFg] = useState("#777777");
   const [bg, setBg] = useState("#ffffff");
@@ -848,6 +851,14 @@ export function ColorPalette() {
 
   return (
     <div className="space-y-6">
+      <Tabs value={view} onValueChange={setView} className="space-y-6">
+      <TabsList aria-label="Color tools">
+        <TabsTrigger value="colors">Colors</TabsTrigger>
+        <TabsTrigger value="gradient">Gradient</TabsTrigger>
+      </TabsList>
+      {/* Both panels stay mounted so each keeps its state. */}
+      <TabsContent value="gradient" forceMount hidden={view !== "gradient"}><GradientBuilder /></TabsContent>
+      <TabsContent value="colors" forceMount hidden={view !== "colors"} className="space-y-6">
       <ColorConverter input={colorInput} setInput={setColorInput} />
       <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} />
       <Card>
@@ -907,6 +918,8 @@ export function ColorPalette() {
         setCompareText={setCompareText}
       />
       <ToolFaqSection items={FAQ_ITEMS} />
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

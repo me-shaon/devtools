@@ -1,3 +1,4 @@
+import { ImageEditor } from "./ImageEditor";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { zipSync } from "fflate";
 import { Button } from "@/components/ui/button";
@@ -442,9 +443,10 @@ export function ImageConverter() {
         </CardHeader>
         <CardContent className="space-y-6">
           <Tabs defaultValue="single" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="single">Single Image</TabsTrigger>
               <TabsTrigger value="bulk">Bulk Compress</TabsTrigger>
+              <TabsTrigger value="edit">Edit Image</TabsTrigger>
             </TabsList>
 
             <TabsContent value="single" className="space-y-6">
@@ -760,6 +762,7 @@ export function ImageConverter() {
                 </>
               )}
             </TabsContent>
+            <TabsContent value="edit"><ImageEditor /></TabsContent>
           </Tabs>
         </CardContent>
       </Card>

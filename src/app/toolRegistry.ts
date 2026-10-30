@@ -94,16 +94,16 @@ export const ALL_TOOLS = [
   { icon: FileSearch, name: "HAR Viewer", id: "har-viewer", category: "Network", keywords: ["har", "http archive", "network log", "devtools export", "waterfall", "requests", "curl", "sanitize"] },
   { icon: Clock, name: "Timestamp", id: "timestamp", category: "Time & Date", keywords: ["unix", "epoch", "date", "time", "milliseconds", "iso 8601", "time zone", "utc"] },
   { icon: Calculator, name: "Date Difference", id: "date-difference", category: "Time & Date", keywords: ["days", "between", "duration"] },
-  { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule"] },
+  { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule", "builder", "quartz"] },
   { icon: CalendarCog, name: "Date Format Translator", id: "date-format", category: "Time & Date", keywords: ["strftime", "golang time format", "go layout", "simpledateformat", "datetimeformatter", "moment format", "dayjs", "date-fns", "php date", "dotnet", "date format"] },
-  { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["color", "colour", "hex", "rgb", "hsl", "hwb", "oklch", "alpha", "picker", "contrast", "wcag", "color blind", "colorblind", "protanopia", "deuteranopia", "tritanopia", "cvd", "accessibility"] },
-  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize"] },
+  { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["gradient", "css gradient", "color", "colour", "hex", "rgb", "hsl", "hwb", "oklch", "alpha", "picker", "contrast", "wcag", "color blind", "colorblind", "protanopia", "deuteranopia", "tritanopia", "cvd", "accessibility"] },
+  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize", "crop", "rotate", "flip"] },
   { icon: ScanLine, name: "QR Reader", id: "qr-reader", category: "Media", keywords: ["qr", "scan", "decode", "read"] },
   { icon: AlignLeft, name: "Text Compare", id: "text-compare", category: "Text Tools", keywords: ["diff", "compare", "difference"] },
   { icon: Shield, name: "JWT Decoder", id: "jwt-decoder", category: "Text Tools", keywords: ["jwt", "token", "bearer", "decode", "verify"] },
   { icon: FileJson, name: "API Formatter", id: "api-formatter", category: "Text Tools", keywords: ["api", "rest", "graphql", "response"] },
   { icon: ScanText, name: "String Inspector", id: "string-inspector", category: "Text Tools", keywords: ["count", "characters", "words", "bytes", "unicode", "invisible", "zero width", "normalization", "normalize", "nfc", "nfd", "nfkc", "nfkd", "combining characters", "unicode equivalence"] },
-  { icon: ListOrdered, name: "Line Tools", id: "line-tools", category: "Text Tools", keywords: ["sort", "dedupe", "unique", "lines", "shuffle", "reverse", "filter", "grep", "compare lists", "set difference", "intersection"] },
+  { icon: ListOrdered, name: "Line Tools", id: "line-tools", category: "Text Tools", keywords: ["split", "join", "wrap", "replace", "sum", "product", "sort", "dedupe", "unique", "lines", "shuffle", "reverse", "filter", "grep", "compare lists", "set difference", "intersection"] },
   { icon: Ruler, name: "Unit Converter", id: "unit-converter", category: "Utilities", keywords: ["units", "length", "weight", "temperature", "currency"] },
   { icon: FileLock2, name: "chmod Calculator", id: "chmod-calculator", category: "Utilities", keywords: ["chmod", "permissions", "file mode", "octal", "rwx", "umask", "setuid", "setgid", "sticky bit", "ls -l"] },
   { icon: ShieldOff, name: "Image Metadata Cleaner", id: "image-metadata", category: "AI Tools", keywords: ["exif", "metadata", "remove metadata", "gps", "c2pa", "content credentials", "ai generated", "stable diffusion prompt", "privacy", "strip exif"] },
@@ -111,6 +111,10 @@ export const ALL_TOOLS = [
   { icon: ShieldAlert, name: "Secret & PII Redactor", id: "secret-redactor", category: "AI Tools", keywords: ["redact", "secrets", "api key", "token", "password", "pii", "mask", "sanitize", "chatgpt", "privacy"] },
   { icon: Coins, name: "Token Counter", id: "token-counter", category: "AI Tools", keywords: ["tokens", "tokenizer", "gpt", "openai", "o200k", "llm", "prompt", "cost", "context window", "claude"] },
   { icon: Sparkles, name: "AI Text Cleaner", id: "ai-text-cleaner", category: "AI Tools", keywords: ["clean text", "invisible characters", "zero width", "smart quotes", "em dash", "citations", "markdown", "chatgpt", "normalize"] },
+  { icon: CodeXml, name: "XML Inspector", id: "xml-inspector", category: "Development Tools", keywords: ["xml", "xpath", "namespace", "format", "minify"] },
+  { icon: Hash, name: "Checksum", id: "checksum", category: "Utilities", keywords: ["crc", "crc32", "crc32c", "crc16", "modbus", "luhn", "check digit"] },
+  { icon: FileSearch, name: "ASN.1 Inspector", id: "asn1-inspector", category: "Development Tools", keywords: ["asn1", "asn.1", "der", "ber", "pem", "oid", "binary"] },
+  { icon: Clock, name: "Stopwatch", id: "stopwatch", category: "Time & Date", keywords: ["stopwatch", "timer", "elapsed", "laps", "split"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -124,6 +128,10 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  stopwatch: lazyNamed(() => import("@/components/tools/Stopwatch"), "Stopwatch"),
+  "asn1-inspector": lazyNamed(() => import("@/components/tools/Asn1Inspector"), "Asn1Inspector"),
+  checksum: lazyNamed(() => import("@/components/tools/Checksum"), "Checksum"),
+  "xml-inspector": lazyNamed(() => import("@/components/tools/XmlInspector"), "XmlInspector"),
   "certificate-decoder": lazyNamed(() => import("@/components/tools/CertificateDecoder"), "CertificateDecoder"),
   "html-preview": lazyNamed(() => import("@/components/tools/HtmlPreview"), "HtmlPreview"),
   "html-to-jsx": lazyNamed(() => import("@/components/tools/HtmlToJsx"), "HtmlToJsx"),

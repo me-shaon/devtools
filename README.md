@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 52 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 56 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
@@ -84,6 +84,8 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 - **Semver Calculator** - Check versions against npm, Cargo, Composer, or Python ranges, see the range as plain comparators, and compare two versions
+- **XML Inspector** - Format or minify XML, and query nodes or values with XPath 1.0 and namespace prefixes
+- **ASN.1 Inspector** - Show definite-length DER or BER data from PEM, Base64, hex, or a file as a tree of tags, offsets, lengths, and values
 
 ### Generators
 
@@ -121,13 +123,14 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 - **Timestamp** - Convert Unix timestamps (seconds to nanoseconds) and date strings as you type, with offsets such as now - 1d and extra time zones
 - **Date Difference** - Calculate the difference between two dates
-- **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone
+- **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone. Build a schedule one field at a time in the visual builder
 - **Date Format Translator** - Translate date format strings between Go, strftime, Java, date-fns, Moment.js, PHP, and .NET, with a live preview
+- **Stopwatch** - Record laps and split times, and copy or export them as CSV. The stopwatch keeps running while you use other tools
 
 ### Media
 
-- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, create color schemes, and simulate color blindness on colors and images
-- **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally
+- **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha, check WCAG contrast, create color schemes, and simulate color blindness on colors and images. Build linear and radial CSS gradients in the Gradient tab
+- **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally. Crop, resize, rotate, and flip an image in the Edit Image tab
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
 ### Text Tools
@@ -136,7 +139,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **JWT Decoder** - Decode JWTs with expiry status, verify HS, RS, PS, ES, and EdDSA signatures with a secret, PEM, JWK, or JWKS, and sign test tokens
 - **API Formatter** - Format REST and GraphQL responses with tree view and search
 - **String Inspector** - Count characters, words, lines, and bytes, find hidden Unicode characters, and check Unicode normalization (NFC, NFD, NFKC, NFKD)
-- **Line Tools** - Filter, sort, reverse, dedupe, trim, and shuffle lines, and compare two lists
+- **Line Tools** - Filter, sort, reverse, dedupe, trim, and shuffle lines, and compare two lists. Split, join, wrap, replace, sum, or multiply lines in Transform mode
 
 ### AI Tools
 
@@ -150,6 +153,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 
 - **Unit Converter** - Convert length, weight, temperature, and data units
 - **chmod Calculator** - Set file permissions with checkboxes, octal, or `rwx` text, apply expressions such as `u+x`, and see the chmod commands, a plain-English summary, and umask defaults
+- **Checksum** - Calculate six common CRC variants from text, hex bytes, or a file, and validate or append Luhn check digits
 
 ## Development
 
