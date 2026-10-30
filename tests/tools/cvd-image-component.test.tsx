@@ -133,7 +133,7 @@ describe("CvdImage", () => {
   });
 
   it("discards a load that finished after the image was replaced", async () => {
-    let pending: (() => void) | null = null;
+    const pending: (() => void)[] = [];
     class SlowImage {
       onload: (() => void) | null = null;
       onerror: (() => void) | null = null;
@@ -141,17 +141,17 @@ describe("CvdImage", () => {
       naturalHeight = 2;
 
       set src(_value: string) {
-        pending = () => this.onload?.();
+        pending.push(() => this.onload?.());
       }
     }
     vi.stubGlobal("Image", SlowImage);
     render(<ColorPalette />);
     chooseFile(file("slow.png"));
     chooseFile(file("fast.png"));
-    const last = pending!;
     // The first file's load lands after the second replaced it; it must not come back.
-    last();
-    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalled());
+    pending[0]!();
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-1"));
     expect(screen.queryByAltText("Original slow.png")).toBeNull();
+    expect(screen.queryByAltText("Original fast.png")).toBeNull();
   });
 });
