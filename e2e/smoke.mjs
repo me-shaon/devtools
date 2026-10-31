@@ -245,7 +245,8 @@ try {
   await step("saves a QR code PNG through the save_file command", async () => {
     await openTool("QR Generator");
     await (await browser.$("#qr-text")).setValue("https://example.com");
-    await (await browser.$("button*=Save PNG")).click();
+    // Other open tools, such as the Mermaid Renderer, stay mounted in hidden panels with their own Save PNG button.
+    await (await browser.$("section.tool-panel:not([hidden])").$("button*=Save PNG")).click();
     const png = await waitForSavedFile(/^qr-code-\d+\.png$/);
     if (!png.subarray(0, 4).equals(PNG_SIGNATURE)) {
       throw new Error("The saved QR code is not a PNG file.");
