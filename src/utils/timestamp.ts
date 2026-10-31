@@ -248,7 +248,8 @@ export function getWallClock(ms: number, timeZone?: string): WallClock {
   };
 }
 
-function utcFromWallClock(clock: WallClock): number {
+/** The UTC milliseconds that show this wall clock in UTC. */
+export function utcFromWallClock(clock: WallClock): number {
   const date = new Date(Date.UTC(2000, clock.month - 1, clock.day, clock.hour, clock.minute, clock.second));
   date.setUTCFullYear(clock.year, clock.month - 1, clock.day);
   return date.getTime();

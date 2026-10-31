@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 56 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 57 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
@@ -126,6 +126,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone. Build a schedule one field at a time in the visual builder
 - **Date Format Translator** - Translate date format strings between Go, strftime, Java, date-fns, Moment.js, PHP, and .NET, with a live preview
 - **Stopwatch** - Record laps and split times, and copy or export them as CSV. The stopwatch keeps running while you use other tools
+- **Time Zone Converter** - Convert a date and time from one time zone to UTC, local time, and other zones. It handles daylight saving time changes and shows when the date changes
 
 ### Media
 
