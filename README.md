@@ -6,7 +6,7 @@ A desktop workspace with 58 developer utilities for macOS, Windows, and Linux. F
 
 [Download](#download) · [Tools](#tools) · [Workspace and shortcuts](#workspace-and-shortcuts) · [Development](#development) · [Support](#support)
 
-[![Support on Patreon](https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white)](https://www.patreon.com/ahmed_shamim)
+[![Support on Patreon](https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white)](https://www.patreon.com/ahmed_shamim) [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-Gumroad-FF90E8?logo=gumroad&logoColor=black)](https://ahmedshamim.gumroad.com/coffee)
 
 ![DevTools in light mode with JSON Viewer, formatted output, and multiple open tool tabs](assets/app-screenshot.png)
 
@@ -248,7 +248,7 @@ Pull requests are welcome. For major changes, open an issue first to discuss the
 
 ## Support
 
-DevTools is free and open source. If it saves you time, you can support its development on [Patreon](https://www.patreon.com/ahmed_shamim).
+DevTools is free and open source. If it saves you time, you can support its development with a monthly membership on [Patreon](https://www.patreon.com/ahmed_shamim) or a one-time tip on [Gumroad](https://ahmedshamim.gumroad.com/coffee).
 
 ## Brand assets
 
