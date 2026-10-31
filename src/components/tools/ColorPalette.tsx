@@ -35,7 +35,6 @@ import {
   paletteToJson,
   parseRecentColors,
   parseColorList,
-  rgbToHex,
   simulateCvd,
   simulateCvdPixels,
   suggestContrastColor,
@@ -95,12 +94,7 @@ const swatchStyle = (css: string) => ({
 });
 
 /** HEX with the alpha byte added when the color is translucent, the same form the inputs accept. */
-const hexWithAlpha = (rgb: { r: number; g: number; b: number }, alpha: number) => {
-  const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-  if (alpha >= 1) return hex;
-  const byte = Math.round(alpha * 255);
-  return byte >= 255 ? hex : hex + byte.toString(16).padStart(2, "0");
-};
+const hexWithAlpha = (rgb: { r: number; g: number; b: number }, alpha: number) => toHexWithAlpha(makeColor(rgb, alpha));
 
 const CHANNEL_FIELDS = [
   { id: "r", label: "Red", max: 255 },
@@ -136,6 +130,13 @@ function ColorConverter({
   // working color keeps the last value committed from any surface.
   const [draft, setDraft] = useState<{ id: ChannelId; text: string } | null>(null);
   const [invalidChannel, setInvalidChannel] = useState<ChannelId | null>(null);
+
+  // A draft belongs to the color it was typed against. Another field changing the color drops it.
+  const colorHex = color ? toHexWithAlpha(color) : null;
+  useEffect(() => {
+    setDraft(null);
+    setInvalidChannel(null);
+  }, [colorHex]);
 
   const channelValue = (id: ChannelId): string => {
     if (!color) return "";

@@ -362,6 +362,16 @@ describe("channel and alpha editing", () => {
     expect(codeFor("HEX").textContent).toBe(hexBefore);
   });
 
+  it("drops a rejected channel draft when the color changes elsewhere", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "300" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    expect(screen.getByLabelText("Red")).toHaveValue("255");
+    expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "false");
+    expect(within(screen.getByTestId("channel-editor")).queryByRole("alert")).toBeNull();
+  });
+
   it("keeps the other HSL channels when the hue changes", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "180" } });
