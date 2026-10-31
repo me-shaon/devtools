@@ -746,7 +746,7 @@ function CvdImage({ severity }: { severity: number }) {
         >
           {CVD_TYPES.map((t) => (
             <option key={t} value={t}>
-              {cvdLabel(t, 1)}
+              {cvdLabel(t, severity)}
             </option>
           ))}
         </select>
