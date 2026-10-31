@@ -4,6 +4,10 @@ import {
   formatFileSize,
   formatSavingsLabel,
   getEffectiveOutputFormat,
+  getMimeTypeFromFormat,
+  DEFAULT_RESIZE,
+  MAX_RESIZE_SIDE,
+  resizeTarget,
   getSavingsPercent,
   isSupportedImageType,
   shouldShowQualityControl,
@@ -25,6 +29,23 @@ describe("image utils", () => {
   it("formats output file names with the expected extension", () => {
     expect(buildOutputFilename("photo.png", "webp")).toBe("photo.webp");
     expect(buildOutputFilename("summer-trip.jpeg", "jpeg")).toBe("summer-trip.jpg");
+  });
+
+  it("supports AVIF output with a quality setting", () => {
+    expect(getEffectiveOutputFormat("image/png", "avif")).toBe("avif");
+    expect(getMimeTypeFromFormat("avif")).toBe("image/avif");
+    expect(shouldShowQualityControl("image/png", "avif")).toBe(true);
+    expect(buildOutputFilename("banner.png", "avif")).toBe("banner.avif");
+  });
+
+  it("works out the resize target", () => {
+    expect(resizeTarget(600, 500, DEFAULT_RESIZE)).toBeNull();
+    const on = { ...DEFAULT_RESIZE, enabled: true };
+    expect(resizeTarget(600, 500, { ...on, percent: 50 })).toEqual({ width: 300, height: 250 });
+    expect(resizeTarget(600, 500, { ...on, percent: 33.33 })).toEqual({ width: 200, height: 167 });
+    expect(resizeTarget(600, 500, { ...on, width: 120, height: 90 })).toEqual({ width: 120, height: 90 });
+    expect(resizeTarget(3, 3, { ...on, percent: 1 })).toEqual({ width: 1, height: 1 });
+    expect(resizeTarget(10, 10, { ...on, width: 99999, height: 0 })).toEqual({ width: MAX_RESIZE_SIDE, height: 1 });
   });
 
   it("formats file sizes and savings", () => {

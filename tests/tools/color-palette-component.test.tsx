@@ -17,6 +17,15 @@ describe("ColorPalette recent colors", () => {
     expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
   });
 
+  it("records the color when Enter commits it, without blurring", () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "tomato" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByRole("button", { name: "Use recent color #ff6347" })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
+  });
+
   it("does not record an invalid color", () => {
     render(<ColorPalette />);
     const input = screen.getByLabelText("Color");
@@ -220,16 +229,44 @@ describe("ColorPalette color blindness simulator", () => {
     expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
   });
 
-  it("shows the simulated contrast of the checker pair", () => {
+  it("previews the working color as sample text on its more legible surface", () => {
     render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
-    const fg = parseColor("#d32f2f")!;
-    const bg = parseColor("#ffffff")!;
-    const ratio = getContrastRatio(simulateCvd(fg, "protan"), simulateCvd(bg, "protan"));
-    const expected = (Math.floor(ratio * 100) / 100).toFixed(2);
-    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.97:1");
-    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("4.97:1 AA");
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    const normal = within(screen.getByTestId("cvd-row-normal")).getByText("Sample text");
+    const protan = within(screen.getByTestId("cvd-row-protan")).getByText("Sample text");
+    expect(normal.style.color).toBe("rgb(255, 0, 0)");
+    expect(protan.style.color).not.toBe(normal.style.color);
+    // Red gains contrast on black, so every row uses black as the surface.
+    expect(normal.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    const protanSim = simulateCvd(parseColor("#ff0000")!, "protan");
+    const expected = (Math.floor(getContrastRatio(protanSim, parseColor("#000000")!) * 100) / 100).toFixed(2);
+    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("5.25:1 AA");
     expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent(`${expected}:1`);
+  });
+
+  it("uses a light surface for a dark working color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#000000" } });
+    expect(within(screen.getByTestId("cvd-row-normal")).getByText("Sample text").style.backgroundColor).toBe(
+      "rgb(255, 255, 255)",
+    );
+  });
+
+  it("applies no simulation at severity 0", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "0" } });
+    expect(screen.getByLabelText(/^Severity/)).toHaveValue("0");
+    for (const vision of ["protan", "deutan", "tritan", "achroma"]) {
+      expect(within(screen.getByTestId(`cvd-row-${vision}`)).getByText("#ff0000")).toBeInTheDocument();
+    }
+  });
+
+  it("marks neutrals as unchanged instead of implying an error", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#808080" } });
+    expect(within(screen.getByTestId("cvd-row-protan")).getByText("(unchanged)")).toBeInTheDocument();
+    expect(within(screen.getByTestId("cvd-row-normal")).queryByText("(unchanged)")).toBeNull();
   });
 
   it("warns when two colors look alike", () => {
@@ -256,6 +293,16 @@ describe("ColorPalette color blindness simulator", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: "red, nope" } });
     await waitFor(() => expect(screen.getByText("Not a valid CSS color: nope")).toBeInTheDocument());
+  });
+
+  it("reports when the compare list is cut off at the color cap", async () => {
+    render(<ColorPalette />);
+    const text = Array.from({ length: 40 }, (_, i) => `#${i.toString(16).padStart(6, "0")}`).join(" ");
+    fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: text } });
+    await waitFor(() =>
+      expect(screen.getByText(/Only the first 32 colors are simulated\. 8 more were ignored/)).toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId(/^cvd-palette-swatch$/)).toHaveLength(32 * 5);
   });
 
   it("switches to the anomaly forms below full severity", () => {
