@@ -220,16 +220,44 @@ describe("ColorPalette color blindness simulator", () => {
     expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
   });
 
-  it("shows the simulated contrast of the checker pair", () => {
+  it("previews the working color as sample text on its more legible surface", () => {
     render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
-    const fg = parseColor("#d32f2f")!;
-    const bg = parseColor("#ffffff")!;
-    const ratio = getContrastRatio(simulateCvd(fg, "protan"), simulateCvd(bg, "protan"));
-    const expected = (Math.floor(ratio * 100) / 100).toFixed(2);
-    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.97:1");
-    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("4.97:1 AA");
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    const normal = within(screen.getByTestId("cvd-row-normal")).getByText("Sample text");
+    const protan = within(screen.getByTestId("cvd-row-protan")).getByText("Sample text");
+    expect(normal.style.color).toBe("rgb(255, 0, 0)");
+    expect(protan.style.color).not.toBe(normal.style.color);
+    // Red gains contrast on black, so every row uses black as the surface.
+    expect(normal.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    const protanSim = simulateCvd(parseColor("#ff0000")!, "protan");
+    const expected = (Math.floor(getContrastRatio(protanSim, parseColor("#000000")!) * 100) / 100).toFixed(2);
+    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("5.25:1 AA");
     expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent(`${expected}:1`);
+  });
+
+  it("uses a light surface for a dark working color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#000000" } });
+    expect(within(screen.getByTestId("cvd-row-normal")).getByText("Sample text").style.backgroundColor).toBe(
+      "rgb(255, 255, 255)",
+    );
+  });
+
+  it("applies no simulation at severity 0", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "0" } });
+    expect(screen.getByLabelText(/^Severity/)).toHaveValue("0");
+    for (const vision of ["protan", "deutan", "tritan", "achroma"]) {
+      expect(within(screen.getByTestId(`cvd-row-${vision}`)).getByText("#ff0000")).toBeInTheDocument();
+    }
+  });
+
+  it("marks neutrals as unchanged instead of implying an error", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#808080" } });
+    expect(within(screen.getByTestId("cvd-row-protan")).getByText("(unchanged)")).toBeInTheDocument();
+    expect(within(screen.getByTestId("cvd-row-normal")).queryByText("(unchanged)")).toBeNull();
   });
 
   it("warns when two colors look alike", () => {

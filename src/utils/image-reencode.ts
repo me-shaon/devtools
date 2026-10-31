@@ -3,6 +3,7 @@
  * metadata. The browser applies the EXIF orientation while it decodes, so the
  * output is upright.
  */
+import type { ProcessOptions, ProcessedPixels } from "./image-process";
 import type { RgbaImage, WasmFormat } from "./wasm-encoders";
 
 export type OutputFormat = "jpeg" | "png" | "webp" | "avif";
@@ -58,18 +59,18 @@ const blobBytes = (blob: Blob) =>
 let worker: Worker | null = null;
 let workerFailed = false;
 let nextId = 0;
-const pending = new Map<number, { resolve: (b: Uint8Array) => void; reject: (e: Error) => void }>();
+const pending = new Map<number, { resolve: (r: ProcessedPixels) => void; reject: (e: Error) => void }>();
 
 const getWorker = () => {
   if (workerFailed || typeof Worker === "undefined") return null;
   if (!worker) {
     try {
       worker = new Worker(new URL("./image-encode.worker.ts", import.meta.url), { type: "module" });
-      worker.onmessage = (event: MessageEvent<{ id: number; bytes?: Uint8Array; error?: string }>) => {
+      worker.onmessage = (event: MessageEvent<{ id: number; result?: ProcessedPixels; error?: string }>) => {
         const task = pending.get(event.data.id);
         if (!task) return;
         pending.delete(event.data.id);
-        if (event.data.bytes) task.resolve(event.data.bytes);
+        if (event.data.result) task.resolve(event.data.result);
         else task.reject(new Error(event.data.error ?? "Encoding failed."));
       };
       worker.onerror = () => {
@@ -87,27 +88,31 @@ const getWorker = () => {
   return worker;
 };
 
-const encodeOnMainThread: WasmEncoder = async (format, image, quality) => {
-  const { encodeWithWasm } = await import("./wasm-encoders");
-  return encodeWithWasm(format, image, quality);
+const processOnMainThread = async (image: RgbaImage, options: ProcessOptions) => {
+  const { processPixels } = await import("./image-process");
+  return processPixels(image, options);
 };
 
-/** Encodes in the worker. Falls back to the main thread when the worker cannot start. */
-export const encodeWasm: WasmEncoder = async (format, image, quality) => {
+/** Resizes and encodes in the worker. Falls back to the main thread when the worker cannot start. */
+export async function processWasm(image: RgbaImage, options: ProcessOptions): Promise<ProcessedPixels> {
   const active = getWorker();
-  if (!active) return encodeOnMainThread(format, image, quality);
+  if (!active) return processOnMainThread(image, options);
   const id = ++nextId;
   const copy = new Uint8ClampedArray(image.data);
   try {
-    return await new Promise<Uint8Array>((resolve, reject) => {
+    return await new Promise<ProcessedPixels>((resolve, reject) => {
       pending.set(id, { resolve, reject });
-      active.postMessage({ id, format, quality, width: image.width, height: image.height, data: copy }, [copy.buffer]);
+      active.postMessage({ id, options, width: image.width, height: image.height, data: copy }, [copy.buffer]);
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "worker-failed") return encodeOnMainThread(format, image, quality);
+    if (error instanceof Error && error.message === "worker-failed") return processOnMainThread(image, options);
     throw error;
   }
-};
+}
+
+/** Encodes in the worker. Falls back to the main thread when the worker cannot start. */
+export const encodeWasm: WasmEncoder = async (format, image, quality) =>
+  (await processWasm(image, { format, quality })).bytes;
 
 /* ------------------------------------------------------------------ */
 /* Decode and encode                                                   */
@@ -158,7 +163,7 @@ export async function decodeToCanvas(blob: Blob, format: OutputFormat): Promise<
   return canvas;
 }
 
-const canvasPixels = (canvas: HTMLCanvasElement): RgbaImage => {
+export const canvasPixels = (canvas: HTMLCanvasElement): RgbaImage => {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Could not read the image pixels.");
   const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);

@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 56 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 58 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
@@ -82,6 +82,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **JSON Diff** - Compare two JSON or YAML documents by value, list changes by path, match array items by key, and copy the changes as a JSON Patch
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
+- **Mermaid Renderer** - Render Mermaid flowcharts and sequence, class, ER, state, Gantt, and other diagrams as you type, and save them as SVG or PNG
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 - **Semver Calculator** - Check versions against npm, Cargo, Composer, or Python ranges, see the range as plain comparators, and compare two versions
 - **XML Inspector** - Format or minify XML, and query nodes or values with XPath 1.0 and namespace prefixes
@@ -126,11 +127,12 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Cron Calculator** - Explain any cron expression in plain English, with a field breakdown and the next runs in your chosen time zone. Build a schedule one field at a time in the visual builder
 - **Date Format Translator** - Translate date format strings between Go, strftime, Java, date-fns, Moment.js, PHP, and .NET, with a live preview
 - **Stopwatch** - Record laps and split times, and copy or export them as CSV. The stopwatch keeps running while you use other tools
+- **Time Zone Converter** - Convert a date and time from one time zone to UTC, local time, and other zones. It handles daylight saving time changes and shows when the date changes
 
 ### Media
 
 - **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha. Build shades and harmony palettes from that color and copy them as CSS variables or JSON. Check WCAG contrast with a suggested fix, simulate color blindness on colors and images, and reuse the last 8 colors. Build linear and radial CSS gradients in the Gradient tab
-- **Image Converter** - Convert a single image or batch-compress JPG, PNG, and WebP files locally. Crop, resize, rotate, and flip an image in the Edit Image tab
+- **Image Converter** - Convert and compress single images or batches locally to JPEG (MozJPEG), PNG (OxiPNG), WebP, or AVIF. Resize with Lanczos3 and other filters, and reduce the color palette. Crop, rotate, and flip an image in the Edit Image tab
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
 
 ### Text Tools

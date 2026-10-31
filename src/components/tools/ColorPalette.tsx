@@ -17,6 +17,7 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
+  makeColor,
   MAX_COMPARE_COLORS,
   PALETTE_MODES,
   RECENT_COLORS_STORAGE_KEY,
@@ -406,25 +407,26 @@ const visionLabel = (vision: Vision, severity: number) =>
 const simulate = (color: ParsedColor, vision: Vision, severity: number) =>
   vision === "normal" ? color : simulateCvd(color, vision, severity);
 
+const WHITE = makeColor({ r: 255, g: 255, b: 255 });
+const BLACK = makeColor({ r: 0, g: 0, b: 0 });
+
 /** Default list: typical error, success, info, and warning colors. Red and green collide for deutans. */
 const DEFAULT_COMPARE = "#d32f2f, #388e3c, #1976d2, #f9a825";
 
 function ColorVision({
   color,
-  fg,
-  bg,
   compareText,
   setCompareText,
 }: {
   color: ParsedColor | null;
-  fg: string;
-  bg: string;
   compareText: string;
   setCompareText: (value: string) => void;
 }) {
   const [severityPercent, setSeverityPercent] = useState(100);
   const severity = severityPercent / 100;
-  const { fgColor, bgColor } = resolveContrastPair(fg, bg);
+  // Pick the sample surface once from the original color, so a lower ratio in another row
+  // is caused by the simulation rather than by swapping the background between rows.
+  const textSurface = !color || getContrastRatio(WHITE, color) >= getContrastRatio(BLACK, color) ? WHITE : BLACK;
   const debouncedCompare = useDebouncedValue(compareText, 200);
   const list = parseColorList(debouncedCompare);
   const listColors = list.colors.map((item) => item.color);
@@ -444,12 +446,12 @@ function ColorVision({
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="cvd-severity">
-            Severity: {severityPercent}%{severityPercent === 100 ? " (full)" : ""}
+            Severity: {severityPercent}%{severityPercent === 0 ? " (No simulation)" : severityPercent === 100 ? " (full)" : ""}
           </Label>
           <input
             id="cvd-severity"
             type="range"
-            min={10}
+            min={0}
             max={100}
             step={10}
             value={severityPercent}
@@ -457,8 +459,8 @@ function ColorVision({
             className="w-full accent-primary"
           />
           <p className="text-xs text-muted-foreground">
-            100% shows the full forms (protanopia, deuteranopia, tritanopia, achromatopsia). Lower values show
-            the milder anomaly forms.
+            0% applies no simulation. 100% shows the full forms (protanopia, deuteranopia, tritanopia,
+            achromatopsia). Lower values show the milder anomaly forms.
           </p>
         </div>
 
@@ -468,7 +470,7 @@ function ColorVision({
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-3 font-medium">Vision</th>
                 <th className="py-2 pr-3 font-medium">Color</th>
-                <th className="py-2 pr-3 font-medium">Text on background</th>
+                <th className="py-2 pr-3 font-medium">Sample text</th>
                 <th className="py-2 font-medium">Contrast</th>
               </tr>
             </thead>
@@ -476,9 +478,9 @@ function ColorVision({
               {VISIONS.map((vision) => {
                 const label = visionLabel(vision, severity);
                 const sim = color ? simulate(color, vision, severity) : null;
-                const simFg = fgColor && bgColor ? simulate(fgColor, vision, severity) : null;
-                const simBg = fgColor && bgColor ? simulate(bgColor, vision, severity) : null;
-                const ratio = simFg && simBg ? getContrastRatio(simFg, simBg) : null;
+                const ratio = sim ? getContrastRatio(sim, textSurface) : null;
+                const unchanged =
+                  sim !== null && color !== null && vision !== "normal" && severity > 0 && sim.hex === color.hex;
                 return (
                   <tr key={vision} className="border-t" data-testid={`cvd-row-${vision}`}>
                     <th scope="row" className="py-2 pr-3 text-left font-medium">
@@ -493,21 +495,22 @@ function ColorVision({
                             aria-hidden="true"
                           />
                           <code className="text-xs">{sim.hex}</code>
+                          {unchanged && <span className="text-xs text-muted-foreground">(unchanged)</span>}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No color</span>
                       )}
                     </td>
                     <td className="py-2 pr-3">
-                      {simFg && simBg ? (
+                      {sim ? (
                         <div
                           className="rounded border px-2 py-1"
-                          style={{ backgroundColor: simBg.hex, color: simFg.hex }}
+                          style={{ backgroundColor: textSurface.hex, color: sim.hex }}
                         >
                           Sample text
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">No pair</span>
+                        <span className="text-xs text-muted-foreground">No color</span>
                       )}
                     </td>
                     <td className="py-2 whitespace-nowrap" data-testid={`cvd-contrast-${vision}`}>
@@ -526,7 +529,9 @@ function ColorVision({
             </tbody>
           </table>
           <p className="mt-2 text-xs text-muted-foreground">
-            Color comes from the converter. Text and background come from the contrast checker.
+            Sample text shows the converter color for each vision type on black or white, whichever the original color
+            contrasts with better. The ratio is that simulated text on the chosen surface, so a failing row means the
+            color stops being legible for that vision type.
           </p>
         </div>
 
@@ -610,6 +615,9 @@ function ColorVision({
 const MAX_IMAGE_SIDE = 1600;
 /** Pixels per chunk. The transform yields to the browser between chunks. */
 const CHUNK_PIXELS = 200_000;
+/** Caption for the simulated preview; severity 0 means the picture is shown unchanged. */
+const imagePreviewLabel = (type: CvdType, severity: number) =>
+  severity <= 0 ? "No simulation" : cvdLabel(type, severity);
 
 function CvdImage({ severity }: { severity: number }) {
   const [source, setSource] = useState<{ url: string; name: string } | null>(null);
@@ -775,9 +783,9 @@ function CvdImage({ severity }: { severity: number }) {
             <canvas
               ref={canvasRef}
               className="max-h-80 w-full rounded object-contain"
-              aria-label={`${source.name} as seen with ${cvdLabel(type, severity)}`}
+              aria-label={`${source.name} as seen with ${imagePreviewLabel(type, severity)}`}
             />
-            <figcaption className="text-xs text-muted-foreground">{cvdLabel(type, severity)}</figcaption>
+            <figcaption className="text-xs text-muted-foreground">{imagePreviewLabel(type, severity)}</figcaption>
           </figure>
         </div>
       ) : (
@@ -925,8 +933,6 @@ export function ColorPalette() {
       <ContrastChecker fg={fg} setFg={setFg} bg={bg} setBg={setBg} working={working ? colorInput.trim() : null} />
       <ColorVision
         color={working}
-        fg={fg}
-        bg={bg}
         compareText={compareText}
         setCompareText={setCompareText}
       />

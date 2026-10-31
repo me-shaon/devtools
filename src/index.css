@@ -367,6 +367,9 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .html-preview-handle:hover::after, .html-preview-handle[data-active]::after, .html-preview-handle:focus-visible::after { background: hsl(var(--primary)); }
 .html-preview-devicebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px; font-size: 12px; color: hsl(var(--muted-foreground)); border-bottom: 1px solid hsl(var(--border) / .5); }
 .html-preview-full .html-preview-devicebar { padding: 0; border: 0; }
+.mermaid-stage { display: flex; flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.mermaid-stage > img { margin: auto; max-width: none; }
+.mermaid-stage[data-fit] > img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .html-preview-devicebar select, .html-preview-devicebar input { height: 26px; background-color: transparent; color: hsl(var(--foreground)); padding: 0 8px; border: 1px solid hsl(var(--input)); border-radius: 5px; font-size: 12px; }
 .html-preview-devicebar select { padding-right: 24px; }
 .html-preview-devicebar option { background: var(--surface-editor); }

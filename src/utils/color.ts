@@ -146,7 +146,8 @@ export function parseColor(input: string): Color | null {
 
 type Rgb = { r: number; g: number; b: number };
 
-function makeColor(rgb: Rgb, alpha = 1): Color {
+/** Build a Color from channel values, e.g. fixed surfaces like pure black or white. */
+export function makeColor(rgb: Rgb, alpha = 1): Color {
   return {
     hex: rgbToHex(rgb.r, rgb.g, rgb.b),
     rgb,
