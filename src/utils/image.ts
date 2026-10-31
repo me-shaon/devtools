@@ -1,4 +1,6 @@
-export type ImageFormat = "jpeg" | "png" | "webp";
+import type { ResizeMethod } from "./image-process";
+
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif";
 export type CompressionTarget = "original" | ImageFormat;
 
 export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -29,6 +31,8 @@ export function getMimeTypeFromFormat(format: ImageFormat): string {
       return "image/png";
     case "webp":
       return "image/webp";
+    case "avif":
+      return "image/avif";
   }
 }
 
@@ -44,7 +48,7 @@ export function getEffectiveOutputFormat(
 }
 
 export function canAdjustQuality(format: ImageFormat): boolean {
-  return format === "jpeg" || format === "webp";
+  return format !== "png";
 }
 
 export function shouldShowQualityControl(
@@ -95,3 +99,62 @@ export function buildOutputFilename(fileName: string, format: ImageFormat): stri
   const sanitizedName = fileName.replace(/\.[^/.]+$/, "");
   return `${sanitizedName}.${getExtensionForFormat(format)}`;
 }
+
+export interface ResizeSettings {
+  enabled: boolean;
+  method: ResizeMethod;
+  /** Scale in percent. Bulk mode uses only this value. */
+  percent: number;
+  /** A custom size in pixels. When set, it replaces the percent in single mode. */
+  width: number | null;
+  height: number | null;
+  keepAspect: boolean;
+  premultiply: boolean;
+  linearRgb: boolean;
+}
+
+export const DEFAULT_RESIZE: ResizeSettings = {
+  enabled: false,
+  method: "lanczos3",
+  percent: 100,
+  width: null,
+  height: null,
+  keepAspect: true,
+  premultiply: true,
+  linearRgb: true,
+};
+
+export const RESIZE_METHODS: { id: ResizeMethod; label: string }[] = [
+  { id: "lanczos3", label: "Lanczos3 (sharpest)" },
+  { id: "mitchell", label: "Mitchell" },
+  { id: "catrom", label: "Catmull-Rom" },
+  { id: "triangle", label: "Triangle (bilinear)" },
+];
+
+export const RESIZE_PRESETS = [100, 75, 50, 33.33, 25];
+
+/** Largest output side in pixels, so a typo cannot ask for a huge image. */
+export const MAX_RESIZE_SIDE = 16384;
+
+/** The output size for an image, or null when resizing is off. */
+export function resizeTarget(
+  sourceWidth: number,
+  sourceHeight: number,
+  settings: ResizeSettings,
+): { width: number; height: number } | null {
+  if (!settings.enabled) return null;
+  const clampSide = (value: number) => Math.min(MAX_RESIZE_SIDE, Math.max(1, Math.round(value)));
+  if (settings.width !== null && settings.height !== null) {
+    return { width: clampSide(settings.width), height: clampSide(settings.height) };
+  }
+  const scale = settings.percent / 100;
+  return { width: clampSide(sourceWidth * scale), height: clampSide(sourceHeight * scale) };
+}
+
+export interface PaletteSettings {
+  enabled: boolean;
+  colors: number;
+  dither: boolean;
+}
+
+export const DEFAULT_PALETTE: PaletteSettings = { enabled: false, colors: 256, dither: true };

@@ -26,6 +26,8 @@ import {
   FileText,
   FileVideo,
   Globe,
+  Earth,
+  Workflow,
   Hash,
   Image as ImageIcon,
   Key,
@@ -97,7 +99,7 @@ export const ALL_TOOLS = [
   { icon: Scan, name: "Cron Calculator", id: "cron-calculator", category: "Time & Date", keywords: ["cron", "crontab", "schedule", "builder", "quartz"] },
   { icon: CalendarCog, name: "Date Format Translator", id: "date-format", category: "Time & Date", keywords: ["strftime", "golang time format", "go layout", "simpledateformat", "datetimeformatter", "moment format", "dayjs", "date-fns", "php date", "dotnet", "date format"] },
   { icon: Palette, name: "Color Palette", id: "color-palette", category: "Media", keywords: ["gradient", "css gradient", "color", "colour", "hex", "rgb", "hsl", "hwb", "oklch", "alpha", "picker", "palette", "harmony", "complementary", "triadic", "shades", "contrast", "wcag", "color blind", "colorblind", "protanopia", "deuteranopia", "tritanopia", "cvd", "accessibility"] },
-  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "compress", "resize", "crop", "rotate", "flip"] },
+  { icon: ImageIcon, name: "Image Converter", id: "image-converter", category: "Media", keywords: ["image", "png", "jpg", "webp", "avif", "mozjpeg", "oxipng", "palette", "compress", "resize", "crop", "rotate", "flip"] },
   { icon: ScanLine, name: "QR Reader", id: "qr-reader", category: "Media", keywords: ["qr", "scan", "decode", "read"] },
   { icon: AlignLeft, name: "Text Compare", id: "text-compare", category: "Text Tools", keywords: ["diff", "compare", "difference"] },
   { icon: Shield, name: "JWT Decoder", id: "jwt-decoder", category: "Text Tools", keywords: ["jwt", "token", "bearer", "decode", "verify"] },
@@ -115,6 +117,8 @@ export const ALL_TOOLS = [
   { icon: Hash, name: "Checksum", id: "checksum", category: "Utilities", keywords: ["crc", "crc32", "crc32c", "crc16", "modbus", "luhn", "check digit"] },
   { icon: FileSearch, name: "ASN.1 Inspector", id: "asn1-inspector", category: "Development Tools", keywords: ["asn1", "asn.1", "der", "ber", "pem", "oid", "binary"] },
   { icon: Clock, name: "Stopwatch", id: "stopwatch", category: "Time & Date", keywords: ["stopwatch", "timer", "elapsed", "laps", "split"] },
+  { icon: Earth, name: "Time Zone Converter", id: "time-zone-converter", category: "Time & Date", keywords: ["timezone", "time zone", "convert", "utc to local", "local to utc", "world clock", "dst", "daylight saving", "meeting time"] },
+  { icon: Workflow, name: "Mermaid Renderer", id: "mermaid-renderer", category: "Development Tools", keywords: ["mermaid", "diagram", "flowchart", "sequence diagram", "class diagram", "er diagram", "gantt", "mind map", "svg", "png"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -128,6 +132,8 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  "mermaid-renderer": lazyNamed(() => import("@/components/tools/MermaidRenderer"), "MermaidRenderer"),
+  "time-zone-converter": lazyNamed(() => import("@/components/tools/TimeZoneConverter"), "TimeZoneConverter"),
   stopwatch: lazyNamed(() => import("@/components/tools/Stopwatch"), "Stopwatch"),
   "asn1-inspector": lazyNamed(() => import("@/components/tools/Asn1Inspector"), "Asn1Inspector"),
   checksum: lazyNamed(() => import("@/components/tools/Checksum"), "Checksum"),
