@@ -615,6 +615,18 @@ function ColorVision({
 const MAX_IMAGE_SIDE = 1600;
 /** Pixels per chunk. The transform yields to the browser between chunks. */
 const CHUNK_PIXELS = 200_000;
+/** Files larger than this are rejected before decoding; no real screenshot needs 20 MB. */
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+/** A small file can still decode to enormous pixels, so the dimension product is capped too. */
+const MAX_IMAGE_PIXELS = 40_000_000;
+/** A full pixel pass is too heavy to re-run on every slider step, so changes coalesce. */
+const SEVERITY_DEBOUNCE_MS = 150;
+
+const IMAGE_TYPE_ERROR = "Choose an image file, such as a PNG, JPEG, or WebP.";
+const IMAGE_SIZE_ERROR = "This image is larger than 20 MB. Choose a smaller file.";
+const IMAGE_PIXEL_ERROR = "This image has too many pixels (limit 40 megapixels). Resize it and try again.";
+const IMAGE_DECODE_ERROR = "Cannot read this image. It may be damaged or in an unsupported format.";
+const IMAGE_CANVAS_ERROR = "This system cannot draw the image.";
 /** Caption for the simulated preview; severity 0 means the picture is shown unchanged. */
 const imagePreviewLabel = (type: CvdType, severity: number) =>
   severity <= 0 ? "No simulation" : cvdLabel(type, severity);
@@ -629,19 +641,44 @@ function CvdImage({ severity }: { severity: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pixelsRef = useRef<ImageData | null>(null);
   const [pixelsVersion, setPixelsVersion] = useState(0);
+  const loadTokenRef = useRef(0);
+  const settledSeverity = useDebouncedValue(severity, SEVERITY_DEBOUNCE_MS);
 
+  // Release the previous object URL when the image is replaced, cleared, or unmounted.
   useEffect(() => () => {
     if (source) URL.revokeObjectURL(source.url);
   }, [source]);
 
-  // Load the image once into an offscreen copy of its pixels.
-  useEffect(() => {
-    pixelsRef.current = null;
-    if (!source) return;
-    let cancelled = false;
+  // Decode within the bounds first and only swap the image in once it is usable,
+  // so a rejected file never destroys the image the user is already looking at.
+  const open = (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError(IMAGE_TYPE_ERROR);
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(IMAGE_SIZE_ERROR);
+      return;
+    }
+    const token = ++loadTokenRef.current;
+    const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      if (cancelled) return;
+      if (token !== loadTokenRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      if (!img.naturalWidth || !img.naturalHeight) {
+        URL.revokeObjectURL(url);
+        setError(IMAGE_DECODE_ERROR);
+        return;
+      }
+      if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
+        URL.revokeObjectURL(url);
+        setError(IMAGE_PIXEL_ERROR);
+        return;
+      }
       const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
       const width = Math.max(1, Math.round(img.naturalWidth * scale));
       const height = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -650,19 +687,22 @@ function CvdImage({ severity }: { severity: number }) {
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        setError("This system cannot draw the image.");
+        URL.revokeObjectURL(url);
+        setError(IMAGE_CANVAS_ERROR);
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
       pixelsRef.current = ctx.getImageData(0, 0, width, height);
+      setError("");
+      setSource({ url, name: file.name });
       setPixelsVersion((v) => v + 1);
     };
-    img.onerror = () => !cancelled && setError("Cannot read this image.");
-    img.src = source.url;
-    return () => {
-      cancelled = true;
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (token === loadTokenRef.current) setError(IMAGE_DECODE_ERROR);
     };
-  }, [source]);
+    img.src = url;
+  };
 
   // Transform a copy of the pixels in chunks, so a large image does not freeze the UI.
   useEffect(() => {
@@ -677,7 +717,7 @@ function CvdImage({ severity }: { severity: number }) {
     const step = () => {
       if (cancelled) return;
       const end = Math.min(total, start + CHUNK_PIXELS);
-      simulateCvdPixels(data, type, severity, start, end);
+      simulateCvdPixels(data, type, settledSeverity, start, end);
       start = end;
       if (start < total) {
         setTimeout(step, 0);
@@ -692,17 +732,7 @@ function CvdImage({ severity }: { severity: number }) {
     return () => {
       cancelled = true;
     };
-  }, [pixelsVersion, type, severity]);
-
-  const open = (file: File | undefined | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Drop an image file, such as a PNG or JPEG.");
-      return;
-    }
-    setError("");
-    setSource({ url: URL.createObjectURL(file), name: file.name });
-  };
+  }, [pixelsVersion, type, settledSeverity, source]);
 
   const onDragOver = (event: DragEvent<HTMLDivElement>) => {
     if (!Array.from(event.dataTransfer.types).includes("Files")) return;
@@ -759,8 +789,11 @@ function CvdImage({ severity }: { severity: number }) {
         </select>
         {source && (
           <button type="button" className="toolbar-text-button" onClick={() => {
+              loadTokenRef.current++;
+              pixelsRef.current = null;
               setSource(null);
               setBusy(false);
+              setError("");
             }}
           >
             Clear
@@ -791,7 +824,7 @@ function CvdImage({ severity }: { severity: number }) {
       ) : (
         <p className="text-xs text-muted-foreground">
           Drop a screenshot, chart, or design here to see it with a color vision deficiency. The image stays on this
-          device.
+          device. Use an image up to 20 MB and 40 megapixels.
         </p>
       )}
     </div>
