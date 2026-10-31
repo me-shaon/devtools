@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent } from "react";
+import { useRef, type KeyboardEvent, type PointerEvent } from "react";
 import type { GradientStop } from "@/utils/gradient";
 
 const clamp = (value: number) => (Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0);
@@ -8,16 +8,21 @@ type GradientBarProps = {
   css: string;
   selectedId: number | null;
   onSelect: (id: number) => void;
-  /** Adds a stop at the position and returns its id, so the same pointer can start dragging it. */
-  onAdd: (position: number) => number;
+  /**
+   * Adds a stop at the position and returns its id, so the same pointer can start dragging it.
+   * Returns null when no stop can be added.
+   */
+  onAdd: (position: number) => number | null;
   onMove: (id: number, position: number) => void;
+  /** Removes a stop. Called only when more than two stops remain. */
+  onRemove: (id: number) => void;
 };
 
 /**
  * The gradient preview doubles as the stop editor: click the track to add a stop, drag a handle
- * to reposition it. The per-stop numeric fields stay the keyboard-accessible path for the same job.
+ * to reposition it. A focused handle moves with the arrow keys and is removed with Delete.
  */
-export function GradientBar({ stops, css, selectedId, onSelect, onAdd, onMove }: GradientBarProps) {
+export function GradientBar({ stops, css, selectedId, onSelect, onAdd, onMove, onRemove }: GradientBarProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingId = useRef<number | null>(null);
 
@@ -52,14 +57,36 @@ export function GradientBar({ stops, css, selectedId, onSelect, onAdd, onMove }:
     trackRef.current?.releasePointerCapture?.(event.pointerId);
   };
 
+  const handleKeyDown = (stop: GradientStop, event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 10 : 1;
+    const position = clamp(stop.position);
+    const next: Record<string, number> = {
+      ArrowLeft: position - step,
+      ArrowDown: position - step,
+      ArrowRight: position + step,
+      ArrowUp: position + step,
+      Home: 0,
+      End: 100,
+    };
+    if (event.key in next) {
+      onMove(stop.id, clamp(next[event.key]));
+    } else if ((event.key === "Delete" || event.key === "Backspace") && stops.length > 2) {
+      onRemove(stop.id);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  };
+
   return (
     <div
-      className="rounded-lg border overflow-hidden"
+      className="rounded-lg border"
       style={{
         backgroundImage: "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%)",
         backgroundSize: "16px 16px",
       }}
     >
+      {/* The track rounds its own corners instead of clipping, so handles at 0% and 100% stay whole */}
       <div
         ref={trackRef}
         role="group"
@@ -68,17 +95,24 @@ export function GradientBar({ stops, css, selectedId, onSelect, onAdd, onMove }:
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className="relative h-40 cursor-copy touch-none"
+        className="relative h-40 cursor-copy touch-none rounded-[inherit]"
         style={{ backgroundImage: css || undefined }}
       >
         {stops.map((stop, index) => (
-          <button
+          <div
             key={stop.id}
-            type="button"
+            role="slider"
+            tabIndex={0}
             data-stop-handle={stop.id}
-            aria-label={`Stop ${index + 1} at ${Math.round(clamp(stop.position))} percent`}
+            aria-label={`Stop ${index + 1} handle`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(clamp(stop.position))}
+            aria-valuetext={`${Math.round(clamp(stop.position))}%`}
+            onFocus={() => onSelect(stop.id)}
+            onKeyDown={(event) => handleKeyDown(stop, event)}
             className={
-              "absolute bottom-2 h-6 w-3 -translate-x-1/2 cursor-grab rounded border shadow " +
+              "absolute bottom-2 h-6 w-3 -translate-x-1/2 cursor-grab rounded border shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
               (stop.id === selectedId ? "border-white ring-2 ring-primary" : "border-black/40")
             }
             style={{ left: `${clamp(stop.position)}%`, background: stop.color }}

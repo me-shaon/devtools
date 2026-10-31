@@ -6,7 +6,7 @@ import {
   gradientCss,
   type GradientStop,
 } from "@/utils/gradient";
-import { parseColor } from "@/utils/color";
+import { makeColor, parseColor, toHexWithAlpha } from "@/utils/color";
 import { CopyButton } from "./CopyButton";
 import { GradientBar } from "./GradientBar";
 
@@ -37,7 +37,7 @@ const PRESET_DEFS: Preset[] = [
     ],
   },
   {
-    name: "Grape",
+    name: "Navy",
     type: "linear",
     angle: 135,
     stops: [
@@ -85,6 +85,9 @@ const PRESETS = PRESET_DEFS.map((preset) => ({
   ),
 }));
 
+/** The most stops a gradient can have, from the Add stop button or the preview bar. */
+const MAX_STOPS = 16;
+
 // Memoized because Color Palette keeps it mounted and renders it again on each color edit.
 export const GradientBuilder = memo(function GradientBuilder() {
   const [type, setType] = useState<"linear" | "radial">("linear");
@@ -100,7 +103,8 @@ export const GradientBuilder = memo(function GradientBuilder() {
     setStops((s) =>
       s.map((stop) => (stop.id === id ? { ...stop, ...patch } : stop)),
     );
-  const addStop = (position: number): number => {
+  const addStop = (position: number): number | null => {
+    if (stops.length >= MAX_STOPS) return null;
     const id = nextId.current++;
     setStops((s) => [...s, { id, color: colorAtPosition(s, position), position }]);
     setSelectedId(id);
@@ -111,14 +115,12 @@ export const GradientBuilder = memo(function GradientBuilder() {
     setSelectedId((sel) => (sel === id ? null : sel));
   };
   // The native picker can only express opaque colors, so carry the stop's existing alpha across.
+  // A fully transparent stop becomes opaque, or the picked color would stay invisible.
   const pickColor = (stop: GradientStop, hex: string) => {
-    const parsed = parseColor(stop.color);
-    const alphaByte = parsed ? Math.round(parsed.alpha * 255) : 255;
-    const alpha =
-      alphaByte > 0 && alphaByte < 255
-        ? alphaByte.toString(16).padStart(2, "0")
-        : "";
-    update(stop.id, { color: hex + alpha });
+    const picked = parseColor(hex);
+    if (!picked) return;
+    const alpha = parseColor(stop.color)?.alpha || 1;
+    update(stop.id, { color: toHexWithAlpha(makeColor(picked.rgb, alpha)) });
   };
   const applyPreset = (preset: Preset) => {
     const withIds = preset.stops.map((stop) => ({
@@ -192,10 +194,12 @@ export const GradientBuilder = memo(function GradientBuilder() {
         onSelect={setSelectedId}
         onAdd={addStop}
         onMove={(id, position) => update(id, { position })}
+        onRemove={removeStop}
       />
       <p className="text-sm text-muted-foreground">
-        Click the preview to add a stop, drag a handle to move it, or edit a
-        stop below. Stops are sorted by position in the CSS output.
+        Click the preview to add a stop, and drag a handle to move it. A
+        focused handle moves with the arrow keys, and Delete removes it. Stops
+        are sorted by position in the CSS output.
       </p>
       {stops.map((stop, i) => (
         <div key={stop.id} className="flex flex-wrap items-center gap-3">
@@ -242,7 +246,7 @@ export const GradientBuilder = memo(function GradientBuilder() {
       ))}
       <Button
         variant="outline"
-        disabled={stops.length >= 16}
+        disabled={stops.length >= MAX_STOPS}
         onClick={() => addStop(50)}
       >
         Add stop

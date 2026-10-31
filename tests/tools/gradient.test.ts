@@ -45,6 +45,17 @@ describe("colorAtPosition", () => {
     ];
     expect(colorAtPosition(mixed, 50)).toBe("#808080");
   });
+  it("mixes alpha between translucent stops", () => {
+    expect(
+      colorAtPosition(
+        [
+          { id: 0, color: "#ff000000", position: 0 },
+          { id: 1, color: "#ff0000", position: 100 },
+        ],
+        50,
+      ),
+    ).toBe("#ff000080");
+  });
   it("falls back to gray when no stop parses", () => {
     expect(colorAtPosition([{ id: 0, color: "nope", position: 0 }], 40)).toBe("#808080");
     expect(colorAtPosition([], 40)).toBe("#808080");

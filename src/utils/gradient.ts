@@ -1,4 +1,4 @@
-import { parseColor, formatColor, rgbToHex } from "./color";
+import { parseColor, formatColor, makeColor, toHexWithAlpha, type Color } from "./color";
 export interface GradientStop {
   id: number;
   color: string;
@@ -30,29 +30,29 @@ export function gradientCss(
 
 /**
  * The gradient's color at a position, mixed in sRGB between the two stops that bracket it.
- * Seeds a stop added by clicking the preview bar. Outside the covered range it returns the
- * nearest stop's color, and unparseable or empty stops fall back to a neutral gray.
+ * Alpha is mixed too. Seeds a stop added by clicking the preview bar. Outside the covered range
+ * it returns the nearest stop's color, and unparseable or empty stops fall back to a neutral gray.
  */
 export function colorAtPosition(stops: GradientStop[], position: number): string {
   const points = stops
-    .map((stop) => ({ position: stop.position, rgb: parseColor(stop.color)?.rgb ?? null }))
-    .filter((point): point is { position: number; rgb: { r: number; g: number; b: number } } =>
-      point.rgb !== null && Number.isFinite(point.position),
-    )
+    .map((stop) => ({ position: stop.position, color: parseColor(stop.color) }))
+    .filter((point): point is { position: number; color: Color } => point.color !== null && Number.isFinite(point.position))
     .sort((a, b) => a.position - b.position);
   if (points.length === 0) return "#808080";
   const first = points[0];
   const last = points[points.length - 1];
-  if (position <= first.position) return rgbToHex(first.rgb.r, first.rgb.g, first.rgb.b);
-  if (position >= last.position) return rgbToHex(last.rgb.r, last.rgb.g, last.rgb.b);
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    if (position >= a.position && position <= b.position) {
-      const t = b.position === a.position ? 0 : (position - a.position) / (b.position - a.position);
-      const channel = (x: number, y: number) => Math.round(x + (y - x) * t);
-      return rgbToHex(channel(a.rgb.r, b.rgb.r), channel(a.rgb.g, b.rgb.g), channel(a.rgb.b, b.rgb.b));
-    }
-  }
-  return rgbToHex(last.rgb.r, last.rgb.g, last.rgb.b);
+  if (position <= first.position) return toHexWithAlpha(first.color);
+  if (position >= last.position) return toHexWithAlpha(last.color);
+  const index = points.findIndex((point) => point.position >= position);
+  const a = points[index - 1].color;
+  const b = points[index].color;
+  const span = points[index].position - points[index - 1].position;
+  const t = span === 0 ? 0 : (position - points[index - 1].position) / span;
+  const mix = (x: number, y: number) => x + (y - x) * t;
+  return toHexWithAlpha(
+    makeColor(
+      { r: Math.round(mix(a.rgb.r, b.rgb.r)), g: Math.round(mix(a.rgb.g, b.rgb.g)), b: Math.round(mix(a.rgb.b, b.rgb.b)) },
+      mix(a.alpha, b.alpha),
+    ),
+  );
 }
