@@ -136,6 +136,12 @@ function ColorConverter({
               placeholder="#3b82f6, rgb(59 130 246 / 50%), oklch(62% 0.19 260), tomato"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (color) onCommit(color);
+                }
+              }}
               onBlur={() => color && onCommit(color)}
               className="font-mono"
               spellCheck={false}
