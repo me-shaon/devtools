@@ -817,7 +817,7 @@ function CvdImage({ severity }: { severity: number }) {
       ) : (
         <p className="text-xs text-muted-foreground">
           Drop a screenshot, chart, or design here to see it with a color vision deficiency. The image stays on this
-          device; images up to 20 MB and 40 megapixels are supported.
+          device. Use an image up to 20 MB and 40 megapixels.
         </p>
       )}
     </div>
