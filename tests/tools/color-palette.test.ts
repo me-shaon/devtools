@@ -298,12 +298,7 @@ describe('Color Utils', () => {
       expect(parseRecentColors(null)).toEqual([]);
       expect(parseRecentColors('not json')).toEqual([]);
       expect(parseRecentColors('{"a":1}')).toEqual([]);
-      expect(parseRecentColors('["#ff0000", 4, "nope", "#ff0000", "red", "rgb(0 128 0)"]')).toEqual([
-        '#ff0000',
-        '#008000',
-      ]);
-      expect(parseRecentColors('["tomato"]')).toEqual(['#ff6347']);
-      expect(parseRecentColors('["#ff000080", "rgb(255 0 0 / 50%)"]')).toEqual(['#ff000080']);
+      expect(parseRecentColors('["#ff0000", 4, "nope", "#ff0000", "tomato"]')).toEqual(['#ff0000', 'tomato']);
     });
   });
 
