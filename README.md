@@ -4,7 +4,9 @@ A desktop workspace with 58 developer utilities for macOS, Windows, and Linux. F
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
-[Download](#download) · [Tools](#tools) · [Workspace and shortcuts](#workspace-and-shortcuts) · [Development](#development)
+[Download](#download) · [Tools](#tools) · [Workspace and shortcuts](#workspace-and-shortcuts) · [Development](#development) · [Support](#support)
+
+[![Support on Patreon](https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white)](https://www.patreon.com/ahmed_shamim)
 
 ![DevTools in light mode with JSON Viewer, formatted output, and multiple open tool tabs](assets/app-screenshot.png)
 
@@ -243,6 +245,10 @@ Built with Tauri 2, React 18, TypeScript, Vite, Tailwind CSS, and shadcn/ui. Tau
 ## Contributing
 
 Pull requests are welcome. For major changes, open an issue first to discuss the proposal. Include a description of the change and the checks you ran; include current screenshots for UI changes.
+
+## Support
+
+DevTools is free and open source. If it saves you time, you can support its development on [Patreon](https://www.patreon.com/ahmed_shamim).
 
 ## Brand assets
 
