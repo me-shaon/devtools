@@ -557,7 +557,7 @@ function ColorVision({
             )}
             {list.truncated > 0 && (
               <p className="text-xs text-muted-foreground" role="status">
-                Only the first {MAX_COMPARE_COLORS} colors are simulated; {list.truncated} more were ignored.
+                Only the first {MAX_COMPARE_COLORS} colors are simulated. {list.truncated} more were ignored.
               </p>
             )}
           </div>
