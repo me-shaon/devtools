@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, Code2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { startRun } from "@/utils/code-runner";
 
 type Language = "javascript" | "html" | "css";
 
@@ -26,7 +27,10 @@ console.log("Doubled:", doubled);
 async function fetchData() {
   console.log("Fetching data...");
   return { status: "success", data: [1, 2, 3] };
-}`,
+}
+
+const response = await fetchData();
+console.log("Response:", response);`,
   html: `<!DOCTYPE html>
 <html>
 <head>
@@ -78,46 +82,53 @@ body {
 export function CodePlayground() {
   const [language, setLanguage] = useState<Language>("javascript");
   const [code, setCode] = useState(snippets.javascript);
-  const [output, setOutput] = useState("");
+  const [status, setStatus] = useState<"idle" | "running" | "done">("idle");
+  const [logs, setLogs] = useState<string[]>([]);
+  const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const stopRun = useRef<(() => void) | null>(null);
+
+  // Leaving the tool stops a run that is still going
+  useEffect(() => () => stopRun.current?.(), []);
+
+  const resetOutput = () => {
+    stopRun.current?.();
+    stopRun.current = null;
+    setStatus("idle");
+    setLogs([]);
+    setResult(null);
+    setError("");
+  };
 
   const runCode = () => {
-    setError("");
-    setOutput("");
+    resetOutput();
 
     if (language === "javascript") {
-      const originalLog = console.log;
-      try {
-        // Capture console.log output
-        const logs: string[] = [];
-        console.log = (...args) => {
-          logs.push(args.map(arg =>
-            typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-          ).join(" "));
-        };
-
-        // Execute the code
-        const result = new Function(code)();
-
-        // Restore console.log
-        console.log = originalLog;
-
-        setOutput(logs.join("\n") || (result !== undefined ? String(result) : "Code executed successfully"));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        console.log = originalLog;
-      }
+      setStatus("running");
+      stopRun.current = startRun(code, {
+        onLog: (text) => setLogs((current) => [...current, text]),
+        onResult: (text) => {
+          setResult(text);
+          setStatus("done");
+        },
+        onError: (message) => {
+          setError(message);
+          setStatus("done");
+        },
+      });
     } else {
       toast.info(`${language.toUpperCase()} preview is read-only`);
     }
   };
 
+  const output =
+    logs.join("\n") ||
+    (status === "done" ? result ?? "Code executed successfully" : status === "running" ? "Running..." : "");
+
   const updateLanguage = (lang: Language) => {
+    resetOutput();
     setLanguage(lang);
     setCode(snippets[lang]);
-    setOutput("");
-    setError("");
   };
 
   return (
@@ -182,10 +193,10 @@ export function CodePlayground() {
         </CardHeader>
         <CardContent>
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-            <li>JavaScript code can be executed directly in the browser</li>
+            <li>JavaScript runs in an isolated sandbox. It cannot reach the app, your files, or the network.</li>
             <li>HTML and CSS are provided for reference and copying</li>
-            <li>Console.log output is captured and displayed</li>
-            <li>Be careful with infinite loops or blocking operations</li>
+            <li>Console output is captured and displayed. You can use await at the top level.</li>
+            <li>A run stops after 5 seconds, so a loop that never ends cannot freeze the app.</li>
           </ul>
         </CardContent>
       </Card>
