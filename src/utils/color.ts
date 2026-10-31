@@ -146,7 +146,8 @@ export function parseColor(input: string): Color | null {
 
 type Rgb = { r: number; g: number; b: number };
 
-function makeColor(rgb: Rgb, alpha = 1): Color {
+/** Build a Color from channel values, e.g. fixed surfaces like pure black or white. */
+export function makeColor(rgb: Rgb, alpha = 1): Color {
   return {
     hex: rgbToHex(rgb.r, rgb.g, rgb.b),
     rgb,
@@ -914,11 +915,20 @@ export function findConfusablePairs(
   return pairs.sort((x, y) => x.distance - y.distance);
 }
 
+/** Most colors the comparison tools accept in one list. The pairwise check is O(n squared). */
+export const MAX_COMPARE_COLORS = 32;
+
 /**
  * Split a list of CSS colors. Commas, semicolons, spaces, and new lines separate colors,
  * but not inside parentheses, so "rgb(0 0 0), red" gives two colors.
+ *
+ * Valid colors are capped at `maxColors`; the extras are counted in `truncated` and every
+ * invalid token is still reported, so callers can tell cut-off input from bad input.
  */
-export function parseColorList(text: string): { colors: { input: string; color: Color }[]; invalid: string[] } {
+export function parseColorList(
+  text: string,
+  maxColors = MAX_COMPARE_COLORS,
+): { colors: { input: string; color: Color }[]; invalid: string[]; truncated: number } {
   const tokens: string[] = [];
   let depth = 0;
   let current = '';
@@ -935,10 +945,17 @@ export function parseColorList(text: string): { colors: { input: string; color: 
   if (current) tokens.push(current);
   const colors: { input: string; color: Color }[] = [];
   const invalid: string[] = [];
+  const cap = Math.max(1, maxColors);
+  let truncated = 0;
   for (const token of tokens) {
     const color = parseColor(token);
-    if (color) colors.push({ input: token, color });
-    else invalid.push(token);
+    if (!color) {
+      invalid.push(token);
+    } else if (colors.length < cap) {
+      colors.push({ input: token, color });
+    } else {
+      truncated++;
+    }
   }
-  return { colors, invalid };
+  return { colors, invalid, truncated };
 }

@@ -17,6 +17,15 @@ describe("ColorPalette recent colors", () => {
     expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
   });
 
+  it("records the color when Enter commits it, without blurring", () => {
+    render(<ColorPalette />);
+    const input = screen.getByLabelText("Color");
+    fireEvent.change(input, { target: { value: "tomato" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByRole("button", { name: "Use recent color #ff6347" })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem(RECENT_COLORS_STORAGE_KEY)!)).toEqual(["#ff6347"]);
+  });
+
   it("does not record an invalid color", () => {
     render(<ColorPalette />);
     const input = screen.getByLabelText("Color");
@@ -220,16 +229,44 @@ describe("ColorPalette color blindness simulator", () => {
     expect(achroma.slice(1, 3)).toBe(achroma.slice(3, 5));
   });
 
-  it("shows the simulated contrast of the checker pair", () => {
+  it("previews the working color as sample text on its more legible surface", () => {
     render(<ColorPalette />);
-    fireEvent.change(screen.getByLabelText("Foreground"), { target: { value: "#d32f2f" } });
-    const fg = parseColor("#d32f2f")!;
-    const bg = parseColor("#ffffff")!;
-    const ratio = getContrastRatio(simulateCvd(fg, "protan"), simulateCvd(bg, "protan"));
-    const expected = (Math.floor(ratio * 100) / 100).toFixed(2);
-    expect(screen.getByTestId("contrast-ratio")).toHaveTextContent("4.97:1");
-    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("4.97:1 AA");
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    const normal = within(screen.getByTestId("cvd-row-normal")).getByText("Sample text");
+    const protan = within(screen.getByTestId("cvd-row-protan")).getByText("Sample text");
+    expect(normal.style.color).toBe("rgb(255, 0, 0)");
+    expect(protan.style.color).not.toBe(normal.style.color);
+    // Red gains contrast on black, so every row uses black as the surface.
+    expect(normal.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    const protanSim = simulateCvd(parseColor("#ff0000")!, "protan");
+    const expected = (Math.floor(getContrastRatio(protanSim, parseColor("#000000")!) * 100) / 100).toFixed(2);
+    expect(screen.getByTestId("cvd-contrast-normal")).toHaveTextContent("5.25:1 AA");
     expect(screen.getByTestId("cvd-contrast-protan")).toHaveTextContent(`${expected}:1`);
+  });
+
+  it("uses a light surface for a dark working color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#000000" } });
+    expect(within(screen.getByTestId("cvd-row-normal")).getByText("Sample text").style.backgroundColor).toBe(
+      "rgb(255, 255, 255)",
+    );
+  });
+
+  it("applies no simulation at severity 0", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "0" } });
+    expect(screen.getByLabelText(/^Severity/)).toHaveValue("0");
+    for (const vision of ["protan", "deutan", "tritan", "achroma"]) {
+      expect(within(screen.getByTestId(`cvd-row-${vision}`)).getByText("#ff0000")).toBeInTheDocument();
+    }
+  });
+
+  it("marks neutrals as unchanged instead of implying an error", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#808080" } });
+    expect(within(screen.getByTestId("cvd-row-protan")).getByText("(unchanged)")).toBeInTheDocument();
+    expect(within(screen.getByTestId("cvd-row-normal")).queryByText("(unchanged)")).toBeNull();
   });
 
   it("warns when two colors look alike", () => {
@@ -258,6 +295,16 @@ describe("ColorPalette color blindness simulator", () => {
     await waitFor(() => expect(screen.getByText("Not a valid CSS color: nope")).toBeInTheDocument());
   });
 
+  it("reports when the compare list is cut off at the color cap", async () => {
+    render(<ColorPalette />);
+    const text = Array.from({ length: 40 }, (_, i) => `#${i.toString(16).padStart(6, "0")}`).join(" ");
+    fireEvent.change(screen.getByLabelText("Colors to compare"), { target: { value: text } });
+    await waitFor(() =>
+      expect(screen.getByText(/Only the first 32 colors are simulated\. 8 more were ignored/)).toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId(/^cvd-palette-swatch$/)).toHaveLength(32 * 5);
+  });
+
   it("switches to the anomaly forms below full severity", () => {
     render(<ColorPalette />);
     fireEvent.change(screen.getByLabelText(/^Severity/), { target: { value: "60" } });
@@ -283,5 +330,78 @@ describe("ColorPalette color blindness simulator", () => {
     expect(new Set(values).size).toBe(6);
     await waitFor(() => expect(screen.getByText(/Every pair stays distinct/)).toBeInTheDocument());
     expect(screen.queryByRole("alert", { name: "Hard to tell apart" })).toBeNull();
+  });
+});
+
+describe("channel and alpha editing", () => {
+  it("applies a red channel edit to every format and the recent list", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "200" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    expect(screen.getByLabelText("Color")).toHaveValue("#c882f6");
+    expect(codeFor("HEX").textContent).toBe("#C882F6");
+    expect(codeFor("RGB").textContent).toBe("rgb(200, 130, 246)");
+    expect(screen.getByRole("button", { name: "Use recent color #c882f6" })).toBeInTheDocument();
+  });
+
+  it("commits a channel edit on Enter without blurring", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Green"), { target: { value: "10" } });
+    fireEvent.keyDown(screen.getByLabelText("Green"), { key: "Enter" });
+    expect(codeFor("RGB").textContent).toBe("rgb(59, 10, 246)");
+  });
+
+  it("rejects an out-of-range channel value and keeps the working color", () => {
+    render(<ColorPalette />);
+    const hexBefore = codeFor("HEX").textContent;
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "300" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    expect(screen.getByLabelText("Red")).toHaveValue("300");
+    expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "true");
+    expect(within(screen.getByTestId("channel-editor")).getByRole("alert")).toHaveTextContent("Use 0 to 255.");
+    expect(codeFor("HEX").textContent).toBe(hexBefore);
+  });
+
+  it("drops a rejected channel draft when the color changes elsewhere", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "300" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    expect(screen.getByLabelText("Red")).toHaveValue("255");
+    expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "false");
+    expect(within(screen.getByTestId("channel-editor")).queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the other HSL channels when the hue changes", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "180" } });
+    fireEvent.keyDown(screen.getByLabelText("Hue"), { key: "Enter" });
+    expect(screen.getByLabelText("Saturation")).toHaveValue("91");
+    expect(screen.getByLabelText("Lightness")).toHaveValue("60");
+    expect(screen.getByLabelText("Color")).toHaveValue("#3bf6f6");
+  });
+
+  it("round-trips the alpha slider through 8-digit hex and rgba output", () => {
+    render(<ColorPalette />);
+    const slider = screen.getByLabelText("Alpha");
+    fireEvent.change(slider, { target: { value: "50" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f680");
+    expect(codeFor("HEX").textContent).toBe("#3B82F680");
+    expect(codeFor("RGB").textContent).toBe("rgba(59, 130, 246, 0.5)");
+    fireEvent.change(slider, { target: { value: "0" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f600");
+    fireEvent.change(slider, { target: { value: "100" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f6");
+    fireEvent.pointerUp(slider);
+    expect(screen.getByRole("button", { name: "Use recent color #3b82f6" })).toBeInTheDocument();
+  });
+
+  it("keeps alpha when a channel is edited on a translucent color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "rgb(59 130 246 / 50%)" } });
+    fireEvent.change(screen.getByLabelText("Blue"), { target: { value: "100" } });
+    fireEvent.keyDown(screen.getByLabelText("Blue"), { key: "Enter" });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b826480");
+    expect(codeFor("RGB").textContent).toBe("rgba(59, 130, 100, 0.5)");
   });
 });
