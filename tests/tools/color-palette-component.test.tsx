@@ -332,3 +332,76 @@ describe("ColorPalette color blindness simulator", () => {
     expect(screen.queryByRole("alert", { name: "Hard to tell apart" })).toBeNull();
   });
 });
+
+describe("channel and alpha editing", () => {
+  it("applies a red channel edit to every format and the recent list", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "200" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    expect(screen.getByLabelText("Color")).toHaveValue("#c882f6");
+    expect(codeFor("HEX").textContent).toBe("#C882F6");
+    expect(codeFor("RGB").textContent).toBe("rgb(200, 130, 246)");
+    expect(screen.getByRole("button", { name: "Use recent color #c882f6" })).toBeInTheDocument();
+  });
+
+  it("commits a channel edit on Enter without blurring", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Green"), { target: { value: "10" } });
+    fireEvent.keyDown(screen.getByLabelText("Green"), { key: "Enter" });
+    expect(codeFor("RGB").textContent).toBe("rgb(59, 10, 246)");
+  });
+
+  it("rejects an out-of-range channel value and keeps the working color", () => {
+    render(<ColorPalette />);
+    const hexBefore = codeFor("HEX").textContent;
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "300" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    expect(screen.getByLabelText("Red")).toHaveValue("300");
+    expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "true");
+    expect(within(screen.getByTestId("channel-editor")).getByRole("alert")).toHaveTextContent("Use 0 to 255.");
+    expect(codeFor("HEX").textContent).toBe(hexBefore);
+  });
+
+  it("drops a rejected channel draft when the color changes elsewhere", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Red"), { target: { value: "300" } });
+    fireEvent.blur(screen.getByLabelText("Red"));
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "#ff0000" } });
+    expect(screen.getByLabelText("Red")).toHaveValue("255");
+    expect(screen.getByLabelText("Red")).toHaveAttribute("aria-invalid", "false");
+    expect(within(screen.getByTestId("channel-editor")).queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the other HSL channels when the hue changes", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Hue"), { target: { value: "180" } });
+    fireEvent.keyDown(screen.getByLabelText("Hue"), { key: "Enter" });
+    expect(screen.getByLabelText("Saturation")).toHaveValue("91");
+    expect(screen.getByLabelText("Lightness")).toHaveValue("60");
+    expect(screen.getByLabelText("Color")).toHaveValue("#3bf6f6");
+  });
+
+  it("round-trips the alpha slider through 8-digit hex and rgba output", () => {
+    render(<ColorPalette />);
+    const slider = screen.getByLabelText("Alpha");
+    fireEvent.change(slider, { target: { value: "50" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f680");
+    expect(codeFor("HEX").textContent).toBe("#3B82F680");
+    expect(codeFor("RGB").textContent).toBe("rgba(59, 130, 246, 0.5)");
+    fireEvent.change(slider, { target: { value: "0" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f600");
+    fireEvent.change(slider, { target: { value: "100" } });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b82f6");
+    fireEvent.pointerUp(slider);
+    expect(screen.getByRole("button", { name: "Use recent color #3b82f6" })).toBeInTheDocument();
+  });
+
+  it("keeps alpha when a channel is edited on a translucent color", () => {
+    render(<ColorPalette />);
+    fireEvent.change(screen.getByLabelText("Color"), { target: { value: "rgb(59 130 246 / 50%)" } });
+    fireEvent.change(screen.getByLabelText("Blue"), { target: { value: "100" } });
+    fireEvent.keyDown(screen.getByLabelText("Blue"), { key: "Enter" });
+    expect(screen.getByLabelText("Color")).toHaveValue("#3b826480");
+    expect(codeFor("RGB").textContent).toBe("rgba(59, 130, 100, 0.5)");
+  });
+});

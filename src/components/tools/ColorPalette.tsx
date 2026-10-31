@@ -17,6 +17,7 @@ import {
   cvdLabel,
   findConfusablePairs,
   formatColor,
+  hslToRgb,
   makeColor,
   MAX_COMPARE_COLORS,
   PALETTE_MODES,
@@ -92,6 +93,20 @@ const swatchStyle = (css: string) => ({
   background: `linear-gradient(${css}, ${css}), repeating-conic-gradient(#d4d4d4 0 25%, #ffffff 0 50%) 0 0 / 16px 16px`,
 });
 
+/** HEX with the alpha byte added when the color is translucent, the same form the inputs accept. */
+const hexWithAlpha = (rgb: { r: number; g: number; b: number }, alpha: number) => toHexWithAlpha(makeColor(rgb, alpha));
+
+const CHANNEL_FIELDS = [
+  { id: "r", label: "Red", max: 255 },
+  { id: "g", label: "Green", max: 255 },
+  { id: "b", label: "Blue", max: 255 },
+  { id: "h", label: "Hue", max: 360 },
+  { id: "s", label: "Saturation", max: 100 },
+  { id: "l", label: "Lightness", max: 100 },
+] as const;
+
+type ChannelId = (typeof CHANNEL_FIELDS)[number]["id"];
+
 function ColorConverter({
   input,
   setInput,
@@ -110,6 +125,56 @@ function ColorConverter({
   const settledInput = useDebouncedValue(input, 400);
   const showError = settledInput === input && input.trim() !== "" && !color;
   const cssValue = values?.find((v) => v.label === "RGB")?.value ?? "transparent";
+
+  // One channel draft at a time. Invalid drafts only flag their own field; the
+  // working color keeps the last value committed from any surface.
+  const [draft, setDraft] = useState<{ id: ChannelId; text: string } | null>(null);
+  const [invalidChannel, setInvalidChannel] = useState<ChannelId | null>(null);
+
+  // A draft belongs to the color it was typed against. Another field changing the color drops it.
+  const colorHex = color ? toHexWithAlpha(color) : null;
+  useEffect(() => {
+    setDraft(null);
+    setInvalidChannel(null);
+  }, [colorHex]);
+
+  const channelValue = (id: ChannelId): string => {
+    if (!color) return "";
+    switch (id) {
+      case "r": return String(color.rgb.r);
+      case "g": return String(color.rgb.g);
+      case "b": return String(color.rgb.b);
+      case "h": return String(Math.round(color.hsl.h));
+      case "s": return String(Math.round(color.hsl.s));
+      case "l": return String(Math.round(color.hsl.l));
+    }
+  };
+
+  const commitChannel = (id: ChannelId, text: string) => {
+    if (!color) return;
+    const field = CHANNEL_FIELDS.find((f) => f.id === id)!;
+    const trimmed = text.trim();
+    const n = /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : NaN;
+    if (!Number.isFinite(n) || n < 0 || n > field.max) {
+      setInvalidChannel(id);
+      return;
+    }
+    setInvalidChannel(null);
+    setDraft(null);
+    const rgb =
+      id === "r" || id === "g" || id === "b"
+        ? { ...color.rgb, [id]: Math.round(n) }
+        : hslToRgb(id === "h" ? n : color.hsl.h, id === "s" ? n : color.hsl.s, id === "l" ? n : color.hsl.l);
+    const next = hexWithAlpha(rgb, color.alpha);
+    setInput(next);
+    const parsed = parseColor(next);
+    if (parsed) onCommit(parsed);
+  };
+
+  const setAlpha = (percent: number) => {
+    if (!color) return;
+    setInput(hexWithAlpha(color.rgb, percent / 100));
+  };
 
   const pick = (hex: string) => {
     // The native picker has no alpha channel. Keep a translucent color's alpha,
@@ -206,6 +271,71 @@ function ColorConverter({
               ))}
             </div>
           </div>
+        )}
+        {color && (
+          <fieldset className="space-y-3 border-t pt-4" data-testid="channel-editor">
+            <legend className="text-xs font-medium text-muted-foreground">Adjust channels</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {CHANNEL_FIELDS.map((field) => {
+                const isDrafted = draft?.id === field.id;
+                const text = isDrafted ? draft.text : channelValue(field.id);
+                return (
+                  <div key={field.id} className="space-y-1">
+                    <Label htmlFor={`channel-${field.id}`} className="text-xs">
+                      {field.label}
+                    </Label>
+                    <Input
+                      id={`channel-${field.id}`}
+                      value={text}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-invalid={invalidChannel === field.id}
+                      aria-describedby={invalidChannel === field.id ? `channel-${field.id}-error` : undefined}
+                      onChange={(e) => setDraft({ id: field.id, text: e.target.value })}
+                      onBlur={() => {
+                        if (isDrafted) commitChannel(field.id, text);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitChannel(field.id, text);
+                        }
+                      }}
+                      className="font-mono"
+                    />
+                    {invalidChannel === field.id && (
+                      <p id={`channel-${field.id}-error`} className="text-xs text-destructive" role="alert">
+                        Use 0 to {field.max}.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="color-alpha" className="text-xs">
+                  Alpha
+                </Label>
+                <output className="text-xs tabular-nums text-muted-foreground">
+                  {Math.round(color.alpha * 100)}%
+                </output>
+              </div>
+              <input
+                id="color-alpha"
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={Math.round(color.alpha * 100)}
+                onChange={(e) => setAlpha(Number(e.target.value))}
+                onPointerUp={() => color && onCommit(color)}
+                onKeyUp={() => color && onCommit(color)}
+                className="w-full accent-primary"
+              />
+            </div>
+          </fieldset>
         )}
       </CardContent>
     </Card>
