@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 57 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 58 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
@@ -82,6 +82,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **JSON Diff** - Compare two JSON or YAML documents by value, list changes by path, match array items by key, and copy the changes as a JSON Patch
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
+- **Mermaid Renderer** - Render Mermaid flowcharts and sequence, class, ER, state, Gantt, and other diagrams as you type, and save them as SVG or PNG
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 - **Semver Calculator** - Check versions against npm, Cargo, Composer, or Python ranges, see the range as plain comparators, and compare two versions
 - **XML Inspector** - Format or minify XML, and query nodes or values with XPath 1.0 and namespace prefixes
