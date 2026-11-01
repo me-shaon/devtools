@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ export function PasswordGenerator() {
     symbols: true,
   });
 
-  const generatePassword = () => {
+  const generatePassword = useCallback(() => {
     const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const lowercase = "abcdefghijklmnopqrstuvwxyz";
     const numbers = "0123456789";
@@ -45,11 +45,11 @@ export function PasswordGenerator() {
     }
 
     setPassword(result);
-  };
+  }, [length, options]);
 
   useEffect(() => {
     generatePassword();
-  }, [length, options]);
+  }, [generatePassword]);
 
 
   const getStrength = () => {

@@ -73,7 +73,7 @@ export function UnitConverter() {
   const currentConversion = conversions[category];
 
   useEffect(() => {
-    const unitKeys = Object.keys(currentConversion.units);
+    const unitKeys = Object.keys(conversions[category].units);
     if (unitKeys.length > 0) {
       const newFrom = unitKeys[0];
       const newTo = unitKeys.length > 1 ? unitKeys[1] : unitKeys[0];
@@ -91,8 +91,9 @@ export function UnitConverter() {
 
     try {
       const value = parseFloat(fromValue);
-      const from = currentConversion.units[fromUnit];
-      const to = currentConversion.units[toUnit];
+      const { units } = conversions[category];
+      const from = units[fromUnit];
+      const to = units[toUnit];
 
       if (!from || !to) {
         setToValue("");

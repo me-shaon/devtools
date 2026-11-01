@@ -316,12 +316,12 @@ const DevToolsApp = () => {
 
 
   const [paletteQuery, setPaletteQuery] = useState("");
-  const openCommandPaletteWith = (query: string) => {
+  const openCommandPaletteWith = useCallback((query: string) => {
     setShowShortcutSettings(false);
     setPaletteQuery(query);
     setShowCommandPalette(true);
-  };
-  const openCommandPalette = () => openCommandPaletteWith("");
+  }, []);
+  const openCommandPalette = useCallback(() => openCommandPaletteWith(""), [openCommandPaletteWith]);
 
   const closeCommandPalette = () => {
     setShowCommandPalette(false);
@@ -488,7 +488,7 @@ const DevToolsApp = () => {
         }
       },
     }),
-    [favorites],
+    [favorites, openCommandPalette],
   );
 
   useKeyboardShortcuts({
