@@ -367,4 +367,13 @@ describe("shared helpers for video metadata", () => {
     expect(out.items.some((f) => f.kind === "ai" && f.source === "XMP box")).toBe(true);
     expect(out.items.map((f) => f.label)).toContain("Content Credentials (C2PA)");
   });
+
+  it("names the maker from a C2PA 2.x claim_generator_info entry", () => {
+    const out = new Findings();
+    // CBOR: "claim_generator_info": [{ "name": "OpenAI Media Service API" }]
+    const manifest = "c2pa\x74claim_generator_info\x81\xa1\x64name\x78\x18OpenAI Media Service API";
+    readC2pa(Uint8Array.from(manifest, (c) => c.charCodeAt(0)), out, "PNG caBX");
+    const detail = out.items.find((f) => f.label === "Content Credentials (C2PA)")?.detail;
+    expect(detail).toContain("made by OpenAI Media Service API");
+  });
 });

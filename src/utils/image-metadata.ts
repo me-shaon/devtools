@@ -569,10 +569,27 @@ export function readXmp(xml: string, out: Findings, source: string) {
 /* C2PA / JUMBF, ICC, IPTC                                             */
 /* ------------------------------------------------------------------ */
 
+/** The CBOR text value of `key`, when the key appears within 64 characters after `from`. */
+function cborTextAfter(text: string, from: number, key: string): string | null {
+  const at = text.indexOf(String.fromCharCode(0x60 + key.length) + key, from);
+  if (at < 0 || at - from > 64) return null;
+  let p = at + 1 + key.length;
+  const head = text.charCodeAt(p++);
+  if (head >> 5 !== 3) return null;
+  let length = head & 0x1f;
+  if (length === 24) length = text.charCodeAt(p++);
+  else if (length > 24) return null;
+  const value = text.slice(p, p + length);
+  return /^[\x20-\x7e]{3,80}$/.test(value) ? value : null;
+}
+
 export function readC2pa(data: Uint8Array, out: Findings, source: string) {
   const text = latin1(data);
   const isC2pa = /c2pa/.test(text);
-  const generator = /claim_generator[^A-Za-z0-9]{1,4}([\x20-\x7e]{3,80})/.exec(text)?.[1];
+  // C2PA 2.x names the maker in claim_generator_info; older manifests use a claim_generator string.
+  const infoAt = text.indexOf("claim_generator_info");
+  const generator = (infoAt >= 0 ? cborTextAfter(text, infoAt, "name") : null)
+    ?? /claim_generator(?!_info)[^A-Za-z0-9]{1,4}([\x20-\x7e]{3,80})/.exec(text)?.[1];
   const hint = findAiHint(text);
   out.add({
     kind: "provenance",
