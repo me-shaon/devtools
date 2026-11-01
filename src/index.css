@@ -234,10 +234,20 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .workspace-sidebar nav { padding: 8px 4px; }
 .workspace-sidebar nav button { min-height: 32px; }
 .workspace-sidebar nav button:hover { background-color: hsl(var(--foreground) / .055); }
-.sidebar-footer { margin: 0 14px; padding: 12px 0 14px; border-color: hsl(var(--foreground) / .08); }
-.sidebar-footer > div > p { text-align: left; font-size: 11px; margin-bottom: 8px; }
-.sidebar-footer-actions { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; }
-.sidebar-footer-actions > button:first-child { width: 100%; padding: 0; border: 0; background: transparent; height: 24px; font-size: 11px; box-shadow: none; }
+/* Footer: one row with the version (opens What's New), an update badge, Support, and Settings. */
+.sidebar-footer { display: flex; align-items: center; gap: 6px; margin: 0 14px; padding: 8px 0 10px; border-color: hsl(var(--foreground) / .08); }
+.sidebar-version { display: inline-flex; align-items: center; gap: 5px; height: 24px; margin-left: -6px; padding: 0 6px; border-radius: 5px; font-size: 11px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+button.sidebar-version:hover { color: hsl(var(--foreground)); background: hsl(var(--foreground) / .055); }
+.sidebar-unread-dot { width: 6px; height: 6px; border-radius: 999px; background: hsl(var(--primary)); }
+.sidebar-update { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; border-radius: 999px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 1px 3px hsl(var(--primary) / .35); transition: transform .15s ease, box-shadow .15s ease; }
+.sidebar-update:hover { transform: scale(1.08); box-shadow: 0 2px 6px hsl(var(--primary) / .45); }
+/* While downloading, a ring around the badge fills with the progress. */
+.sidebar-update[data-status="downloading"] { background: conic-gradient(hsl(var(--primary)) var(--progress, 0%), hsl(var(--primary) / .25) 0); }
+.sidebar-update[data-status="downloading"] svg { padding: 2px; border-radius: 999px; background: hsl(var(--primary)); box-sizing: content-box; width: 9px; height: 9px; }
+.sidebar-update[data-status="error"] { background: transparent; box-shadow: none; color: hsl(var(--destructive)); }
+.sidebar-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; color: hsl(var(--muted-foreground)); transition: color .15s ease, background-color .15s ease; }
+.sidebar-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--foreground) / .055); }
+.sidebar-icon-button[aria-label="Support DevTools"]:hover { color: hsl(350 75% 55%); }
 .workspace-home { width: 100%; max-width: 650px; padding: clamp(36px, 7vh, 68px) 36px 36px; }
 .workspace-home > div:first-child { margin-bottom: 25px; }
 .workspace-home h1 { font-size: 22px; line-height: 28px; letter-spacing: -.02em; font-weight: 650; }
@@ -272,16 +282,56 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .modal-header p { font-size: 12px; line-height: 1.5; }
 .modal-footer { border-top: 1px solid hsl(var(--foreground) / .08); padding-top: 12px; padding-bottom: 12px; }
 .modal-body { background: hsl(var(--card)); scrollbar-width: thin; }
-.shortcut-dialog { display: flex; flex-direction: column; width: 100%; max-width: 760px; max-height: calc(100dvh - 48px); }
 .shortcut-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 14px 0; }
 .shortcut-row + .shortcut-row { border-top: 1px solid hsl(var(--foreground) / .07); }
 .shortcut-description { font-size: 12px; line-height: 1.5; margin-top: 3px; max-width: 40ch; }
-.shortcut-row > div:last-child { display: grid; grid-template-columns: 105px 40px 40px; gap: 3px; }
-.shortcut-recorder { min-width: 105px; font-size: 12px; height: 30px; box-shadow: inset 0 1px hsl(var(--card)), 0 1px 2px rgb(0 0 0 / .04); }
+/* Recorder, then two narrow columns (Clear and Reset, or the switch and Reset), so every row lines up. */
+.shortcut-row > div:last-child { display: grid; grid-template-columns: minmax(124px, max-content) 52px 48px; align-items: center; justify-items: center; gap: 4px; }
+.shortcut-row > div:last-child > .shortcut-recorder { justify-self: stretch; }
+.shortcut-recorder { min-width: 124px; padding: 0 12px; white-space: nowrap; font-size: 12px; height: 30px; box-shadow: inset 0 1px hsl(var(--card)), 0 1px 2px rgb(0 0 0 / .04); }
 .shortcut-recorder[aria-pressed="true"] { box-shadow: 0 0 0 2px hsl(var(--ring) / .25); }
 .shortcut-row button:not(.shortcut-recorder) { padding: 0 7px; font-size: 11px; color: hsl(var(--muted-foreground)); }
-.shortcut-dialog section > div > p { font-size: 12px; }
 .release-dialog { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
+.release-support { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: hsl(var(--muted-foreground)); border-radius: 5px; padding: 4px 6px; margin-left: -6px; }
+.release-support:hover { color: hsl(var(--foreground)); }
+.release-support:hover svg { color: hsl(350 75% 55%); }
+
+/* Settings: a section list on the left and the selected section on the right. */
+.settings-dialog { display: flex; flex-direction: column; width: 100%; max-width: 780px; height: min(600px, calc(100dvh - 48px)); }
+.settings-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 172px minmax(0, 1fr); }
+.settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; border-right: 1px solid hsl(var(--foreground) / .08); background: hsl(var(--accent) / .25); }
+.settings-nav button { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: hsl(var(--muted-foreground)); text-align: left; }
+.settings-nav button:hover { color: hsl(var(--foreground)); background: hsl(var(--foreground) / .055); }
+.settings-nav button[aria-current="page"] { color: hsl(var(--accent-foreground)); background: hsl(var(--accent)); font-weight: 500; }
+.settings-body { min-height: 0; overflow-y: auto; padding: 20px 24px; font-size: 13px; }
+.settings-body h3 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.settings-body section > h3 + .settings-row { border-top: 0; }
+.settings-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 12px 0; border-top: 1px solid hsl(var(--foreground) / .07); }
+.settings-row p.text-muted-foreground, .settings-body section > div > p { font-size: 12px; line-height: 1.5; }
+.settings-row-control { display: flex; align-items: center; justify-content: flex-end; }
+.settings-section-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.settings-section-header p { font-size: 12px; margin-top: 2px; }
+.settings-segmented { display: inline-flex; padding: 2px; border-radius: 8px; background: hsl(var(--muted)); box-shadow: inset 0 0 0 1px hsl(var(--foreground) / .06); }
+.settings-segmented button { height: 26px; padding: 0 12px; border-radius: 6px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.settings-segmented button:hover { color: hsl(var(--foreground)); }
+.settings-segmented button[aria-checked="true"] { background: hsl(var(--card)); color: hsl(var(--foreground)); font-weight: 500; box-shadow: 0 1px 2px rgb(17 30 53 / .12), 0 0 0 1px hsl(var(--foreground) / .06); }
+.settings-about { display: flex; align-items: center; gap: 14px; }
+.settings-about img { width: 40px; height: 40px; }
+.settings-about .font-semibold { font-size: 15px; }
+.settings-about p.text-muted-foreground { font-size: 12px; }
+.settings-support { display: flex; gap: 14px; padding: 16px; border-radius: 10px; background: linear-gradient(120deg, hsl(350 80% 60% / .08), hsl(var(--primary) / .06)); box-shadow: inset 0 0 0 1px hsl(var(--foreground) / .07); }
+.settings-support-icon { flex-shrink: 0; margin-top: 1px; color: hsl(350 75% 55%); fill: hsl(350 75% 55% / .15); }
+.settings-support p { font-size: 12px; line-height: 1.5; margin-top: 2px; }
+.settings-support-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.settings-link-button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 6px; font-size: 12px; font-weight: 500; background: hsl(var(--card)); box-shadow: inset 0 0 0 1px hsl(var(--input)); }
+.settings-link-button:hover { background: hsl(var(--accent)); }
+.settings-link-button.is-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: none; }
+.settings-link-button.is-primary:hover { background: hsl(var(--primary) / .9); }
+.settings-links { display: flex; flex-direction: column; margin-top: 6px; }
+.settings-links a { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 13px; color: hsl(var(--foreground)); border-top: 1px solid hsl(var(--foreground) / .07); }
+.settings-links a:first-child { border-top: 0; }
+.settings-links a svg { color: hsl(var(--muted-foreground)); }
+.settings-links a:hover { color: hsl(var(--primary)); }
 .command-surface .modal-header { padding: 8px 12px; }
 .command-surface .modal-footer { padding: 10px 16px; font-size: 11px; }
 /* The selected palette row sits on the accent tint, so its secondary text darkens with it. */
@@ -290,6 +340,10 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .dark .modal-header { box-shadow: inset 0 1px rgb(255 255 255 / .06); }
 @media (max-width: 600px) {
   .shortcut-row { grid-template-columns: 1fr; gap: 9px; }
+  .settings-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .settings-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid hsl(var(--foreground) / .08); }
+  .settings-nav button { flex-shrink: 0; }
+  .settings-body { padding: 16px 18px; }
   .modal-header, .modal-footer { padding-left: 18px; padding-right: 18px; }
 }
 @media (prefers-reduced-transparency: reduce) {
@@ -443,8 +497,6 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .command-surface .modal-header { border-bottom: 1px solid hsl(var(--border)); }
 .command-surface .modal-header input,
 .command-surface .modal-header input:focus-visible { outline: none; box-shadow: none; border: 0; font-size: 15px; }
-.sidebar-auto-update { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 8px; font-size: 11px; color: hsl(var(--muted-foreground)); }
-.sidebar-auto-update button[role="switch"] { transform: scale(.8); transform-origin: right center; }
 /* Regex Tester: the highlight layer sits behind a transparent textarea. Both wrap the same way
    and reserve the same scrollbar gutter, so the marks line up with the text. */
 .toolbar-actions:has(> .regex-fields) { flex: 1; min-width: 0; }

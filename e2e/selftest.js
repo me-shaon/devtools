@@ -75,10 +75,10 @@
 
     await step("shows What's New for the installed version through the Tauri API", async () => {
       // A first launch opens the dialog by itself. A later launch has marked it as seen.
-      await waitFor(() => text().includes(`Version v${version}`), "app start", 20000);
+      await waitFor(() => text().includes(`v${version}`), "app start", 20000);
       await delay(1000);
       if (!document.querySelector('[role="dialog"]')) {
-        buttons("What's New")[0].click();
+        document.querySelector('button[aria-label^="What\'s New"]').click();
       }
       const dialog = await waitFor(() => document.querySelector('[role="dialog"]'), "What's New dialog");
       await waitFor(() => text(dialog).includes(`DevTools v${version}`), "dialog version");
@@ -87,7 +87,7 @@
     });
 
     await step("shows the app version in the sidebar footer", async () => {
-      await waitFor(() => text().includes(`Version v${version}`), "footer version");
+      await waitFor(() => text().includes(`v${version}`), "footer version");
     });
 
     await step("opens every tool", async () => {

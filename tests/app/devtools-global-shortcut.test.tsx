@@ -45,16 +45,17 @@ afterEach(() => {
 });
 
 describe("DevToolsApp global shortcut", () => {
-  it("registers Ctrl+Shift+Space by default and pauses it while the Shortcuts dialog is open", async () => {
+  it("registers Ctrl+Shift+Space by default and pauses it while the Shortcuts settings are open", async () => {
     render(<DevToolsApp />);
     await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith("Control+Shift+Space"));
 
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
     await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith(null));
     expect(screen.getByText("Show DevTools")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("switch", { name: "Use the Show DevTools shortcut" }));
-    fireEvent.click(screen.getByRole("button", { name: "Close shortcut settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
     await waitFor(() => expect(setGlobalShortcut).toHaveBeenLastCalledWith(null));
     expect(JSON.parse(localStorage.getItem("devtools-global-shortcut-v1") ?? "{}")).toMatchObject({ enabled: false });
   });

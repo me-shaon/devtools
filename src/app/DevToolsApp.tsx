@@ -7,12 +7,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   Plus,
   PanelLeft,
-  RefreshCw,
   Search,
   ChevronRight,
   ChevronDown,
@@ -21,13 +21,16 @@ import {
   X,
   Moon,
   Sun,
-  Command,
+  Download,
+  Heart,
+  Settings,
+  CircleAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CommandPalette } from "@/components/app/CommandPalette";
-import { ShortcutSettingsDialog } from "@/components/app/ShortcutSettingsDialog";
+import { SettingsDialog, type SettingsSection } from "@/components/app/SettingsDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import {
   ALL_TOOLS,
@@ -40,7 +43,6 @@ import {
 import { getReleaseNotes } from "@/data/releaseNotes";
 import { parseDeepLink } from "@/utils/deep-link";
 import { buildToolManifest } from "@/utils/tool-manifest";
-import { Switch } from "@/components/ui/switch";
 import { detectPastedContent, type PasteSuggestion } from "@/utils/clipboard-detect";
 import { PasteSuggestions } from "@/components/app/PasteSuggestions";
 import { TabContextMenu, type TabContextMenuItem } from "@/components/app/TabContextMenu";
@@ -66,6 +68,8 @@ import { getDesktopBridge, type UpdateState } from "@/lib/desktop";
 const TOOL_IDS: ReadonlySet<string> = new Set(ALL_TOOLS.map((tool) => tool.id));
 const MAX_FAVORITES = 5;
 const AUTO_UPDATE_STORAGE_KEY = "devtools-auto-update";
+const SIDEBAR_ON_LAUNCH_STORAGE_KEY = "devtools-sidebar-on-launch";
+const PASTE_SUGGESTIONS_STORAGE_KEY = "devtools-paste-suggestions";
 // Tools that use the shared editor layout (toolbar, panes, status bar) and fill the panel.
 const WORKSPACE_TOOL_IDS = new Set<string>(["asn1-inspector", "checksum", "xml-inspector", "json-viewer", "hash-generator", "text-compare", "json-diff", "har-viewer", "jwt-decoder", "csv-json", "base64", "url-encoder", "code-formatter", "yaml-json", "string-inspector", "line-tools", "escape-tools", "random-string", "qr-reader", "image-metadata", "video-metadata", "secret-redactor", "token-counter", "ai-text-cleaner", "json-typescript", "certificate-decoder", "html-preview", "html-to-jsx", "svg-to-css", "curl-to-code", "php-tools", "compression", "lorem-generator", "case-converter", "regex-generator", "qr-generator", "date-format", "json-schema", "key-generator"]);
 const MAX_RECENT_TOOLS = 6;
@@ -74,10 +78,32 @@ const FAVORITES_STORAGE_KEY = "devtools-favorites";
 const RECENT_TOOLS_STORAGE_KEY = "devtools-recent-tools";
 const WHATS_NEW_SEEN_STORAGE_KEY = "devtools-whats-new-seen-version";
 
+/** A yes/no preference saved in localStorage. Missing or unreadable values use the fallback. */
+function useStoredFlag(key: string, fallback: boolean) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored === null ? fallback : stored === "true";
+    } catch {
+      return fallback;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, String(value));
+    } catch {
+      // The choice still applies for this session.
+    }
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
 const DevToolsApp = () => {
   const desktop = getDesktopBridge();
   const platform = desktop?.platform;
-  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 640);
+  const [sidebarOnLaunch, setSidebarOnLaunch] = useStoredFlag(SIDEBAR_ON_LAUNCH_STORAGE_KEY, true);
+  const [pasteSuggestions, setPasteSuggestions] = useStoredFlag(PASTE_SUGGESTIONS_STORAGE_KEY, true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => sidebarOnLaunch && (typeof window === "undefined" || window.innerWidth >= 640));
   const [themePreference, setThemePreference] = useState(() =>
     getStoredThemePreference(typeof window !== "undefined" ? window.localStorage : undefined)
   );
@@ -98,7 +124,8 @@ const DevToolsApp = () => {
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [seenWhatsNewVersion, setSeenWhatsNewVersion] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showShortcutSettings, setShowShortcutSettings] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null);
+  const showSettings = settingsSection !== null;
   const [shortcutBindings, setShortcutBindings] = useState<ShortcutBindings>(() =>
     loadStoredShortcutBindings(
       platform,
@@ -295,7 +322,7 @@ const DevToolsApp = () => {
   const openWhatsNew = () => {
     if (releaseNotes) {
       setShowCommandPalette(false);
-      setShowShortcutSettings(false);
+      setSettingsSection(null);
       setShowWhatsNew(true);
     }
   };
@@ -317,7 +344,7 @@ const DevToolsApp = () => {
 
   const [paletteQuery, setPaletteQuery] = useState("");
   const openCommandPaletteWith = useCallback((query: string) => {
-    setShowShortcutSettings(false);
+    setSettingsSection(null);
     setPaletteQuery(query);
     setShowCommandPalette(true);
   }, []);
@@ -327,14 +354,15 @@ const DevToolsApp = () => {
     setShowCommandPalette(false);
   };
 
-  const openShortcutSettings = () => {
+  const openSettings = useCallback((section: SettingsSection = "general") => {
     setShowCommandPalette(false);
-    setShowShortcutSettings(true);
-  };
+    setShowWhatsNew(false);
+    setSettingsSection(section);
+  }, []);
 
-  const closeShortcutSettings = () => {
-    setShowShortcutSettings(false);
-  };
+  const closeSettings = useCallback(() => {
+    setSettingsSection(null);
+  }, []);
 
   const updateShortcutBinding = (actionId: keyof ShortcutBindings, binding: ShortcutBindings[keyof ShortcutBindings]) => {
     setShortcutBindings((prev) => ({
@@ -393,6 +421,21 @@ const DevToolsApp = () => {
         return "";
     }
   }, [updateState]);
+
+  const showUpdateBadge = Boolean(desktop) && ["available", "downloading", "downloaded", "error"].includes(updateState.status);
+
+  const clearRecentTools = () => {
+    setRecentToolIds([]);
+    toast.success("Recent tools cleared.");
+  };
+
+  const clearFavorites = () => {
+    const previous = favorites;
+    setFavorites([]);
+    toast.success("Favorites cleared.", {
+      action: { label: "Undo", onClick: () => setFavorites(previous) },
+    });
+  };
 
   const toggleFavorite = (toolId: string) => {
     setFavorites((prev) => {
@@ -457,6 +500,7 @@ const DevToolsApp = () => {
       "open-command-palette": openCommandPalette,
       "go-home": () => selectTool(null),
       "toggle-sidebar": () => setSidebarOpen((previous) => !previous),
+      "open-settings": () => openSettings(),
       "open-favorite-1": () => {
         const tool = TOOL_BY_ID.get(favorites[0] as ToolId);
         if (tool) {
@@ -488,13 +532,13 @@ const DevToolsApp = () => {
         }
       },
     }),
-    [favorites, openCommandPalette],
+    [favorites, openCommandPalette, openSettings],
   );
 
   useKeyboardShortcuts({
     bindings: shortcutBindings,
     handlers: shortcutHandlers,
-    enabled: !showCommandPalette && !showShortcutSettings && !showWhatsNew,
+    enabled: !showCommandPalette && !showSettings && !showWhatsNew,
   });
 
   const selectTool = (tool: ToolDefinition | null) => {
@@ -522,7 +566,7 @@ const DevToolsApp = () => {
     const action = parseDeepLink(url, TOOL_IDS);
     if (!action) return;
     setShowWhatsNew(false);
-    setShowShortcutSettings(false);
+    setSettingsSection(null);
     if (action.type === "tool") selectTool(TOOL_BY_ID.get(action.toolId as ToolId) ?? null);
     else if (action.type === "search") openCommandPaletteWith(action.query);
     else selectTool(null);
@@ -534,8 +578,8 @@ const DevToolsApp = () => {
     if (appVersion) void desktop?.writeToolManifest?.(buildToolManifest(ALL_TOOLS, appVersion));
   }, [desktop, appVersion]);
 
-  // System-wide "Show DevTools" shortcut. Paused while the Shortcuts dialog is open, so recording
-  // a new combination cannot trigger the old one.
+  // System-wide "Show DevTools" shortcut. Paused while the Shortcuts section of Settings is open,
+  // so recording a new combination cannot trigger the old one.
   const [globalShortcut, setGlobalShortcut] = useState<GlobalShortcut>(() =>
     loadGlobalShortcut(typeof window !== "undefined" ? window.localStorage : undefined, platform),
   );
@@ -544,17 +588,18 @@ const DevToolsApp = () => {
     setGlobalShortcut(next);
     saveGlobalShortcut(window.localStorage, next);
   }, []);
+  const editingShortcuts = settingsSection === "shortcuts";
   useEffect(() => {
     if (!desktop?.setGlobalShortcut) return;
-    const accelerator = showShortcutSettings ? null : toAccelerator(globalShortcut, platform);
+    const accelerator = editingShortcuts ? null : toAccelerator(globalShortcut, platform);
     let current = true;
     void desktop.setGlobalShortcut(accelerator).then((error) => {
-      if (current && !showShortcutSettings) setGlobalShortcutError(error);
+      if (current && !editingShortcuts) setGlobalShortcutError(error);
     });
     return () => {
       current = false;
     };
-  }, [desktop, globalShortcut, platform, showShortcutSettings]);
+  }, [desktop, globalShortcut, platform, editingShortcuts]);
 
   const openPaletteRef = useRef(() => {});
   openPaletteRef.current = () => {
@@ -566,7 +611,7 @@ const DevToolsApp = () => {
   // Paste outside a text field: suggest the tool that fits the text, then open it with the text
   // filled in. The app only sees what the user pastes; it never reads the clipboard on its own.
   const [pasted, setPasted] = useState<{ text: string; suggestions: PasteSuggestion[] } | null>(null);
-  const pasteBlocked = showCommandPalette || showShortcutSettings || showWhatsNew;
+  const pasteBlocked = !pasteSuggestions || showCommandPalette || showSettings || showWhatsNew;
   useEffect(() => {
     if (pasteBlocked) return;
     const handlePaste = (event: ClipboardEvent) => {
@@ -608,20 +653,9 @@ const DevToolsApp = () => {
   }, [pasted]);
 
   // Automatic updates: download in the background and install on quit. On by default.
-  const [autoUpdate, setAutoUpdate] = useState(() => {
-    try {
-      return localStorage.getItem(AUTO_UPDATE_STORAGE_KEY) !== "false";
-    } catch {
-      return true;
-    }
-  });
+  const [autoUpdate, setAutoUpdate] = useStoredFlag(AUTO_UPDATE_STORAGE_KEY, true);
   useEffect(() => {
     desktop?.setAutoUpdate?.(autoUpdate);
-    try {
-      localStorage.setItem(AUTO_UPDATE_STORAGE_KEY, String(autoUpdate));
-    } catch {
-      // The choice still applies for this session.
-    }
   }, [desktop, autoUpdate]);
 
   // Say once when an update has downloaded, with a way to restart now.
@@ -695,7 +729,7 @@ const DevToolsApp = () => {
 
   useEffect(() => {
     // Browser previews retain the browser's own tab/window shortcuts.
-    if (!desktop || showCommandPalette || showShortcutSettings || showWhatsNew) return;
+    if (!desktop || showCommandPalette || showSettings || showWhatsNew) return;
     const handleWorkspaceKeys = (event: KeyboardEvent) => {
       if (event.altKey || event.defaultPrevented || event.isComposing) return;
       const command = platform === "darwin" ? event.metaKey : event.ctrlKey;
@@ -712,7 +746,7 @@ const DevToolsApp = () => {
     };
     window.addEventListener("keydown", handleWorkspaceKeys);
     return () => window.removeEventListener("keydown", handleWorkspaceKeys);
-  }, [desktop, platform, selectedTool, openTools, closeTool, showCommandPalette, showShortcutSettings, showWhatsNew]);
+  }, [desktop, platform, selectedTool, openTools, closeTool, showCommandPalette, showSettings, showWhatsNew]);
 
   // Theme colors
   const theme = {
@@ -913,59 +947,43 @@ const DevToolsApp = () => {
           )}
         </nav>
 
-        <div className={`sidebar-footer px-3 py-2.5 ${theme.border} border-t`}>
-          <div className="space-y-1">
-            <p className={`text-center text-xs ${theme.textMuted}`}>
-              {desktop ? `Version ${appVersion ? `v${appVersion}` : "Loading…"}` : "Browser preview"}
-            </p>
-            {updateStatusLabel && updateState.status !== "unsupported" && (
-              <p className={`text-center text-2xs leading-relaxed ${theme.textMuted}`}>{updateStatusLabel}</p>
-            )}
-            {desktop && updateState.status !== "unsupported" && (
-              <label className="sidebar-auto-update" htmlFor="auto-update">
-                Update automatically
-                <Switch id="auto-update" checked={autoUpdate} onCheckedChange={setAutoUpdate} />
-              </label>
-            )}
-            <div className="sidebar-footer-actions">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className={`h-7 w-auto justify-start rounded-md border px-2.5 text-xs font-medium ${theme.border} ${theme.input} ${theme.textDim} ${theme.hover} hover:${theme.text}`}
-                onClick={handleUpdateAction}
-                disabled={updateState.status === "checking" || updateState.status === "downloading"}
-              >
-                <RefreshCw
-                  className={`mr-1.5 h-3.5 w-3.5 ${
-                    updateState.status === "checking" || updateState.status === "downloading"
-                      ? "animate-spin"
-                      : ""
-                  }`}
-                />
-                {updateButtonLabel}
-              </Button>
-              {releaseNotes && (
-                <button
-                  type="button"
-                  onClick={openWhatsNew}
-                  className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
-                >
-                  <span>What's New</span>
-                  {hasUnreadWhatsNew && (
-                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-                  )}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={openShortcutSettings}
-                className={`inline-flex items-center justify-center gap-1 text-2xs ${theme.textMuted} transition-colors hover:${theme.text}`}
-              >
-                <Command className="h-3.5 w-3.5" />
-                <span>Shortcuts</span>
-              </button>
-            </div>
+        <div className={`sidebar-footer ${theme.border} border-t`}>
+          {releaseNotes ? (
+            <button
+              type="button"
+              onClick={openWhatsNew}
+              className="sidebar-version"
+              aria-label={`What's New in v${appVersion}`}
+              title="What's New"
+            >
+              v{appVersion}
+              {hasUnreadWhatsNew && <span className="sidebar-unread-dot" aria-hidden="true" />}
+            </button>
+          ) : (
+            <span className="sidebar-version">
+              {desktop ? (appVersion ? `v${appVersion}` : "Loading…") : "Browser preview"}
+            </span>
+          )}
+          {showUpdateBadge && (
+            <button
+              type="button"
+              className="sidebar-update"
+              data-status={updateState.status}
+              style={updateState.status === "downloading" ? ({ "--progress": `${Math.round(updateState.progress ?? 0)}%` } as CSSProperties) : undefined}
+              aria-label={updateStatusLabel}
+              title={updateStatusLabel}
+              onClick={() => openSettings("updates")}
+            >
+              {updateState.status === "error" ? <CircleAlert size={14} aria-hidden="true" /> : <Download size={11} strokeWidth={2.75} aria-hidden="true" />}
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-0.5">
+            <button type="button" className="sidebar-icon-button" aria-label="Support DevTools" title="Support DevTools" onClick={() => openSettings("about")}>
+              <Heart size={15} aria-hidden="true" />
+            </button>
+            <button type="button" className="sidebar-icon-button" aria-label="Settings" title={`Settings (${formatShortcutBinding(shortcutBindings["open-settings"], platform)})`} onClick={() => openSettings()}>
+              <Settings size={15} aria-hidden="true" />
+            </button>
           </div>
         </div>
       </aside>
@@ -1101,16 +1119,42 @@ const DevToolsApp = () => {
         initialQuery={paletteQuery}
       />
 
-      <ShortcutSettingsDialog
-        open={showShortcutSettings}
-        platform={platform}
-        bindings={shortcutBindings}
-        onClose={closeShortcutSettings}
-        onUpdateBinding={updateShortcutBinding}
-        onResetDefaults={resetShortcutBindings}
-        globalShortcut={desktop?.setGlobalShortcut ? globalShortcut : undefined}
-        globalShortcutError={globalShortcutError}
-        onChangeGlobalShortcut={changeGlobalShortcut}
+      <SettingsDialog
+        section={settingsSection}
+        onSectionChange={setSettingsSection}
+        onClose={closeSettings}
+        appVersion={appVersion}
+        onOpenReleaseNotes={releaseNotes ? openWhatsNew : undefined}
+        general={{
+          themePreference,
+          onThemePreferenceChange: setThemePreference,
+          sidebarOnLaunch,
+          onSidebarOnLaunchChange: setSidebarOnLaunch,
+          pasteSuggestions,
+          onPasteSuggestionsChange: setPasteSuggestions,
+          recentCount: recentTools.length,
+          favoriteCount: favoriteTools.length,
+          onClearRecents: clearRecentTools,
+          onClearFavorites: clearFavorites,
+        }}
+        updates={desktop ? {
+          status: updateStatusLabel,
+          actionLabel: updateButtonLabel,
+          actionDisabled: updateState.status === "checking" || updateState.status === "downloading" || updateState.status === "unsupported",
+          onAction: handleUpdateAction,
+          autoUpdate,
+          onAutoUpdateChange: setAutoUpdate,
+          unsupported: updateState.status === "unsupported",
+        } : undefined}
+        shortcuts={{
+          platform,
+          bindings: shortcutBindings,
+          onUpdateBinding: updateShortcutBinding,
+          onResetDefaults: resetShortcutBindings,
+          globalShortcut: desktop?.setGlobalShortcut ? globalShortcut : undefined,
+          globalShortcutError,
+          onChangeGlobalShortcut: changeGlobalShortcut,
+        }}
       />
 
       {showWhatsNew && releaseNotes && (
@@ -1143,7 +1187,18 @@ const DevToolsApp = () => {
               dangerouslySetInnerHTML={{ __html: whatsNewHtml }}
             />
 
-            <div className="modal-footer flex justify-end">
+            <div className="modal-footer flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className="release-support"
+                onClick={() => {
+                  closeWhatsNew();
+                  openSettings("about");
+                }}
+              >
+                <Heart size={14} aria-hidden="true" />
+                Support DevTools
+              </button>
               <Button type="button" onClick={closeWhatsNew}>
                 Got it
               </Button>

@@ -27,23 +27,24 @@ describe("DevToolsApp shortcuts", () => {
   it("traps dialog focus, cancels recording before closing, and restores the opener", async () => {
     setupMatchMedia();
     render(<DevToolsApp />);
-    const opener = screen.getByRole("button", { name: "Shortcuts", exact: true });
+    const opener = screen.getByRole("button", { name: "Settings", exact: true });
     opener.focus();
     fireEvent.click(opener);
-    const close = screen.getByRole("button", { name: "Close shortcut settings" });
+    const close = screen.getByRole("button", { name: "Close settings" });
     expect(close).toHaveFocus();
     fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
     expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
     fireEvent.keyDown(document.activeElement!, { key: "Tab" });
     expect(close).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
     const record = screen.getByRole("button", { name: "Record Open Command Palette" });
     record.focus();
     fireEvent.click(record);
     fireEvent.keyDown(record, { key: "Escape" });
-    expect(screen.getByRole("dialog", { name: "Shortcut Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     expect(record).toHaveAttribute("aria-pressed", "false");
     fireEvent.keyDown(record, { key: "Escape" });
-    expect(screen.queryByRole("dialog", { name: "Shortcut Settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Settings" })).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
   });
 
@@ -81,14 +82,15 @@ describe("DevToolsApp shortcuts", () => {
     });
   });
 
-  it("closes shortcut settings when clicking the backdrop", async () => {
+  it("closes settings when clicking the backdrop", async () => {
     setupMatchMedia();
 
     render(<DevToolsApp />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Shortcut Settings" });
+    const dialog = await screen.findByRole("dialog", { name: "Settings" });
     const backdrop = dialog.parentElement;
 
     expect(backdrop).not.toBeNull();
@@ -96,7 +98,7 @@ describe("DevToolsApp shortcuts", () => {
     fireEvent.mouseDown(backdrop!);
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Shortcut Settings" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Settings" })).not.toBeInTheDocument();
     });
   });
 
@@ -119,9 +121,10 @@ describe("DevToolsApp shortcuts", () => {
 
     const { unmount } = render(<DevToolsApp />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
 
-    expect(await screen.findByRole("dialog", { name: "Shortcut Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Settings" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Record Go Home" }));
     fireEvent.keyDown(window, { key: "H", ctrlKey: true, shiftKey: true });

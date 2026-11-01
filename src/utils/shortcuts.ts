@@ -2,6 +2,7 @@ export type ShortcutActionId =
   | "open-command-palette"
   | "go-home"
   | "toggle-sidebar"
+  | "open-settings"
   | "open-favorite-1"
   | "open-favorite-2"
   | "open-favorite-3"
@@ -44,6 +45,12 @@ export const SHORTCUT_ACTIONS: ShortcutActionDefinition[] = [
     id: "toggle-sidebar",
     label: "Toggle Sidebar",
     description: "Show or hide the tool sidebar.",
+    group: "general",
+  },
+  {
+    id: "open-settings",
+    label: "Open Settings",
+    description: "Change the theme, updates, shortcuts, and other preferences.",
     group: "general",
   },
   {
@@ -121,6 +128,7 @@ export function getDefaultShortcutBindings(platform: string | undefined): Shortc
     "open-command-palette": createBinding("k", primaryModifier),
     "go-home": null,
     "toggle-sidebar": null,
+    "open-settings": createBinding(",", primaryModifier),
     "open-favorite-1": createBinding("1", primaryModifier),
     "open-favorite-2": createBinding("2", primaryModifier),
     "open-favorite-3": createBinding("3", primaryModifier),

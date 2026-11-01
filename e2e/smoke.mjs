@@ -176,7 +176,7 @@ try {
   });
 
   await step("shows the app version in the sidebar footer", async () => {
-    await waitForText(await browser.$("body"), `Version v${expectedVersion}`);
+    await waitForText(await browser.$("body"), `v${expectedVersion}`);
     await browser.saveScreenshot(path.join(screenshotDir, "home.png"));
   });
 

@@ -42,11 +42,17 @@ afterEach(() => {
   desktopMock.bridge = null;
 });
 
+const openUpdateSettings = () => {
+  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+  fireEvent.click(screen.getByRole("button", { name: "Updates" }));
+};
+
 describe("DevToolsApp automatic updates", () => {
   it("turns automatic updates on by default and saves the switch", async () => {
     render(<DevToolsApp />);
     await waitFor(() => expect(desktopMock.bridge?.setAutoUpdate).toHaveBeenLastCalledWith(true));
 
+    openUpdateSettings();
     fireEvent.click(screen.getByRole("switch", { name: "Update automatically" }));
 
     await waitFor(() => expect(desktopMock.bridge?.setAutoUpdate).toHaveBeenLastCalledWith(false));
@@ -57,6 +63,7 @@ describe("DevToolsApp automatic updates", () => {
     localStorage.setItem("devtools-auto-update", "false");
     render(<DevToolsApp />);
     await waitFor(() => expect(desktopMock.bridge?.setAutoUpdate).toHaveBeenLastCalledWith(false));
+    openUpdateSettings();
     expect(screen.getByRole("switch", { name: "Update automatically" })).toHaveAttribute("aria-checked", "false");
   });
 
@@ -72,7 +79,7 @@ describe("DevToolsApp automatic updates", () => {
     act(() => pushState({ status: "downloaded", version: "2.2.0", progress: 100 }));
 
     expect(await screen.findByText("DevTools 2.2.0 is ready")).toBeInTheDocument();
-    expect(screen.getByText("Version 2.2.0 is ready. It installs when you quit DevTools.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Version 2.2.0 is ready. It installs when you quit DevTools." })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Restart now" }));
     expect(desktopMock.bridge?.installUpdate).toHaveBeenCalled();
   });

@@ -48,7 +48,7 @@ const setupMatchMedia = () => {
 };
 
 describe("DevToolsApp updates", () => {
-  it("shows the app version and update action in the sidebar footer", async () => {
+  it("shows the app version and an update badge that opens the update settings", async () => {
     setupMatchMedia();
 
     const bridge = createBridge("1.2.3", {
@@ -59,9 +59,9 @@ describe("DevToolsApp updates", () => {
 
     render(<DevToolsApp />);
 
-    expect(await screen.findByText("Version v1.2.3")).toBeInTheDocument();
-    expect(screen.getByText("Version 1.3.0 is available.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Update to v1.3.0" })).toBeInTheDocument();
+    expect(await screen.findByText("v1.2.3")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Version 1.3.0 is available." }));
+    expect(screen.getByRole("dialog", { name: "Settings" })).toHaveTextContent("Version 1.3.0 is available.");
 
     await waitFor(() => {
       expect(bridge.getVersion).toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("DevToolsApp updates", () => {
       expect(screen.queryByRole("dialog", { name: "DevToolsApp v1.1.0" })).not.toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "What's New" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "What's New in v1.1.0" })).toBeInTheDocument();
   });
 });
 
