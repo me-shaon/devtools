@@ -7,6 +7,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { saveFile } from "@/lib/desktop";
 import { errorSummary, renderMermaid, svgDataUrl, svgToPng, type MermaidDiagram } from "@/utils/mermaid-render";
 import { MERMAID_TEMPLATES } from "@/utils/mermaid-templates";
+import { initialTheme } from "@/utils/theme";
 
 type Theme = "light" | "dark";
 
@@ -37,9 +38,6 @@ const FAQ_ITEMS: ToolFaqItem[] = [
     a: "Twice the diagram size, for sharp text on high-density screens. Very large diagrams are scaled down to 8192 pixels on the longest side.",
   },
 ];
-
-const initialTheme = (): Theme =>
-  typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "dark" : "light";
 
 export function MermaidRenderer() {
   const [input, setInput] = useState<string>(MERMAID_TEMPLATES[0].source);
