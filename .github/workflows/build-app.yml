@@ -51,10 +51,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -135,7 +135,7 @@ jobs:
       - name: Restore Tauri bundler tools
         id: tauri-tools
         if: runner.os != 'macOS'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
           key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
@@ -170,7 +170,7 @@ jobs:
       # Save even when the build failed, so a re-run keeps the tools that did download
       - name: Save Tauri bundler tools
         if: always() && runner.os != 'macOS' && steps.tauri-tools.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
           key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
@@ -185,7 +185,7 @@ jobs:
           --out release
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: devtools-${{ matrix.platform }}-${{ matrix.arch }}
           path: release/*
@@ -333,7 +333,7 @@ jobs:
 
       - name: Upload e2e screenshots
         if: matrix.e2e && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-screenshots-${{ matrix.platform }}-${{ matrix.arch }}
           path: e2e/screenshots
