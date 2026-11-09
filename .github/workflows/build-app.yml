@@ -130,36 +130,50 @@ jobs:
 
           echo "BUILD_ARGS=$build_args" >> "$GITHUB_ENV"
 
-      # Tauri keeps the NSIS tools it downloads here, so a cache hit skips the download
-      - name: Cache Tauri bundler tools
-        if: runner.os == 'Windows'
-        uses: actions/cache@v4
+      # Bundling downloads tools from GitHub releases: NSIS on Windows, AppRun and linuxdeploy on
+      # Linux. Tauri keeps them in its cache folder, so a restored cache skips the downloads.
+      - name: Restore Tauri bundler tools
+        id: tauri-tools
+        if: runner.os != 'macOS'
+        uses: actions/cache/restore@v4
         with:
-          path: ~/AppData/Local/tauri
-          key: tauri-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: tauri-tools-${{ runner.os }}-
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
+          key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-tools-${{ runner.os }}-${{ runner.arch }}-
 
-      # Bundling downloads tools such as NSIS from GitHub. When GitHub answers with a server
-      # error (for example HTTP 504), build again. Cargo output is cached, so only bundling repeats.
+      # When GitHub answers a tool download with a server error (for example HTTP 504), build again
+      # after a pause. The web app is already built, so a retry skips beforeBuildCommand, and Cargo
+      # output is cached, so only bundling repeats.
       - name: Build app
         shell: bash
         run: |
           log="$RUNNER_TEMP/tauri-build.log"
-          for attempt in 1 2 3; do
+          extra=()
+          for attempt in 1 2 3 4 5; do
             set +e
-            npx tauri build $BUILD_ARGS 2>&1 | tee "$log"
+            npx tauri build $BUILD_ARGS "${extra[@]}" 2>&1 | tee "$log"
             status=${PIPESTATUS[0]}
             set -e
             if [ "$status" -eq 0 ]; then
               exit 0
             fi
-            if [ "$attempt" -lt 3 ] && grep -q "http status: 5" "$log"; then
-              echo "::warning::A tool download failed with a server error. Building again in 30 s (attempt $attempt of 3)."
-              sleep 30
+            if [ "$attempt" -lt 5 ] && grep -q "http status: 5" "$log"; then
+              wait=$((30 * 2 ** (attempt - 1)))
+              echo "::warning::A tool download failed with a server error. Building again in $wait s (attempt $attempt of 5)."
+              sleep "$wait"
+              extra=(--config '{"build":{"beforeBuildCommand":""}}')
               continue
             fi
             exit "$status"
           done
+
+      # Save even when the build failed, so a re-run keeps the tools that did download
+      - name: Save Tauri bundler tools
+        if: always() && runner.os != 'macOS' && steps.tauri-tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
+          key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
 
       - name: Collect release assets
         shell: bash
