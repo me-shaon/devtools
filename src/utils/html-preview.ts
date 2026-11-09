@@ -8,11 +8,15 @@ export interface PreviewOptions {
   scripts: boolean;
   /** Paint the canvas dark instead of light. */
   dark: boolean;
+  /** Allow images from the network. Every other network load stays blocked. */
+  remoteImages?: boolean;
+  /** Styles added after the canvas styles, for example the Markdown styles. */
+  css?: string;
 }
 
 /** The policy for the preview document. Remote images, styles, fonts, frames, and scripts do not load. */
-export function previewCsp(scripts: boolean): string {
-  const directives = ["default-src 'none'", "img-src data: blob:", "style-src 'unsafe-inline'", "font-src data:"];
+export function previewCsp(scripts: boolean, remoteImages = false): string {
+  const directives = ["default-src 'none'", remoteImages ? "img-src data: blob: https: http:" : "img-src data: blob:", "style-src 'unsafe-inline'", "font-src data:"];
   if (scripts) directives.push("script-src 'unsafe-inline'");
   return directives.join("; ");
 }
@@ -26,7 +30,7 @@ export function previewSandbox(scripts: boolean): string {
  * Wraps user HTML in a document with the policy as the first element of the head.
  * The HTML is parsed in an inert document, so nothing runs or loads here.
  */
-export function buildPreviewDocument(html: string, { scripts, dark }: PreviewOptions): string {
+export function buildPreviewDocument(html: string, { scripts, dark, remoteImages = false, css }: PreviewOptions): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const head = doc.head;
 
@@ -37,7 +41,7 @@ export function buildPreviewDocument(html: string, { scripts, dark }: PreviewOpt
 
   const csp = doc.createElement("meta");
   csp.setAttribute("http-equiv", "Content-Security-Policy");
-  csp.setAttribute("content", previewCsp(scripts));
+  csp.setAttribute("content", previewCsp(scripts, remoteImages));
 
   const charset = doc.createElement("meta");
   charset.setAttribute("charset", "utf-8");
@@ -50,5 +54,10 @@ export function buildPreviewDocument(html: string, { scripts, dark }: PreviewOpt
   canvas.textContent = `:root{color-scheme:${dark ? "dark" : "light"};background:Canvas;color:CanvasText}`;
 
   head.prepend(csp, charset, base, canvas);
+  if (css) {
+    const extra = doc.createElement("style");
+    extra.textContent = css;
+    canvas.after(extra);
+  }
   return `<!doctype html>\n${doc.documentElement.outerHTML}`;
 }
