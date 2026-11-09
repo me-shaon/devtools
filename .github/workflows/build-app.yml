@@ -60,12 +60,14 @@ jobs:
           cache: npm
 
       - name: Setup Rust
+        # The stable branch has no version tags, so Dependabot cannot update this pin. Refresh it by hand:
+        # gh api repos/dtolnay/rust-toolchain/commits/stable --jq .sha
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: ${{ matrix.target }}
 
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
           key: ${{ matrix.target }}
@@ -128,9 +130,36 @@ jobs:
 
           echo "BUILD_ARGS=$build_args" >> "$GITHUB_ENV"
 
+      # Tauri keeps the NSIS tools it downloads here, so a cache hit skips the download
+      - name: Cache Tauri bundler tools
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/tauri
+          key: tauri-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-tools-${{ runner.os }}-
+
+      # Bundling downloads tools such as NSIS from GitHub. When GitHub answers with a server
+      # error (for example HTTP 504), build again. Cargo output is cached, so only bundling repeats.
       - name: Build app
         shell: bash
-        run: npx tauri build $BUILD_ARGS
+        run: |
+          log="$RUNNER_TEMP/tauri-build.log"
+          for attempt in 1 2 3; do
+            set +e
+            npx tauri build $BUILD_ARGS 2>&1 | tee "$log"
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ] && grep -q "http status: 5" "$log"; then
+              echo "::warning::A tool download failed with a server error. Building again in 30 s (attempt $attempt of 3)."
+              sleep 30
+              continue
+            fi
+            exit "$status"
+          done
 
       - name: Collect release assets
         shell: bash

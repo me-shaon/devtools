@@ -9,6 +9,10 @@ on:
       - main
   workflow_dispatch:
 
+# Jobs read the repository only. This does not depend on the repository's default token setting.
+permissions:
+  contents: read
+
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true

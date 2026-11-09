@@ -12,6 +12,10 @@ on:
         type: boolean
         default: false
 
+# Jobs read the repository only. The release job asks for contents: write itself.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
