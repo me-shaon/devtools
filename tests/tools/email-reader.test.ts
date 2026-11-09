@@ -500,6 +500,17 @@ describe("review fixes", () => {
 });
 
 describe(".msg review fixes", () => {
+  /** An uncompressed (MELA) PidTagRtfCompressed stream. */
+  const mela = (rtf: string) => {
+    const raw = Uint8Array.from(rtf, (ch) => ch.charCodeAt(0));
+    const out = new Uint8Array(16 + raw.length);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, raw.length + 12, true);
+    view.setUint32(4, raw.length, true);
+    view.setUint32(8, 0x414c454d, true);
+    out.set(raw, 16);
+    return out;
+  };
   const ansi = (id: string, bytes: Uint8Array) => stream(`__substg1.0_${id}001E`, bytes);
 
   it("stops at a DIFAT sector that points to itself", () => {
@@ -539,7 +550,21 @@ describe(".msg review fixes", () => {
   });
 
   it("notes an RTF body that has formatting when the message also has text", () => {
-    const email = parseEmail(buildOle([str("0037", "x"), str("1000", "plain"), bin("1009", Uint8Array.of(1, 2, 3)), props(32, [])]));
+    const email = parseEmail(buildOle([str("0037", "x"), str("1000", "plain"), bin("1009", mela("{\\rtf1\\ansi {\\b bold} text}")), props(32, [])]));
     expect(email.warnings.join(" ")).toMatch(/without formatting/);
+  });
+
+  it("shows the HTML that Outlook keeps in a compressed RTF body", () => {
+    const rtf = "{\\rtf1\\ansi\\ansicpg1252\\fromhtml1 \\deff0{\\fonttbl{\\f0 Arial;}}{\\*\\htmltag <p>}{\\htmlrtf \\b \\htmlrtf0 caf\\'e9}{\\*\\htmltag </p>}}";
+    const email = parseEmail(buildOle([str("0037", "x"), bin("1009", mela(rtf)), props(32, [])]));
+    expect(email.html).toBe("<p>café</p>");
+    expect(email.warnings).toEqual([]);
+  });
+
+  it("uses the plain text in an RTF body made from text, and warns about a damaged RTF body", () => {
+    const fromText = parseEmail(buildOle([str("0037", "x"), bin("1009", mela("{\\rtf1\\ansi\\fromtext line one\\par line two}")), props(32, [])]));
+    expect(fromText.text).toBe("line one\r\nline two");
+    const damaged = parseEmail(buildOle([str("0037", "x"), bin("1009", Uint8Array.of(1, 2, 3)), props(32, [])]));
+    expect(damaged.warnings).toEqual(["The Rich Text (RTF) body is damaged."]);
   });
 });
