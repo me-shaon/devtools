@@ -378,3 +378,168 @@ describe("safeFileName", () => {
     expect(safeFileName(".hidden")).toBe("hidden");
   });
 });
+
+describe("review fixes", () => {
+  const eml = (lines: string[]) => enc(lines.join("\r\n"));
+
+  it("decodes long runs of hostile header and HTML text quickly", () => {
+    const started = performance.now();
+    decodeEncodedWords(`=?a${"*".repeat(50_000)}`);
+    hasRemoteContent(`<img src=${" ".repeat(50_000)}x>`);
+    hasRemoteContent(`<p style="background:url(${" ".repeat(50_000)}">`);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("still finds remote content after spaces and quotes", () => {
+    expect(hasRemoteContent('<img src = " https://x.example/p.gif">')).toBe(true);
+    expect(hasRemoteContent("<div style=\"background: url( 'http://x.example/a.png')\">")).toBe(true);
+    expect(hasRemoteContent('<img src="data:image/png;base64,AAAA">')).toBe(false);
+  });
+
+  it("decodes a character that is split across two encoded words", () => {
+    expect(decodeEncodedWords("=?UTF-8?B?Y2Fmww==?= =?UTF-8?B?qQ==?=")).toBe("café");
+    expect(decodeEncodedWords("=?UTF-8?Q?caf=C3?= =?UTF-8?Q?=A9?= ok")).toBe("café ok");
+    expect(decodeEncodedWords("=?UTF-8?B?w6k=?= =?ISO-8859-1?Q?=E9?=")).toBe("éé");
+  });
+
+  it("prefers filename* over filename in either order", () => {
+    expect(parseParameterised(`attachment; filename*=UTF-8''%E2%82%AC.pdf; filename="EUR.pdf"`).params.filename).toBe("€.pdf");
+    expect(parseParameterised(`attachment; filename="EUR.pdf"; filename*=UTF-8''%E2%82%AC.pdf`).params.filename).toBe("€.pdf");
+  });
+
+  it("drops the group name before an angle address", () => {
+    expect(parseAddressList("Team: Ada <ada@x.com>, Bob <bob@x.com>;")).toEqual([
+      { name: "Ada", address: "ada@x.com" },
+      { name: "Bob", address: "bob@x.com" },
+    ]);
+    expect(parseAddressList("Undisclosed recipients:;")).toEqual([]);
+  });
+
+  it("does not split a part on a longer boundary that starts with the outer one", () => {
+    const email = parseEmail(
+      eml([
+        "From: a@x.com",
+        'Content-Type: multipart/mixed; boundary="abc"',
+        "",
+        "--abc",
+        'Content-Type: multipart/alternative; boundary="abc-alt"',
+        "",
+        "--abc-alt",
+        "Content-Type: text/plain",
+        "",
+        "plain",
+        "--abc-alt",
+        "Content-Type: text/html",
+        "",
+        "<p>html</p>",
+        "--abc-alt--",
+        "--abc--",
+        "",
+      ]),
+    );
+    expect(email.text).toBe("plain");
+    expect(email.html).toBe("<p>html</p>");
+  });
+
+  it("saves a base64 forwarded message decoded, named after its subject", () => {
+    const inner = "From: c@x.com\r\nSubject: Inner\r\n\r\nbody";
+    const email = parseEmail(
+      eml([
+        "From: a@x.com",
+        'Content-Type: multipart/mixed; boundary="b"',
+        "",
+        "--b",
+        "Content-Type: message/rfc822",
+        "Content-Transfer-Encoding: base64",
+        "",
+        b64(enc(inner)),
+        "--b--",
+        "",
+      ]),
+    );
+    expect(email.attachments[0].name).toBe("Inner.eml");
+    expect(new TextDecoder().decode(email.attachments[0].bytes)).toBe(inner);
+  });
+
+  it("lists an inline image that the HTML does not show, and hides one that it shows", () => {
+    const image = (id: string, name: string) => [
+      "--b",
+      `Content-Type: image/png; name=${name}`,
+      `Content-Disposition: inline; filename=${name}`,
+      `Content-ID: <${id}>`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      "iVBORw0KGgo=",
+    ];
+    const textOnly = parseEmail(eml(["From: a@x.com", 'Content-Type: multipart/mixed; boundary="b"', "", "--b", "Content-Type: text/plain", "", "hi", ...image("x1", "IMG_1.png"), "--b--", ""]));
+    expect(textOnly.attachments.map((a) => [a.name, a.inline])).toEqual([["IMG_1.png", false]]);
+    const withHtml = parseEmail(
+      eml(["From: a@x.com", 'Content-Type: multipart/related; boundary="b"', "", "--b", "Content-Type: text/html", "", '<img src="cid:x1">', ...image("x1", "a.png"), ...image("x2", "b.png"), "--b--", ""]),
+    );
+    expect(withHtml.attachments.map((a) => [a.name, a.inline])).toEqual([
+      ["a.png", true],
+      ["b.png", false],
+    ]);
+  });
+
+  it("ignores a UTF-8 byte order mark and reads 8bit text without a charset", () => {
+    const bom = parseEmail(Uint8Array.from([0xef, 0xbb, 0xbf, ...enc("From: a@x.com\r\nSubject: s\r\n\r\nbody")]));
+    expect(bom.from).toEqual([{ name: "", address: "a@x.com" }]);
+    const latin = parseEmail(Uint8Array.from([...enc("From: a@x.com\r\nContent-Type: text/plain\r\n\r\ncaf"), 0xe9]));
+    expect(latin.text).toBe("café");
+    expect(parseEmail(enc("From: a@x.com\r\nContent-Type: text/plain\r\n\r\ncafé")).text).toBe("café");
+  });
+
+  it("removes direction and invisible characters from file names and caps their length", () => {
+    expect(safeFileName("report‮fdp.exe")).toBe("reportfdp.exe");
+    expect(safeFileName("a​⁦b\u007f.txt")).toBe("ab_.txt");
+    const long = safeFileName(`${"x".repeat(300)}.pdf`);
+    expect(long).toHaveLength(200);
+    expect(long.endsWith(".pdf")).toBe(true);
+  });
+});
+
+describe(".msg review fixes", () => {
+  const ansi = (id: string, bytes: Uint8Array) => stream(`__substg1.0_${id}001E`, bytes);
+
+  it("stops at a DIFAT sector that points to itself", () => {
+    const base = buildOle([str("0037", "x"), props(32, [])]);
+    const bytes = new Uint8Array(base.length + 512);
+    bytes.set(base);
+    const loop = bytes.length / 512 - 2;
+    const view = new DataView(bytes.buffer);
+    view.setUint32(bytes.length - 4, loop, true);
+    view.setUint32(0x44, loop, true);
+    view.setUint32(0x48, 0xffffffff, true);
+    const started = performance.now();
+    expect(parseEmail(bytes).subject).toBe("x");
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("reads a stream size larger than the file without a large allocation", () => {
+    const bytes = buildOle([str("0037", "x"), props(32, [])]);
+    new DataView(bytes.buffer).setUint32(1024 + 120, 0xffffffff, true);
+    expect(parseEmail(bytes).subject).toBe("x");
+  });
+
+  it("decodes ANSI strings with the message code page", () => {
+    const subject = Uint8Array.of(0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2);
+    expect(parseEmail(buildOle([ansi("0037", subject), props(32, [longProp(0x3ffd0003, 1251)])])).subject).toBe("Привет");
+  });
+
+  it("falls back to the internet message id property", () => {
+    expect(parseEmail(buildOle([str("0037", "x"), str("1035", "<m@x.com>"), props(32, [])])).messageId).toBe("m@x.com");
+  });
+
+  it("counts an OLE object apart from an embedded message", () => {
+    const email = parseEmail(
+      buildOle([str("0037", "x"), props(32, []), { name: "__attach_version1.0_#00000000", type: 1, children: [str("3707", "doc"), props(8, [longProp(0x37050003, 6)])] }]),
+    );
+    expect(email.warnings.join(" ")).toMatch(/1 embedded object was not listed/);
+  });
+
+  it("notes an RTF body that has formatting when the message also has text", () => {
+    const email = parseEmail(buildOle([str("0037", "x"), str("1000", "plain"), bin("1009", Uint8Array.of(1, 2, 3)), props(32, [])]));
+    expect(email.warnings.join(" ")).toMatch(/without formatting/);
+  });
+});

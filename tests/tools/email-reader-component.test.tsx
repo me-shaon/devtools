@@ -45,6 +45,18 @@ describe("EmailReader", () => {
     expect(saveFile.mock.calls[0][1]).toBe("notes.txt");
   });
 
+  it("keeps the textarea after a paste that is not an email, and shows a name without empty brackets", async () => {
+    render(<EmailReader />);
+    const input = screen.getByLabelText("Email");
+    fireEvent.change(input, { target: { value: "hello world" } });
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("Email")).toBe(input);
+    fireEvent.change(input, { target: { value: "From: Ada <>\r\nSubject: s\r\n\r\nbody" } });
+    const details = await screen.findByRole("table", { name: "Message details" });
+    expect(details.textContent).toContain("Ada");
+    expect(details.textContent).not.toContain("<>");
+  });
+
   it("reports text that is not an email", async () => {
     render(<EmailReader />);
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "hello world" } });

@@ -11,6 +11,7 @@ describe("tool registration", () => {
     "time-zone-converter",
     "mermaid-renderer",
     "db-diagram",
+    "email-reader",
   ] as const)("registers %s for discovery and lazy loading", (id) => {
     expect(ALL_TOOLS.find((t) => t.id === id)?.keywords.length).toBeGreaterThan(
       0,

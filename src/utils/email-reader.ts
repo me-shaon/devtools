@@ -77,9 +77,12 @@ const toBytes = (binary: string) => {
   return out;
 };
 
-/** Decodes bytes with a MIME charset name. Unknown names fall back to UTF-8, then Windows-1252. */
+/**
+ * Decodes bytes with a MIME charset name. Unknown names fall back to UTF-8, then Windows-1252.
+ * With no name, the bytes are UTF-8 only when they are valid UTF-8. Else they are Windows-1252.
+ */
 export function decodeCharset(bytes: Uint8Array, charset: string): string {
-  const label = charset.trim().replace(/^["']|["']$/g, "").toLowerCase() || "utf-8";
+  const label = charset.trim().replace(/^["']|["']$/g, "").toLowerCase();
   const tryDecode = (name: string, fatal: boolean) => {
     try {
       return new TextDecoder(name, { fatal }).decode(bytes);
@@ -87,6 +90,7 @@ export function decodeCharset(bytes: Uint8Array, charset: string): string {
       return null;
     }
   };
+  if (!label) return tryDecode("utf-8", true) ?? tryDecode("windows-1252", false) ?? latin1(bytes);
   if (label === "us-ascii" || label === "ascii") return tryDecode("windows-1252", false) ?? latin1(bytes);
   return tryDecode(label, false) ?? tryDecode("utf-8", true) ?? tryDecode("windows-1252", false) ?? latin1(bytes);
 }
@@ -115,13 +119,48 @@ const decodeBase64 = (text: string): Uint8Array => {
   }
 };
 
-/** Decodes RFC 2047 encoded words such as `=?UTF-8?B?...?=` in a header value. */
+// The charset cannot hold `*`, so the optional RFC 2231 language part cannot match in more than one way
+const ENCODED_WORD = /=\?([^?\s*]+)(?:\*[^?\s]*)?\?([bBqQ])\?([^?]*)\?=/g;
+
+const concatBytes = (parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+};
+
+/**
+ * Decodes RFC 2047 encoded words such as `=?UTF-8?B?...?=` in a header value. Mailers can split one
+ * character across two words, so adjacent words with the same charset are decoded as one byte run.
+ */
 export function decodeEncodedWords(value: string): string {
   const joined = value.replace(/(\?=)\s+(?==\?)/g, "$1");
-  return joined.replace(/=\?([^?\s]+?)(?:\*[^?]*)?\?([bBqQ])\?([^?]*)\?=/g, (_m, charset: string, enc: string, data: string) => {
+  let out = "";
+  let last = 0;
+  let run: { charset: string; parts: Uint8Array[] } | null = null;
+  const flush = () => {
+    if (run) out += decodeCharset(concatBytes(run.parts), run.charset);
+    run = null;
+  };
+  for (const match of joined.matchAll(ENCODED_WORD)) {
+    const [word, charset, enc, data] = match;
+    if (match.index !== last) {
+      flush();
+      out += joined.slice(last, match.index);
+    }
     const bytes = enc.toLowerCase() === "b" ? decodeBase64(data) : decodeQuotedPrintable(data, true);
-    return decodeCharset(bytes, charset);
-  });
+    if (run && run.charset.toLowerCase() === charset.toLowerCase()) run.parts.push(bytes);
+    else {
+      flush();
+      run = { charset, parts: [bytes] };
+    }
+    last = match.index! + word.length;
+  }
+  flush();
+  return out + joined.slice(last);
 }
 
 /** Decodes an RFC 2231 value such as `utf-8''%E2%82%AC.txt`. */
@@ -164,6 +203,8 @@ export function parseParameterised(raw: string): HeaderParams {
   parts.push(current);
 
   const params: Record<string, string> = {};
+  // An RFC 2231 value such as filename* wins over the plain value, in either order
+  const extended = new Set<string>();
   const pieces: Record<string, { index: number; encoded: boolean; value: string }[]> = {};
   for (const part of parts.slice(1)) {
     const eq = part.indexOf("=");
@@ -177,7 +218,8 @@ export function parseParameterised(raw: string): HeaderParams {
     } else if (key.endsWith("*")) {
       key = key.slice(0, -1);
       params[key] = decodeExtendedValue(value);
-    } else params[key] = decodeEncodedWords(value);
+      extended.add(key);
+    } else if (!extended.has(key)) params[key] = decodeEncodedWords(value);
   }
   for (const [key, list] of Object.entries(pieces)) {
     list.sort((a, b) => a.index - b.index);
@@ -239,7 +281,8 @@ export function parseAddressList(raw: string): EmailAddress[] {
     if (!item) continue;
     // A group such as `Team: a@x.com, b@x.com;` arrives as one piece that starts with the group name
     const group = /^[^<>"@]*:\s*(.*?);?\s*$/.exec(item);
-    if (group && !item.includes("<") && group[1] !== item) item = group[1];
+    if (group) item = group[1].trim();
+    if (!item) continue;
     const angle = /^(.*?)<([^<>]*)>\s*$/s.exec(item);
     if (angle) {
       const name = decodeEncodedWords(angle[1].trim().replace(/^"(.*)"$/s, "$1").replace(/\\(.)/g, "$1")).trim();
@@ -327,7 +370,8 @@ function walkMime(raw: string, ctx: MimeContext, depth: number, index: { n: numb
     const segments: string[] = [];
     let current: string[] | null = null;
     for (const line of body.split(/\r?\n/)) {
-      if (line.startsWith(delimiter)) {
+      // A longer boundary that starts with this one, such as abc-alt for abc, belongs to a nested part
+      if (line.startsWith(delimiter) && /^(?:--)?[ \t]*$/.test(line.slice(delimiter.length))) {
         const rest = line.slice(delimiter.length);
         if (current) segments.push(current.join("\r\n"));
         if (rest.startsWith("--")) {
@@ -348,19 +392,20 @@ function walkMime(raw: string, ctx: MimeContext, depth: number, index: { n: numb
   const isInlineText = !isAttachment && (type.value === "text/plain" || type.value === "text/html" || type.value === "");
 
   if (isInlineText) {
-    const text = decodeCharset(data, type.params.charset ?? "utf-8");
+    const text = decodeCharset(data, type.params.charset ?? "");
     (type.value === "text/html" ? ctx.html : ctx.text).push(text);
     return;
   }
 
   if (type.value === "message/rfc822") {
     index.n++;
-    const subject = decodeEncodedWords(headerValue(parseHeaderBlock(splitHeaderBody(body).head), "subject"));
+    // A forwarded message can have a base64 transfer encoding, so read the decoded bytes
+    const subject = decodeEncodedWords(headerValue(parseHeaderBlock(splitHeaderBody(latin1(data)).head), "subject"));
     ctx.attachments.push({
       name: filename || `${subject || `message-${index.n}`}.eml`,
       mimeType: "message/rfc822",
-      size: toBytes(body).length,
-      bytes: toBytes(body),
+      size: data.length,
+      bytes: data,
       contentId,
       inline: false,
     });
@@ -369,19 +414,20 @@ function walkMime(raw: string, ctx: MimeContext, depth: number, index: { n: numb
 
   index.n++;
   const mimeType = type.value || "application/octet-stream";
-  const inline = disposition.value === "inline" && Boolean(contentId) && mimeType.startsWith("image/");
   ctx.attachments.push({
     name: filename || `attachment-${index.n}.${extensionFor(mimeType)}`,
     mimeType,
     size: data.length,
     bytes: data,
     contentId,
-    inline: inline || (Boolean(contentId) && mimeType.startsWith("image/") && !filename),
+    // markInline sets this when the HTML body is known
+    inline: false,
   });
 }
 
 export function parseEml(bytes: Uint8Array): ParsedEmail {
-  const raw = latin1(bytes).replace(/^From [^\r\n]*\r?\n/, "");
+  // A UTF-8 byte order mark would become part of the first header name
+  const raw = latin1(bytes).replace(/^\xEF\xBB\xBF/, "").replace(/^From [^\r\n]*\r?\n/, "");
   const { head } = splitHeaderBody(raw);
   const headers = parseHeaderBlock(head);
   if (!headers.some((h) => ["from", "to", "subject", "date", "message-id", "mime-version", "content-type", "received"].includes(h.name.toLowerCase()))) {
@@ -392,6 +438,8 @@ export function parseEml(bytes: Uint8Array): ParsedEmail {
   walkMime(raw, ctx, 0, { n: 0 });
 
   const list = (name: string) => parseAddressList(headers.filter((h) => h.name.toLowerCase() === name).map((h) => h.value).join(", "));
+  const html = ctx.html.join("\n");
+  markInline(html, ctx.attachments);
   return {
     format: "eml",
     subject: decodeEncodedWords(headerValue(headers, "subject")),
@@ -403,7 +451,7 @@ export function parseEml(bytes: Uint8Array): ParsedEmail {
     date: parseEmailDate(headerValue(headers, "date")),
     messageId: headerValue(headers, "message-id").replace(/^<|>$/g, ""),
     text: ctx.text.join("\n\n"),
-    html: ctx.html.join("\n"),
+    html,
     headers: headers.map((h) => ({ name: h.name, value: decodeEncodedWords(h.value) })),
     attachments: ctx.attachments,
     warnings: ctx.warnings,
@@ -451,20 +499,23 @@ function readOle(bytes: Uint8Array): OleFile {
     return bytes.subarray(offset, Math.min(offset + sectorSize, bytes.length));
   };
 
-  // File allocation table
-  const fatSectors: number[] = [];
+  // File allocation table. The header counts come from the file, so every loop is bounded by
+  // the number of sectors that the file really has, and a sector is read only once.
+  const fatSectors = new Set<number>();
   for (let i = 0; i < 109; i++) {
     const id = view.getUint32(0x4c + i * 4, true);
-    if (id < sectorCount) fatSectors.push(id);
+    if (id < sectorCount) fatSectors.add(id);
   }
+  const difatSeen = new Set<number>();
   let difat = firstDifat;
-  for (let n = 0; n < difatCount && difat < sectorCount; n++) {
+  for (let n = 0; n < Math.min(difatCount, sectorCount) && difat < sectorCount && !difatSeen.has(difat); n++) {
+    difatSeen.add(difat);
     const base = sectorOffset(difat);
     const entries = sectorSize / 4 - 1;
-    for (let i = 0; i < entries; i++) {
+    for (let i = 0; i < entries && fatSectors.size < sectorCount; i++) {
       if (base + i * 4 + 4 > bytes.length) break;
       const id = view.getUint32(base + i * 4, true);
-      if (id < sectorCount) fatSectors.push(id);
+      if (id < sectorCount) fatSectors.add(id);
     }
     if (base + sectorSize > bytes.length) break;
     difat = view.getUint32(base + sectorSize - 4, true);
@@ -476,11 +527,12 @@ function readOle(bytes: Uint8Array): OleFile {
     for (let i = 0; i + 4 <= s.length; i += 4) fat.push(v.getUint32(i, true));
   }
 
-  const chain = (start: number, table: number[]) => {
+  /** The sector ids of a stream. `count` is the number of sectors that exist, and `max` caps the length. */
+  const chain = (start: number, table: number[], count: number, max = Infinity) => {
     const ids: number[] = [];
     const seen = new Set<number>();
     let id = start;
-    while (id < END_OF_CHAIN && id !== FREE_SECTOR && !seen.has(id) && id < table.length) {
+    while (id < END_OF_CHAIN && id !== FREE_SECTOR && !seen.has(id) && id < table.length && id < count && ids.length < max) {
       seen.add(id);
       ids.push(id);
       id = table[id];
@@ -489,7 +541,7 @@ function readOle(bytes: Uint8Array): OleFile {
   };
 
   const readChain = (start: number, size: number | null) => {
-    const ids = chain(start, fat);
+    const ids = chain(start, fat, sectorCount, size === null ? Infinity : Math.ceil(size / sectorSize));
     const out = new Uint8Array(ids.length * sectorSize);
     ids.forEach((id, i) => out.set(sector(id), i * sectorSize));
     return size === null ? out : out.subarray(0, Math.min(size, out.length));
@@ -548,7 +600,7 @@ function readOle(bytes: Uint8Array): OleFile {
     root: nodes[0],
     read(node) {
       if (node.size < miniCutoff) {
-        const ids = chain(node.start, miniFat);
+        const ids = chain(node.start, miniFat, Math.ceil(miniStream.length / miniSize), Math.ceil(node.size / miniSize));
         const out = new Uint8Array(ids.length * miniSize);
         ids.forEach((id, i) => out.set(miniStream.subarray(id * miniSize, (id + 1) * miniSize), i * miniSize));
         return out.subarray(0, node.size);
@@ -636,10 +688,10 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
   const warnings: string[] = [];
 
   const topFixed = new MapiStorage(ole, root, "windows-1252").fixed(32);
-  const cp = topFixed.get(0x3fde0003);
-  const message = new MapiStorage(ole, root, cp ? codepageLabel(cp.getUint32(0, true)) : "windows-1252");
-  const bodyCp = topFixed.get(0x3ffd0003) ?? cp;
-  const bodyCharset = bodyCp ? codepageLabel(bodyCp.getUint32(0, true)) : "windows-1252";
+  // ANSI strings use the message code page (3FFD), else the internet code page (3FDE)
+  const codepage = topFixed.get(0x3ffd0003) ?? topFixed.get(0x3fde0003);
+  const bodyCharset = codepage ? codepageLabel(codepage.getUint32(0, true)) : "windows-1252";
+  const message = new MapiStorage(ole, root, bodyCharset);
 
   const subject = message.string("0037");
   const transport = message.string("007D");
@@ -693,12 +745,17 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
   const htmlBytes = message.binary("1013");
   const html = htmlBytes ? decodeCharset(htmlBytes, bodyCharset === "windows-1252" && /charset=["']?utf-8/i.test(latin1(htmlBytes.subarray(0, 2048))) ? "utf-8" : bodyCharset) : message.string("1013");
   const text = message.string("1000");
-  if (!text && !html && message.binary("1009")) {
-    warnings.push("This message only has a Rich Text (RTF) body, which this tool cannot show.");
+  if (!html && message.binary("1009")) {
+    warnings.push(
+      text
+        ? "This message has a Rich Text (RTF) body that this tool cannot show. The Text tab shows the message without formatting."
+        : "This message only has a Rich Text (RTF) body, which this tool cannot show.",
+    );
   }
 
   const attachments: EmailAttachment[] = [];
   let embedded = 0;
+  let objects = 0;
   for (const child of root.children) {
     if (child.type !== 1 || !/^__attach_version1\.0_#/i.test(child.name)) continue;
     const attach = new MapiStorage(ole, child, bodyCharset);
@@ -707,6 +764,11 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
     const name = attach.string("3707") || attach.string("3704") || "";
     const mimeType = attach.string("370E") || "application/octet-stream";
     const contentId = attach.string("3712").replace(/^<|>$/g, "");
+    // Method 5 is an attached message and method 6 is an OLE object, such as an embedded document
+    if (method === 6) {
+      objects++;
+      continue;
+    }
     if (method === 5 || (!data && child.children.some((c) => c.type === 1))) {
       embedded++;
       continue;
@@ -719,10 +781,12 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
       size: data.length,
       bytes: data,
       contentId,
-      inline: Boolean(contentId) && mimeType.startsWith("image/"),
+      inline: false,
     });
   }
+  markInline(html, attachments);
   if (embedded) warnings.push(`${embedded} embedded ${embedded === 1 ? "message was" : "messages were"} not listed. Open the original in Outlook to read ${embedded === 1 ? "it" : "them"}.`);
+  if (objects) warnings.push(`${objects} embedded ${objects === 1 ? "object was" : "objects were"} not listed. Open the original in Outlook to see ${objects === 1 ? "it" : "them"}.`);
 
   return {
     format: "msg",
@@ -733,7 +797,7 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
     bcc,
     replyTo: headers.length ? parseAddressList(headerValue(headers, "reply-to")) : [],
     date,
-    messageId: headerValue(headers, "message-id").replace(/^<|>$/g, ""),
+    messageId: (headerValue(headers, "message-id") || message.string("1035")).replace(/^<|>$/g, ""),
     text,
     html,
     headers: headers.length
@@ -754,27 +818,61 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
+const CID_REFERENCE = /\bcid:([^"'\s)>]+)/gi;
+
+/** The Content-ID that a `cid:` reference names, in lower case. */
+const cidKey = (id: string) => {
+  try {
+    return decodeURIComponent(id).toLowerCase();
+  } catch {
+    return id.toLowerCase();
+  }
+};
+
+/** An image that the preview can show in place of a `cid:` reference. SVG is never inlined. */
+const isInlineImage = (attachment: EmailAttachment) => Boolean(attachment.contentId) && attachment.mimeType.startsWith("image/") && !/svg/i.test(attachment.mimeType);
+
+/**
+ * Marks the attachments that the HTML body shows through `cid:` references. Every other attachment
+ * stays in the list, so an image that the body does not show can still be saved.
+ */
+function markInline(html: string, attachments: EmailAttachment[]): void {
+  const referenced = new Set(Array.from(html.matchAll(CID_REFERENCE), (match) => cidKey(match[1])));
+  for (const attachment of attachments) attachment.inline = isInlineImage(attachment) && referenced.has(attachment.contentId.toLowerCase());
+}
+
 /** Replaces `cid:` image references with data URLs, so inline images show without a network. */
 export function inlineCidImages(html: string, attachments: EmailAttachment[]): string {
   if (!html || !attachments.some((a) => a.contentId)) return html;
   const byId = new Map(attachments.filter((a) => a.contentId).map((a) => [a.contentId.toLowerCase(), a]));
-  return html.replace(/\bcid:([^"'\s)>]+)/gi, (match, id: string) => {
-    let key = id;
-    try {
-      key = decodeURIComponent(id);
-    } catch {
-      /* Use the id as written. */
-    }
-    const found = byId.get(key.toLowerCase());
-    return found && found.mimeType.startsWith("image/") && !/svg/i.test(found.mimeType) ? `data:${found.mimeType};base64,${toBase64(found.bytes)}` : match;
+  return html.replace(CID_REFERENCE, (match, id: string) => {
+    const found = byId.get(cidKey(id));
+    return found && isInlineImage(found) ? `data:${found.mimeType};base64,${toBase64(found.bytes)}` : match;
   });
 }
 
 /** True when the HTML refers to something on the network, which the preview blocks. */
-export const hasRemoteContent = (html: string) => /\b(?:src|background|srcset)\s*=\s*["']?\s*(?:https?:)?\/\//i.test(html) || /url\(\s*["']?\s*https?:/i.test(html);
+// The space before and after a quote are separate groups, so a long run of spaces matches in one way only
+export const hasRemoteContent = (html: string) => /\b(?:src|background|srcset)\s*=\s*(?:["']\s*)?(?:https?:)?\/\//i.test(html) || /url\(\s*(?:["']\s*)?https?:/i.test(html);
 
-/** A file name that is safe to save: no path parts or reserved characters. */
+const MAX_FILE_NAME = 200;
+
+/**
+ * A file name that is safe to save and to show: no path parts, reserved characters, control
+ * characters, or invisible and direction characters. A right-to-left override could show
+ * `report<RLO>fdp.exe` as `reportexe.pdf`.
+ */
 export const safeFileName = (name: string, fallback = "attachment") => {
-  const cleaned = Array.from(name, (ch) => (ch.charCodeAt(0) < 32 || /[\\/:*?"<>|]/.test(ch) ? "_" : ch)).join("").replace(/^\.+/, "").trim();
+  const isControl = (code: number) => code < 32 || (code >= 0x7f && code <= 0x9f);
+  let cleaned = Array.from(name, (ch) => (isControl(ch.charCodeAt(0)) || /[\\/:*?"<>|]/.test(ch) ? "_" : ch))
+    .join("")
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, "")
+    .replace(/^\.+/, "")
+    .trim();
+  if (cleaned.length > MAX_FILE_NAME) {
+    // Keep the extension, so the saved file opens with the right program
+    const extension = /\.[^.]{1,16}$/.exec(cleaned)?.[0] ?? "";
+    cleaned = cleaned.slice(0, MAX_FILE_NAME - extension.length) + extension;
+  }
   return cleaned || fallback;
 };

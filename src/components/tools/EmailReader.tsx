@@ -70,7 +70,7 @@ function AddressRow({ label, list }: { label: string; list: EmailAddress[] }) {
       <td className="break-words py-1">
         {list.map((a, i) => (
           <span key={`${a.address}-${i}`} className="mr-2 inline-block" title={formatAddress(a)}>
-            {a.name ? <>{a.name} <span className="text-muted-foreground">&lt;{a.address}&gt;</span></> : a.address}
+            {a.name && a.address ? <>{a.name} <span className="text-muted-foreground">&lt;{a.address}&gt;</span></> : a.name || a.address}
           </span>
         ))}
       </td>
@@ -98,10 +98,11 @@ function AttachmentList({ attachments, onSave }: { attachments: EmailAttachment[
         {attachments.map((a, i) => (
           <li key={`${a.name}-${i}`} className="flex items-center gap-2 py-1.5">
             <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate" title={a.name}>{a.name}</span>
+            {/* The list shows the name that Save writes, so direction characters cannot hide the real extension */}
+            <span className="min-w-0 flex-1 truncate" title={safeFileName(a.name)}>{safeFileName(a.name)}</span>
             <span className="shrink-0 text-muted-foreground">{a.mimeType}</span>
             <span className="w-16 shrink-0 text-right text-muted-foreground">{formatBytes(a.size)}</span>
-            <button type="button" className="toolbar-text-button" onClick={() => onSave(a)} aria-label={`Save ${a.name}`}>
+            <button type="button" className="toolbar-text-button" onClick={() => onSave(a)} aria-label={`Save ${safeFileName(a.name)}`}>
               <Download size={14} aria-hidden="true" />
               Save
             </button>
@@ -121,16 +122,18 @@ export function EmailReader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pendingInput = useDebouncedValue(input, 250);
+  // After Clear, the debounced value still holds the old text for a moment, so an empty input wins
+  const source = input.trim() ? pendingInput : "";
 
   const result = useMemo<{ email: ParsedEmail } | { error: string } | null>(() => {
     try {
       if (file) return { email: parseEmail(file.bytes) };
-      if (!pendingInput.trim()) return null;
-      return { email: parseEmail(new TextEncoder().encode(pendingInput)) };
+      if (!source.trim()) return null;
+      return { email: parseEmail(new TextEncoder().encode(source)) };
     } catch (err) {
       return { error: (err as Error).message };
     }
-  }, [file, pendingInput]);
+  }, [file, source]);
   const email = result && "email" in result ? result.email : null;
   const error = fileError || (result && "error" in result ? result.error : "");
 
@@ -308,7 +311,7 @@ export function EmailReader() {
                 </div>
                 {listed.length > 0 && <AttachmentList attachments={listed} onSave={(a) => void saveAttachment(a)} />}
               </>
-            ) : file || error ? (
+            ) : file ? (
               <PaneEmpty title="The file could not be read" hint="Open another file, or select Clear." />
             ) : (
               <CodeTextarea
