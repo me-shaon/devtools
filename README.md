@@ -85,6 +85,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **X.509 Certificate Decoder** - Read PEM and DER certificates and CSRs, check validity and fingerprints, and verify a chain offline
 - **HTML Preview** - Render HTML in a sandbox that cannot reach the network or the app
 - **Mermaid Renderer** - Render Mermaid flowcharts and sequence, class, ER, state, Gantt, and other diagrams as you type, and save them as SVG or PNG
+- **DB Diagram** - Draw database schemas from DBML and edit tables, columns, and references on the canvas. Import SQL from PostgreSQL, MySQL, SQL Server, Snowflake, or SQLite, or a Mermaid erDiagram. Includes an offline DBML reference. Export SQL, Mermaid, JSON, SVG, or PNG
 - **Code Formatter** - Beautify or minify HTML, CSS, JavaScript, XML, and SQL
 - **Semver Calculator** - Check versions against npm, Cargo, Composer, or Python ranges, see the range as plain comparators, and compare two versions
 - **XML Inspector** - Format or minify XML, and query nodes or values with XPath 1.0 and namespace prefixes

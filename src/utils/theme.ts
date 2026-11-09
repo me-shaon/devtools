@@ -48,3 +48,7 @@ export const syncDarkClass = (
 ): void => {
   root?.classList.toggle("dark", enabled);
 };
+
+/** The app theme when a tool opens, so that a diagram tool starts in the same theme. */
+export const initialTheme = (): "light" | "dark" =>
+  typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "dark" : "light";

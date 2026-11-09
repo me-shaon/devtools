@@ -13,6 +13,7 @@ import {
   CodeXml,
   Coins,
   Database,
+  DatabaseZap,
   Dices,
   FileArchive,
   FileBadge,
@@ -121,6 +122,7 @@ export const ALL_TOOLS = [
   { icon: Clock, name: "Stopwatch", id: "stopwatch", category: "Time & Date", keywords: ["stopwatch", "timer", "elapsed", "laps", "split"] },
   { icon: Earth, name: "Time Zone Converter", id: "time-zone-converter", category: "Time & Date", keywords: ["timezone", "time zone", "convert", "utc to local", "local to utc", "world clock", "dst", "daylight saving", "meeting time"] },
   { icon: Workflow, name: "Mermaid Renderer", id: "mermaid-renderer", category: "Development Tools", keywords: ["mermaid", "diagram", "flowchart", "sequence diagram", "class diagram", "er diagram", "gantt", "mind map", "svg", "png"] },
+  { icon: DatabaseZap, name: "DB Diagram", id: "db-diagram", category: "Development Tools", keywords: ["dbml", "erd", "er diagram", "entity relationship", "database diagram", "schema", "dbdiagram", "drawsql", "sql", "ddl", "create table", "postgres", "mysql", "sql server", "sqlite", "foreign key"] },
 ] as const;
 
 export type ToolDefinition = (typeof ALL_TOOLS)[number];
@@ -134,6 +136,7 @@ export const CATEGORIES = Array.from(new Set(ALL_TOOLS.map((tool) => tool.catego
 export const TOOL_BY_ID = new Map<ToolId, ToolDefinition>(ALL_TOOLS.map((tool) => [tool.id, tool]));
 
 export const TOOL_COMPONENTS: Record<ToolId, LazyExoticComponent<ComponentType>> = {
+  "db-diagram": lazyNamed(() => import("@/components/tools/DbDiagram"), "DbDiagram"),
   "mermaid-renderer": lazyNamed(() => import("@/components/tools/MermaidRenderer"), "MermaidRenderer"),
   "time-zone-converter": lazyNamed(() => import("@/components/tools/TimeZoneConverter"), "TimeZoneConverter"),
   stopwatch: lazyNamed(() => import("@/components/tools/Stopwatch"), "Stopwatch"),
