@@ -72,11 +72,11 @@ describe("DbDiagram", () => {
     expect(textarea().value).toContain("  body text [not null]\n");
   });
 
-  it("adds a table from the canvas", () => {
+  it("adds a table from the canvas", async () => {
     render(<DbDiagram />);
     fireEvent.click(screen.getByRole("button", { name: "Add table" }));
     expect(textarea().value).toContain("Table table_1 {\n  id integer [pk]\n}\n");
-    expect(nodeIds()).toContain("table_1");
+    await waitFor(() => expect(nodeIds()).toContain("table_1"));
     expect(screen.getByRole("complementary", { name: "Table" })).toBeInTheDocument();
   });
 
@@ -108,7 +108,8 @@ describe("DbDiagram", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Import" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(textarea().value).toContain('Table "things"');
-    expect(nodeIds()).toEqual(["things"]);
+    // React Flow renders the new nodes after the text changes, which can take a moment on a slow machine
+    await waitFor(() => expect(nodeIds()).toEqual(["things"]));
   });
 
   it("shows SQL import errors in the dialog", async () => {
@@ -130,7 +131,7 @@ describe("DbDiagram", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Import" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(textarea().value).toContain("Ref: ORDER.customer_id ?> CUSTOMER.id // places");
-    expect(nodeIds()).toEqual(["CUSTOMER", "ORDER"]);
+    await waitFor(() => expect(nodeIds()).toEqual(["CUSTOMER", "ORDER"]));
     expect(screen.getByText("1 reference")).toBeInTheDocument();
   });
 
