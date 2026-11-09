@@ -876,3 +876,15 @@ export const safeFileName = (name: string, fallback = "attachment") => {
   }
   return cleaned || fallback;
 };
+
+export type EmailReadResult = { ok: true; email: ParsedEmail; html: string } | { ok: false; error: string };
+
+/** Parses a message and inlines its cid: images. The worker and the main-thread fallback both call this. */
+export function readEmailBytes(bytes: Uint8Array): EmailReadResult {
+  try {
+    const email = parseEmail(bytes);
+    return { ok: true, email, html: inlineCidImages(email.html, email.attachments) };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || "The message could not be read." };
+  }
+}

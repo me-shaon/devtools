@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const saveFile = vi.fn(async (_blob: Blob, _name: string) => true);
@@ -55,6 +55,16 @@ describe("EmailReader", () => {
     const details = await screen.findByRole("table", { name: "Message details" });
     expect(details.textContent).toContain("Ada");
     expect(details.textContent).not.toContain("<>");
+  });
+
+  it("follows the app theme in the preview", async () => {
+    render(<EmailReader />);
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: EML } });
+    const frame = await screen.findByTitle("Email preview");
+    expect(frame.getAttribute("srcdoc")).toContain("color-scheme:light");
+    await act(async () => document.documentElement.classList.add("dark"));
+    await waitFor(() => expect(screen.getByTitle("Email preview").getAttribute("srcdoc")).toContain("color-scheme:dark"));
+    document.documentElement.classList.remove("dark");
   });
 
   it("reports text that is not an email", async () => {
