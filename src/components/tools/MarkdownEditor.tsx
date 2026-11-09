@@ -1,22 +1,38 @@
-import { useDeferredValue, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Code } from "lucide-react";
-import { toast } from "sonner";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "@/components/tools/CopyButton";
-import { convertMarkdown, sanitizeHtml } from "@/utils/markdown";
+import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
+import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
+import { useDarkClass } from "@/hooks/useDarkClass";
+import { installExternalLinkHandler } from "@/lib/desktop";
+import { buildPreviewDocument } from "@/utils/html-preview";
+import { convertMarkdown, countRemoteImages, markdownCss, sanitizeHtml } from "@/utils/markdown";
 
-const defaultMarkdown = `# Welcome to Markdown Editor
+const DEFAULT_MARKDOWN = `# Markdown Preview
 
-## Features
+Write **GitHub Flavored Markdown** on the left. The preview updates as you type.
 
-- **Bold** and *italic* text
-- Lists (ordered and unordered)
-- [Links](https://example.com)
-- \`Inline code\` and code blocks
+## Lists and tasks
 
-## Code Block
+- [x] Tables and task lists
+- [ ] Inline HTML, such as <kbd>Ctrl</kbd> + <kbd>C</kbd> and H<sub>2</sub>O
+
+## Table
+
+| Feature | Supported |
+| ------- | :-------: |
+| Tables  | Yes       |
+| HTML    | Yes       |
+
+## HTML blocks
+
+<details>
+<summary>Select to open</summary>
+
+Markdown works inside an HTML block when a blank line separates them.
+
+</details>
+
+## Code
 
 \`\`\`javascript
 function greet(name) {
@@ -24,139 +40,124 @@ function greet(name) {
 }
 \`\`\`
 
-## Table
-
-| Header 1 | Header 2 | Header 3 |
-|----------|----------|----------|
-| Cell 1   | Cell 2   | Cell 3   |
-| Cell 4   | Cell 5   | Cell 6   |
-
-## Blockquote
-
-> This is a blockquote
-> with multiple lines
-
----
-
-**Start typing to see the preview!**
+> Remote images stay blocked until you select **Load images**.
 `;
 
+const FAQ_ITEMS: ToolFaqItem[] = [
+  {
+    q: "Which Markdown syntax works?",
+    a: "CommonMark with GitHub Flavored Markdown: headings, lists, links, images, code blocks, tables, task lists, strikethrough, and autolinks.",
+  },
+  {
+    q: "Can I use HTML?",
+    a: "Yes. Inline tags such as <kbd> and <sub>, and blocks such as <details> and <p align=\"center\">, render as on GitHub. Scripts, event handlers, forms, frames, and <style> tags are removed. The preview runs in a sandbox, so the document cannot change the app.",
+  },
+  {
+    q: "Why are images from the web missing?",
+    a: "Remote images can track when you open a document, so the preview blocks them. Select Load images to show them for this document. Images in data: URLs always show.",
+  },
+  {
+    q: "What does Copy HTML copy?",
+    a: "The HTML of the document after the tool removes unsafe parts, without the preview styles.",
+  },
+];
+
+const countWords = (text: string) => text.match(/\S+/g)?.length ?? 0;
+
 export function MarkdownEditor() {
-  const [markdown, setMarkdown] = useState(defaultMarkdown);
-  const [view, setView] = useState<"split" | "preview" | "source">("split");
-  const deferredMarkdown = useDeferredValue(markdown);
-  const html = useMemo(() => sanitizeHtml(convertMarkdown(deferredMarkdown)), [deferredMarkdown]);
+  const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
+  const [remoteImages, setRemoteImages] = useState(false);
+  const dark = useDarkClass();
+  const frame = useRef<HTMLIFrameElement>(null);
+  const deferred = useDeferredValue(markdown);
 
+  const html = useMemo(() => sanitizeHtml(convertMarkdown(deferred)), [deferred]);
+  const remoteCount = useMemo(() => countRemoteImages(html), [html]);
+  const srcDoc = useMemo(
+    () => (html.trim() ? buildPreviewDocument(`<article class="markdown-body">${html}</article>`, { scripts: false, dark, remoteImages, css: markdownCss(dark) }) : ""),
+    [html, dark, remoteImages],
+  );
 
+  // Links in the preview open in the system browser, as links elsewhere in the app do
+  const removeLinkHandler = useRef<(() => void) | null>(null);
+  const attachLinkHandler = () => {
+    removeLinkHandler.current?.();
+    const doc = frame.current?.contentDocument;
+    removeLinkHandler.current = doc ? installExternalLinkHandler(doc) : null;
+  };
+  useEffect(() => () => removeLinkHandler.current?.(), []);
+
+  const notice =
+    remoteCount > 0 ? (
+      <div className="workspace-notice" role="status">
+        {remoteImages ? (
+          <>
+            Remote images are loaded.{" "}
+            <button type="button" className="toolbar-text-button" onClick={() => setRemoteImages(false)}>
+              Block images
+            </button>
+          </>
+        ) : (
+          <>
+            {remoteCount === 1 ? "1 remote image is blocked." : `${remoteCount} remote images are blocked.`}{" "}
+            <button type="button" className="toolbar-text-button" onClick={() => setRemoteImages(true)}>
+              Load images
+            </button>
+          </>
+        )}
+      </div>
+    ) : undefined;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Markdown Editor</CardTitle>
-          <CardDescription>Write markdown and see live HTML preview</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2 mb-4">
-            <Button
-              variant={view === "split" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("split")}
-            >
-              <Code className="h-4 w-4 mr-1" />
-              Split
-            </Button>
-            <Button
-              variant={view === "preview" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("preview")}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              Preview Only
-            </Button>
-            <Button
-              variant={view === "source" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView("source")}
-            >
-              <Code className="h-4 w-4 mr-1" />
-              Source Only
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {(view === "split" || view === "source") && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Markdown</label>
-                  <CopyButton value={markdown} label="Copy Markdown" />
-                </div>
-                <Textarea
-                  value={markdown}
-                  onChange={(e) => setMarkdown(e.target.value)}
-                  className="min-h-[500px] font-mono text-sm resize-none"
-                  placeholder="Write your markdown here..."
-                />
-              </div>
-            )}
-
-            {(view === "split" || view === "preview") && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">HTML Preview</label>
-                  <CopyButton value={html.replace(/<br>/g, "\n")} label="Copy HTML" />
-                </div>
-                <div
-                  className="min-h-[500px] max-h-[500px] overflow-y-auto rounded-md border border-border bg-background p-4 text-foreground prose prose-neutral max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: html }}
-                />
-              </div>
+    <ToolWorkspace
+      id="markdown"
+      notice={notice}
+      first={
+        <EditorPane
+          title="Markdown"
+          htmlFor="markdown-input"
+          actions={
+            <>
+              <CopyButton value={markdown} label="Copy" ariaLabel="Copy Markdown" />
+              {markdown && (
+                <button type="button" className="toolbar-text-button" onClick={() => setMarkdown("")}>
+                  Clear
+                </button>
+              )}
+            </>
+          }
+        >
+          <CodeTextarea id="markdown-input" value={markdown} spellCheck={false} placeholder="# Write Markdown here" onChange={(event) => setMarkdown(event.target.value)} />
+        </EditorPane>
+      }
+      second={
+        <EditorPane title="Preview" scroll={false} actions={<CopyButton value={html} label="Copy HTML" />}>
+          <div className="relative h-full min-h-0">
+            {srcDoc ? (
+              // Scripts stay off (no allow-scripts, and the CSP blocks them). allow-same-origin lets
+              // this page attach the link handler to the preview document.
+              <iframe
+                ref={frame}
+                title="Markdown preview"
+                sandbox="allow-same-origin"
+                referrerPolicy="no-referrer"
+                srcDoc={srcDoc}
+                onLoad={attachLinkHandler}
+                className="absolute inset-0 h-full w-full bg-background"
+              />
+            ) : (
+              <PaneEmpty title="The preview appears here" hint="Write Markdown on the left." />
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Markdown Quick Reference</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <code className="text-xs"># Heading</code>
-              <p className="text-muted-foreground text-xs">H1 Heading</p>
-            </div>
-            <div>
-              <code className="text-xs">**bold**</code>
-              <p className="text-muted-foreground text-xs">Bold text</p>
-            </div>
-            <div>
-              <code className="text-xs">*italic*</code>
-              <p className="text-muted-foreground text-xs">Italic text</p>
-            </div>
-            <div>
-              <code className="text-xs">[text](url)</code>
-              <p className="text-muted-foreground text-xs">Link</p>
-            </div>
-            <div>
-              <code className="text-xs">\`code\`</code>
-              <p className="text-muted-foreground text-xs">Inline code</p>
-            </div>
-            <div>
-              <code className="text-xs">- item</code>
-              <p className="text-muted-foreground text-xs">List item</p>
-            </div>
-            <div>
-              <code className="text-xs">&gt; quote</code>
-              <p className="text-muted-foreground text-xs">Blockquote</p>
-            </div>
-            <div>
-              <code className="text-xs">---hr---</code>
-              <p className="text-muted-foreground text-xs">Horizontal rule</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </EditorPane>
+      }
+      status={
+        <>
+          <span>{countWords(markdown) === 1 ? "1 word" : `${countWords(markdown)} words`}</span>
+          <span>{markdown.split("\n").length === 1 ? "1 line" : `${markdown.split("\n").length} lines`}</span>
+        </>
+      }
+      help={<ToolFaqSection items={FAQ_ITEMS} />}
+    />
   );
 }

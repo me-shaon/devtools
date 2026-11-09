@@ -60,12 +60,14 @@ jobs:
           cache: npm
 
       - name: Setup Rust
+        # The stable branch has no version tags, so Dependabot cannot update this pin. Refresh it by hand:
+        # gh api repos/dtolnay/rust-toolchain/commits/stable --jq .sha
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: ${{ matrix.target }}
 
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
           key: ${{ matrix.target }}
@@ -128,9 +130,50 @@ jobs:
 
           echo "BUILD_ARGS=$build_args" >> "$GITHUB_ENV"
 
+      # Bundling downloads tools from GitHub releases: NSIS on Windows, AppRun and linuxdeploy on
+      # Linux. Tauri keeps them in its cache folder, so a restored cache skips the downloads.
+      - name: Restore Tauri bundler tools
+        id: tauri-tools
+        if: runner.os != 'macOS'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
+          key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: tauri-tools-${{ runner.os }}-${{ runner.arch }}-
+
+      # When GitHub answers a tool download with a server error (for example HTTP 504), build again
+      # after a pause. The web app is already built, so a retry skips beforeBuildCommand, and Cargo
+      # output is cached, so only bundling repeats.
       - name: Build app
         shell: bash
-        run: npx tauri build $BUILD_ARGS
+        run: |
+          log="$RUNNER_TEMP/tauri-build.log"
+          extra=()
+          for attempt in 1 2 3 4 5; do
+            set +e
+            npx tauri build $BUILD_ARGS "${extra[@]}" 2>&1 | tee "$log"
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ] && grep -q "http status: 5" "$log"; then
+              wait=$((30 * 2 ** (attempt - 1)))
+              echo "::warning::A tool download failed with a server error. Building again in $wait s (attempt $attempt of 5)."
+              sleep "$wait"
+              extra=(--config '{"build":{"beforeBuildCommand":""}}')
+              continue
+            fi
+            exit "$status"
+          done
+
+      # Save even when the build failed, so a re-run keeps the tools that did download
+      - name: Save Tauri bundler tools
+        if: always() && runner.os != 'macOS' && steps.tauri-tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.os == 'Windows' && '~/AppData/Local/tauri' || '~/.cache/tauri' }}
+          key: tauri-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
 
       - name: Collect release assets
         shell: bash

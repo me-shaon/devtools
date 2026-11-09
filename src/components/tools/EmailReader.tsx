@@ -1,5 +1,6 @@
+import { useDarkClass } from "@/hooks/useDarkClass";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { Download, FileUp, Mail, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,14 +13,13 @@ import { buildPreviewDocument, previewSandbox } from "@/utils/html-preview";
 import {
   formatAddress,
   hasRemoteContent,
-  inlineCidImages,
   MAX_EMAIL_BYTES,
-  parseEmail,
   safeFileName,
   type EmailAddress,
   type EmailAttachment,
-  type ParsedEmail,
+  type EmailReadResult,
 } from "@/utils/email-reader";
+import { readEmail } from "@/utils/email-runner";
 
 interface OpenedFile {
   name: string;
@@ -125,23 +125,35 @@ export function EmailReader() {
   // After Clear, the debounced value still holds the old text for a moment, so an empty input wins
   const source = input.trim() ? pendingInput : "";
 
-  const result = useMemo<{ email: ParsedEmail } | { error: string } | null>(() => {
-    try {
-      if (file) return { email: parseEmail(file.bytes) };
-      if (!source.trim()) return null;
-      return { email: parseEmail(new TextEncoder().encode(source)) };
-    } catch (err) {
-      return { error: (err as Error).message };
+  const [result, setResult] = useState<EmailReadResult | null>(null);
+  const [reading, setReading] = useState(false);
+  const dark = useDarkClass();
+
+  // A large file takes a while, so the message is read in a worker. A newer file replaces an older read.
+  useEffect(() => {
+    const bytes = file ? file.bytes : source.trim() ? new TextEncoder().encode(source) : null;
+    if (!bytes) {
+      setResult(null);
+      setReading(false);
+      return;
     }
+    let current = true;
+    setReading(true);
+    void readEmail(bytes).then((next) => {
+      if (!current || !next) return;
+      setResult(next);
+      setReading(false);
+    });
+    return () => {
+      current = false;
+    };
   }, [file, source]);
+  // The project does not use strict mode, so narrow the union by its fields
   const email = result && "email" in result ? result.email : null;
   const error = fileError || (result && "error" in result ? result.error : "");
 
-  const html = useMemo(() => (email ? inlineCidImages(email.html, email.attachments) : ""), [email]);
-  const srcDoc = useMemo(
-    () => (html.trim() ? buildPreviewDocument(html, { scripts: false, dark: document.documentElement.classList.contains("dark") }) : ""),
-    [html],
-  );
+  const html = result && "html" in result ? result.html : "";
+  const srcDoc = useMemo(() => (html.trim() ? buildPreviewDocument(html, { scripts: false, dark }) : ""), [html, dark]);
   const remote = useMemo(() => hasRemoteContent(html), [html]);
   const listed = useMemo(() => (email ? email.attachments.filter((a) => !a.inline) : []), [email]);
 
@@ -351,7 +363,17 @@ export function EmailReader() {
           </div>
         </EditorPane>
       }
-      status={email ? <span>{email.subject || "(no subject)"}</span> : error ? <span className="text-destructive">Invalid input</span> : <span>Ready</span>}
+      status={
+        reading ? (
+          <span>Reading the message…</span>
+        ) : email ? (
+          <span>{email.subject || "(no subject)"}</span>
+        ) : error ? (
+          <span className="text-destructive">Invalid input</span>
+        ) : (
+          <span>Ready</span>
+        )
+      }
       help={<ToolFaqSection items={FAQ_ITEMS} />}
     />
   );

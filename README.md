@@ -107,7 +107,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Base64** - Encode and decode Base64 and Base32 text, files, and data URIs, with a URL-safe mode
 - **Case Converter** - Convert names to camelCase, snake_case, kebab-case, and 8 more cases live, one name per line, and make URL slugs
 - **Number Base** - See a number in binary, octal, decimal, hex, any base to 36, and Roman numerals as you type, with two's complement views, integer expressions, and a clickable bit grid
-- **Markdown** - Live, sanitized preview and HTML export
+- **Markdown** - Live preview of GitHub Flavored Markdown with tables, task lists, and inline HTML. Remote images load only when you allow them. Copy the sanitized HTML
 - **URL Encoder** - Encode and decode URLs, and parse a URL into editable parts and query parameters
 - **CSV to JSON** - Bidirectional CSV and JSON conversion with custom delimiters and nested key flattening
 - **Config Converter** - Convert between JSON, YAML, TOML, .env, Java .properties, and TOON files, including multi-document YAML, and see how many LLM tokens TOON saves against JSON

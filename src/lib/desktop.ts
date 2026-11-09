@@ -359,13 +359,15 @@ export function installExternalLinkHandler(root: Document = document): () => voi
   }
 
   const handleClick = (event: MouseEvent) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
+    // An element in a frame, such as the Markdown preview, comes from another realm, so
+    // `instanceof Element` is false for it. Check for the methods instead.
+    const target = event.target as Element | null;
+    if (!target || typeof target.closest !== "function") {
       return;
     }
 
-    const anchor = target.closest("a[href]");
-    if (!(anchor instanceof HTMLAnchorElement) || anchor.hasAttribute("download")) {
+    const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+    if (!anchor || anchor.hasAttribute("download")) {
       return;
     }
 

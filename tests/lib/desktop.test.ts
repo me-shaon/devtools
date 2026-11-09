@@ -355,4 +355,25 @@ describe("installExternalLinkHandler", () => {
     external.remove();
     internal.remove();
   });
+
+  it("opens external links in the document of a frame", async () => {
+    const { installExternalLinkHandler } = await loadDesktop();
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const doc = frame.contentDocument!;
+    const uninstall = installExternalLinkHandler(doc);
+
+    const link = doc.createElement("a");
+    link.href = "https://example.com/readme";
+    doc.body.append(link);
+    const event = new (doc.defaultView as unknown as typeof window).MouseEvent("click", { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+
+    expect(link instanceof HTMLAnchorElement).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
+    expect(tauri.openUrl).toHaveBeenCalledWith("https://example.com/readme");
+
+    uninstall();
+    frame.remove();
+  });
 });

@@ -84,7 +84,7 @@ export const ALL_TOOLS = [
   { icon: RefreshCw, name: "Base64", id: "base64", category: "Converters", keywords: ["b64", "encode", "decode", "data uri", "base32", "totp"] },
   { icon: Type, name: "Case Converter", id: "case-converter", category: "Converters", keywords: ["camelcase", "snake_case", "kebab", "pascal", "upper", "lower", "train-case", "dot.case", "constant", "slug", "slugify", "url slug", "permalink", "seo url", "transliterate", "remove accents", "diacritics"] },
   { icon: Binary, name: "Number Base", id: "number-base", category: "Converters", keywords: ["binary", "hex", "octal", "decimal", "radix", "two's complement", "signed", "expression", "calculator", "evaluate", "bitwise", "bit shift", "xor", "bits", "toggle bit", "popcount", "endianness", "byte swap", "roman numerals", "roman"] },
-  { icon: FileText, name: "Markdown", id: "markdown", category: "Converters", keywords: ["md", "preview", "html"] },
+  { icon: FileText, name: "Markdown", id: "markdown", category: "Converters", keywords: ["md", "preview", "html", "gfm", "github", "readme", "table"] },
   { icon: Globe, name: "URL Encoder", id: "url-encoder", category: "Converters", keywords: ["url", "uri", "percent", "encode", "decode", "query string"] },
   { icon: Database, name: "CSV to JSON", id: "csv-json", category: "Converters", keywords: ["csv", "tsv", "spreadsheet"] },
   { icon: FileCode2, name: "Config Converter", id: "yaml-json", category: "Converters", keywords: ["yaml to json", "json to yaml", "yaml", "yml", "toml", "dotenv", ".env", "properties", "spring boot", "configmap", "docker compose", "toon", "token-oriented object notation", "llm", "prompt", "tokens", "token savings"] },

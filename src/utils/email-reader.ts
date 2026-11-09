@@ -3,6 +3,8 @@
  * `.msg` files are Outlook messages stored in an OLE compound file with MAPI properties.
  */
 
+import { decompressRtf, deEncapsulateRtf, type RtfBody } from "@/utils/rtf";
+
 export interface EmailAddress {
   name: string;
   address: string;
@@ -743,14 +745,28 @@ export function parseMsg(bytes: Uint8Array): ParsedEmail {
   if (!date && headers.length) date = parseEmailDate(headerValue(headers, "date"));
 
   const htmlBytes = message.binary("1013");
-  const html = htmlBytes ? decodeCharset(htmlBytes, bodyCharset === "windows-1252" && /charset=["']?utf-8/i.test(latin1(htmlBytes.subarray(0, 2048))) ? "utf-8" : bodyCharset) : message.string("1013");
-  const text = message.string("1000");
-  if (!html && message.binary("1009")) {
-    warnings.push(
-      text
-        ? "This message has a Rich Text (RTF) body that this tool cannot show. The Text tab shows the message without formatting."
-        : "This message only has a Rich Text (RTF) body, which this tool cannot show.",
-    );
+  let html = htmlBytes ? decodeCharset(htmlBytes, bodyCharset === "windows-1252" && /charset=["']?utf-8/i.test(latin1(htmlBytes.subarray(0, 2048))) ? "utf-8" : bodyCharset) : message.string("1013");
+  let text = message.string("1000");
+  // Outlook often keeps an HTML message only as compressed RTF that holds the original HTML
+  const rtf = html ? null : message.binary("1009");
+  if (rtf) {
+    let body: RtfBody | null = null;
+    let damaged = false;
+    try {
+      body = deEncapsulateRtf(decompressRtf(rtf, MAX_EMAIL_BYTES), codepage ? codepage.getUint32(0, true) : 1252);
+    } catch {
+      damaged = true;
+      warnings.push("The Rich Text (RTF) body is damaged.");
+    }
+    if (body?.kind === "html") html = body.value;
+    else if (body?.kind === "text" && !text) text = body.value;
+    else if (!body && !damaged) {
+      warnings.push(
+        text
+          ? "This message has a Rich Text (RTF) body that this tool cannot show. The Text tab shows the message without formatting."
+          : "This message only has a Rich Text (RTF) body, which this tool cannot show.",
+      );
+    }
   }
 
   const attachments: EmailAttachment[] = [];
@@ -876,3 +892,15 @@ export const safeFileName = (name: string, fallback = "attachment") => {
   }
   return cleaned || fallback;
 };
+
+export type EmailReadResult = { ok: true; email: ParsedEmail; html: string } | { ok: false; error: string };
+
+/** Parses a message and inlines its cid: images. The worker and the main-thread fallback both call this. */
+export function readEmailBytes(bytes: Uint8Array): EmailReadResult {
+  try {
+    const email = parseEmail(bytes);
+    return { ok: true, email, html: inlineCidImages(email.html, email.attachments) };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || "The message could not be read." };
+  }
+}
