@@ -1,6 +1,6 @@
 [package]
 name = "devtoolsapp"
-version = "2.7.1"
+version = "2.8.0"
 description = "DevToolsApp - Your Essential Developer Companion"
 authors = ["Ahmed Shamim"]
 license = "MIT"
