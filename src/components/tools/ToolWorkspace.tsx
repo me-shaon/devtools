@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useState, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { Columns2, Rows2, ShieldCheck } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
@@ -113,9 +113,9 @@ export function EditorPane({ title, htmlFor, titleId, actions, children, scroll 
 }
 
 /** A code-style text area that fills its pane. */
-export function CodeTextarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea spellCheck={false} autoCapitalize="off" autoCorrect="off" {...props} className={`code-textarea ${props.className ?? ""}`} />;
-}
+export const CodeTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function CodeTextarea(props, ref) {
+  return <textarea ref={ref} spellCheck={false} autoCapitalize="off" autoCorrect="off" {...props} className={`code-textarea ${props.className ?? ""}`} />;
+});
 
 /** Placeholder for an empty result pane. */
 export function PaneEmpty({ icon, title, hint }: { icon?: ReactNode; title: string; hint?: string }) {

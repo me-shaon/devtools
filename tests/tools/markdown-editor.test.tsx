@@ -55,3 +55,53 @@ describe("MarkdownEditor", () => {
     expect(screen.getByText("The preview appears here")).toBeInTheDocument();
   });
 });
+
+describe("MarkdownEditor scroll sync", () => {
+  const sizes = (element: Element, scrollHeight: number, clientHeight: number) => {
+    Object.defineProperty(element, "scrollHeight", { configurable: true, value: scrollHeight });
+    Object.defineProperty(element, "clientHeight", { configurable: true, value: clientHeight });
+  };
+  const setup = () => {
+    render(<MarkdownEditor />);
+    const doc = preview().contentDocument!;
+    const page = doc.scrollingElement ?? doc.documentElement;
+    sizes(input(), 1200, 200);
+    sizes(page, 2200, 200);
+    fireEvent.load(preview());
+    return { win: preview().contentWindow!, page };
+  };
+
+  it("scrolls the preview when the editor scrolls", () => {
+    const { page } = setup();
+    input().scrollTop = 500;
+    fireEvent.scroll(input());
+    expect(page.scrollTop).toBe(1000);
+  });
+
+  it("scrolls the editor when the preview scrolls", () => {
+    const { win, page } = setup();
+    page.scrollTop = 1500;
+    fireEvent.scroll(win);
+    expect(input().scrollTop).toBe(750);
+  });
+
+  it("does not sync back the scroll that a sync caused", () => {
+    const { win, page } = setup();
+    input().scrollTop = 500;
+    fireEvent.scroll(input());
+    // The preview fires a scroll event for the position that sync set
+    input().scrollTop = 520;
+    fireEvent.scroll(win);
+    expect(input().scrollTop).toBe(520);
+    expect(page.scrollTop).toBe(1000);
+  });
+
+  it("keeps the editor position when the preview reloads", () => {
+    const { page } = setup();
+    input().scrollTop = 250;
+    fireEvent.scroll(input());
+    page.scrollTop = 0;
+    fireEvent.load(preview());
+    expect(page.scrollTop).toBe(500);
+  });
+});

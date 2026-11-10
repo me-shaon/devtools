@@ -6,6 +6,7 @@ import { useDarkClass } from "@/hooks/useDarkClass";
 import { installExternalLinkHandler } from "@/lib/desktop";
 import { buildPreviewDocument } from "@/utils/html-preview";
 import { convertMarkdown, countRemoteImages, markdownCss, sanitizeHtml } from "@/utils/markdown";
+import { scrollRatio, scrollToRatio } from "@/utils/scroll-sync";
 
 const DEFAULT_MARKDOWN = `# Markdown Preview
 
@@ -78,14 +79,52 @@ export function MarkdownEditor() {
     [html, dark, remoteImages],
   );
 
-  // Links in the preview open in the system browser, as links elsewhere in the app do
-  const removeLinkHandler = useRef<(() => void) | null>(null);
-  const attachLinkHandler = () => {
-    removeLinkHandler.current?.();
+  // Scrolling one pane scrolls the other to the same relative position. When a sync sets
+  // scrollTop, the target pane fires its own scroll event. `echo` holds the position that
+  // sync set, so that event does not sync back.
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const echo = useRef<{ editor: number | null; preview: number | null }>({ editor: null, preview: null });
+  const previewScroller = () => {
     const doc = frame.current?.contentDocument;
-    removeLinkHandler.current = doc ? installExternalLinkHandler(doc) : null;
+    return doc ? (doc.scrollingElement ?? doc.documentElement) : null;
   };
-  useEffect(() => () => removeLinkHandler.current?.(), []);
+  const copyScroll = (source: "editor" | "preview") => {
+    const target = source === "editor" ? "preview" : "editor";
+    const from = source === "editor" ? editor.current : previewScroller();
+    const to = source === "editor" ? previewScroller() : editor.current;
+    if (!from || !to) return;
+    const before = to.scrollTop;
+    const after = scrollToRatio(to, scrollRatio(from));
+    echo.current[target] = after !== before ? after : null;
+  };
+  const syncScroll = (source: "editor" | "preview") => {
+    const element = source === "editor" ? editor.current : previewScroller();
+    const expected = echo.current[source];
+    echo.current[source] = null;
+    if (element && expected !== null && Math.abs(element.scrollTop - expected) <= 1) return;
+    copyScroll(source);
+  };
+
+  // The preview document reloads on each change. Each load gets the link handler and the
+  // scroll listener again, and takes the scroll position of the editor.
+  // Links in the preview open in the system browser, as links elsewhere in the app do.
+  const detachPreview = useRef<(() => void) | null>(null);
+  const attachPreview = () => {
+    detachPreview.current?.();
+    detachPreview.current = null;
+    const win = frame.current?.contentWindow;
+    const doc = frame.current?.contentDocument;
+    if (!win || !doc) return;
+    const removeLinkHandler = installExternalLinkHandler(doc);
+    const onScroll = () => syncScroll("preview");
+    win.addEventListener("scroll", onScroll);
+    detachPreview.current = () => {
+      removeLinkHandler();
+      win.removeEventListener("scroll", onScroll);
+    };
+    copyScroll("editor");
+  };
+  useEffect(() => () => detachPreview.current?.(), []);
 
   const notice =
     remoteCount > 0 ? (
@@ -127,7 +166,13 @@ export function MarkdownEditor() {
             </>
           }
         >
-          <CodeTextarea id="markdown-input" value={markdown} spellCheck={false} placeholder="# Write Markdown here" onChange={(event) => setMarkdown(event.target.value)} />
+          <CodeTextarea
+            ref={editor}
+            id="markdown-input"
+            value={markdown} spellCheck={false} placeholder="# Write Markdown here"
+            onChange={(event) => setMarkdown(event.target.value)}
+            onScroll={() => syncScroll("editor")}
+          />
         </EditorPane>
       }
       second={
@@ -142,7 +187,7 @@ export function MarkdownEditor() {
                 sandbox="allow-same-origin"
                 referrerPolicy="no-referrer"
                 srcDoc={srcDoc}
-                onLoad={attachLinkHandler}
+                onLoad={attachPreview}
                 className="absolute inset-0 h-full w-full bg-background"
               />
             ) : (
