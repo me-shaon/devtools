@@ -315,7 +315,7 @@ export function FlowCanvas({ chart, stale, theme, positions, onPositions, onChan
           connectionMode={ConnectionMode.Loose}
           deleteKeyCode={["Backspace", "Delete"]}
           zoomOnDoubleClick={false}
-          minZoom={0.1}
+          minZoom={0.02}
           fitView
           fitViewOptions={{ padding: 0.15, maxZoom: 1.25 }}
           proOptions={{ hideAttribution: true }}
