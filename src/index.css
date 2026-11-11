@@ -607,3 +607,11 @@ code, pre, kbd, samp, .font-mono { font-family: var(--font-code); font-feature-s
 .tab-context-menu-item { display: block; width: 100%; padding: 6px 10px; border-radius: 5px; text-align: left; font-size: 13px; }
 .tab-context-menu-item:hover:not([aria-disabled="true"]), .tab-context-menu-item:focus-visible { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); outline: none; }
 .tab-context-menu-item[aria-disabled="true"] { color: hsl(var(--muted-foreground)); opacity: .6; cursor: default; }
+.format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; }
+.format-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: hsl(var(--muted-foreground)); transition: color .15s ease, background-color .15s ease; }
+.format-button:hover:not(:disabled) { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.format-button:disabled { opacity: .4; cursor: default; }
+.format-button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+.format-toolbar-divider { width: 1px; height: 16px; margin: 0 6px; background: hsl(var(--border)); }
+.format-button[aria-pressed="true"] { color: hsl(var(--primary)); background: hsl(var(--primary) / .12); }
+.format-button[aria-pressed="true"]:hover { color: hsl(var(--primary)); background: hsl(var(--primary) / .18); }

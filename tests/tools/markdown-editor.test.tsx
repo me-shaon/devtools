@@ -105,3 +105,91 @@ describe("MarkdownEditor scroll sync", () => {
     expect(page.scrollTop).toBe(500);
   });
 });
+
+describe("MarkdownEditor formatting toolbar", () => {
+  it("formats the selection and keeps the editor focused", async () => {
+    render(<MarkdownEditor />);
+    fireEvent.change(input(), { target: { value: "make this bold" } });
+    input().setSelectionRange(10, 14);
+    fireEvent.click(screen.getByRole("button", { name: "Bold" }));
+    expect(input().value).toBe("make this **bold**");
+    expect(input().value.slice(input().selectionStart, input().selectionEnd)).toBe("bold");
+    await waitFor(() => expect(previewHtml()).toContain("<strong>bold</strong>"));
+  });
+
+  it("applies a format from a keyboard shortcut", () => {
+    render(<MarkdownEditor />);
+    fireEvent.change(input(), { target: { value: "word" } });
+    input().setSelectionRange(0, 4);
+    fireEvent.keyDown(input(), { key: "i", metaKey: /Mac/.test(navigator.platform), ctrlKey: !/Mac/.test(navigator.platform) });
+    expect(input().value).toBe("_word_");
+  });
+});
+
+describe("MarkdownEditor pressed formats", () => {
+  it("shows the formats at the caret as pressed, and removes one when clicked", async () => {
+    render(<MarkdownEditor />);
+    fireEvent.change(input(), { target: { value: "- some **bold** text" } });
+    input().focus();
+    input().setSelectionRange(10, 10);
+    fireEvent.select(input());
+
+    const bold = screen.getByRole("button", { name: "Bold" });
+    await waitFor(() => expect(bold).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByRole("button", { name: "Bulleted list" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Italic" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Undo" })).not.toHaveAttribute("aria-pressed");
+
+    fireEvent.click(bold);
+    expect(input().value).toBe("- some bold text");
+    await waitFor(() => expect(bold).toHaveAttribute("aria-pressed", "false"));
+  });
+});
+
+describe("MarkdownEditor keyboard and history", () => {
+  const command = { metaKey: /Mac/.test(navigator.platform), ctrlKey: !/Mac/.test(navigator.platform) };
+  const type = (value: string) => {
+    fireEvent.change(input(), { target: { value } });
+  };
+
+  it("undoes and redoes formatting with the toolbar and the keyboard", () => {
+    render(<MarkdownEditor />);
+    type("word");
+    input().setSelectionRange(0, 4);
+    fireEvent.click(screen.getByRole("button", { name: "Bold" }));
+    expect(input().value).toBe("**word**");
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(input().value).toBe("word");
+    expect(input().value.slice(input().selectionStart, input().selectionEnd)).toBe("word");
+
+    fireEvent.keyDown(input(), { key: "z", shiftKey: true, ...command });
+    expect(input().value).toBe("**word**");
+    fireEvent.keyDown(input(), { key: "z", ...command });
+    expect(input().value).toBe("word");
+  });
+
+  it("undoes the edit menu command and Clear", () => {
+    render(<MarkdownEditor />);
+    type("keep me");
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(input().value).toBe("");
+    const event = new InputEvent("beforeinput", { inputType: "historyUndo", bubbles: true, cancelable: true });
+    input().dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(input().value).toBe("keep me");
+  });
+
+  it("continues a list on Enter", () => {
+    render(<MarkdownEditor />);
+    type("- one");
+    input().setSelectionRange(5, 5);
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(input().value).toBe("- one\n- ");
+  });
+
+  it("disables Redo until there is something to redo", () => {
+    render(<MarkdownEditor />);
+    expect(screen.getByRole("button", { name: "Redo" })).toBeDisabled();
+  });
+});
