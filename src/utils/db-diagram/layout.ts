@@ -208,12 +208,20 @@ export function edgeSides(from: Point & { width: number }, to: Point & { width: 
 
 const direction = (side: Side) => (side === "right" ? 1 : -1);
 
-/** A curve from one table edge to another, which leaves each table horizontally. */
+/** The length of the straight part at each end of a line. The cardinality marks sit on it. */
+export const EDGE_STUB = 24;
+
+/**
+ * A line from one table edge to another. It leaves each table with a straight horizontal part,
+ * so the cardinality marks always cross it at a right angle, and a curve joins the two parts.
+ */
 export function edgePath(source: Point, sourceSide: Side, target: Point, targetSide: Side): string {
-  const reach = Math.max(40, Math.abs(target.x - source.x) / 2);
-  const c1 = source.x + direction(sourceSide) * reach;
-  const c2 = target.x + direction(targetSide) * reach;
-  return `M ${source.x} ${source.y} C ${c1} ${source.y}, ${c2} ${target.y}, ${target.x} ${target.y}`;
+  const start = source.x + direction(sourceSide) * EDGE_STUB;
+  const end = target.x + direction(targetSide) * EDGE_STUB;
+  const reach = Math.max(40, Math.abs(end - start) / 2);
+  const c1 = start + direction(sourceSide) * reach;
+  const c2 = end + direction(targetSide) * reach;
+  return `M ${source.x} ${source.y} L ${start} ${source.y} C ${c1} ${source.y}, ${c2} ${target.y}, ${end} ${target.y} L ${target.x} ${target.y}`;
 }
 
 /**

@@ -428,18 +428,19 @@ button.sidebar-version:hover { color: hsl(var(--foreground)); background: hsl(va
 .db-canvas .react-flow { --xy-background-color: transparent; }
 .db-canvas-empty { position: absolute; inset: 0; display: flex; pointer-events: none; }
 .db-select { height: 32px; border-radius: 6px; border: 1px solid hsl(var(--input)); background: hsl(var(--background)); padding: 0 28px 0 8px; font-size: 13px; color: hsl(var(--foreground)); }
-.db-table { border: 1px solid; border-radius: 6px; overflow: hidden; font-size: 12px; box-shadow: 0 1px 3px rgb(15 23 42 / .12); }
+.db-table { border: 1px solid; border-radius: 6px; font-size: 12px; box-shadow: 0 1px 3px rgb(15 23 42 / .12); }
 .db-table[data-selected] { box-shadow: 0 0 0 2px hsl(var(--primary)); }
-.db-table-header { display: flex; align-items: center; padding: 0 10px; font-weight: 600; min-width: 0; }
+.db-table-header { display: flex; align-items: center; padding: 0 10px; font-weight: 600; min-width: 0; border-radius: 5px 5px 0 0; overflow: hidden; }
 .db-table-schema { opacity: .7; font-weight: 500; }
 .db-table-row { position: relative; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid; cursor: pointer; }
 .db-table-row:first-of-type { border-top: 0; }
+.db-table-row:last-child { border-radius: 0 0 5px 5px; }
 .db-table-row:hover, .db-table-row[data-selected] { background: hsl(var(--primary) / .1); }
-.db-column-name { display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1; }
+.db-column-name { display: flex; align-items: center; gap: 4px; min-width: 0; flex: 1; overflow: hidden; }
 .db-column-name[data-pk] { font-weight: 600; }
 .db-column-type { flex-shrink: 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; }
 .db-column-key { flex-shrink: 0; font-size: 10px; font-weight: 600; }
-.db-table .db-handle { width: 8px; height: 8px; min-width: 0; min-height: 0; border: 1px solid hsl(var(--primary)); background: hsl(var(--background)); opacity: 0; }
+.db-table .db-handle { width: 8px; height: 8px; box-sizing: border-box; min-width: 0; min-height: 0; border: 1px solid hsl(var(--primary)); background: hsl(var(--background)); opacity: 0; }
 .db-table-row:hover .db-handle, .react-flow__node.selected .db-handle, .react-flow .connectingfrom, .react-flow .connectingto { opacity: 1; }
 .db-inspector { width: 260px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--card)); color: hsl(var(--card-foreground)); font-size: 12px; box-shadow: 0 8px 24px rgb(15 23 42 / .16); }
 .db-inspector-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

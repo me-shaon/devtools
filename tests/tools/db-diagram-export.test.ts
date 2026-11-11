@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import mermaid from "mermaid";
 import { toJson, toMermaid, toSvg } from "@/utils/db-diagram/export";
-import { autoLayout, cardinalityMark, edgeSides, tableSize } from "@/utils/db-diagram/layout";
+import { autoLayout, cardinalityMark, EDGE_STUB, edgePath, edgeSides, tableSize } from "@/utils/db-diagram/layout";
 import { parseDbml, type DbModel } from "@/utils/db-diagram/model";
 
 const SAMPLE = `Table users {
@@ -116,5 +116,13 @@ describe("geometry", () => {
     expect(cardinalityMark({ x: 0, y: 0 }, "right", "one").circle).toBeNull();
     expect(cardinalityMark({ x: 0, y: 0 }, "right", "zero-or-many").circle).toEqual({ x: 18, y: 0 });
     expect(cardinalityMark({ x: 0, y: 0 }, "left", "zero-or-one").circle).toEqual({ x: -16, y: 0 });
+  });
+
+  it("keeps the line straight under the cardinality marks, also for a steep line", () => {
+    const path = edgePath({ x: 0, y: 0 }, "right", { x: 30, y: 400 }, "left");
+    expect(path.startsWith(`M 0 0 L ${EDGE_STUB} 0 C`)).toBe(true);
+    expect(path.endsWith(`${30 - EDGE_STUB} 400 L 30 400`)).toBe(true);
+    // The widest mark, a crow's foot with a ring, fits on the straight part
+    expect(EDGE_STUB).toBeGreaterThanOrEqual(18 + 3.5);
   });
 });
