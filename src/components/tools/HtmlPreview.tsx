@@ -212,7 +212,7 @@ export function HtmlPreview() {
     width && stageSize.width ? (stageSize.width - 12 - 24) / width : 1,
     height && stageSize.height ? (stageSize.height - 24) / height : 1,
   );
-  const scale = zoom ? zoom / 100 : Math.max(fitScale, 0.1);
+  const scale = zoom ? zoom / 100 : Math.max(fitScale, 0.02);
 
   // The frame's CSS width, measured when it fills the pane
   const currentWidth = () => width ?? (frameRef.current?.getBoundingClientRect().width ?? MIN_SIZE) / scale;
