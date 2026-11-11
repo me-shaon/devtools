@@ -609,7 +609,7 @@ export function DbDiagram() {
                 colorMode={theme}
                 connectionMode={ConnectionMode.Loose}
                 deleteKeyCode={null}
-                minZoom={0.1}
+                minZoom={0.02}
                 fitView
                 fitViewOptions={{ padding: 0.1 }}
                 proOptions={{ hideAttribution: true }}
