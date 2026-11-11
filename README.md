@@ -1,6 +1,6 @@
 # DevTools
 
-A desktop workspace with 61 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
+A desktop workspace with 62 developer utilities for macOS, Windows, and Linux. Format JSON, inspect tokens and certificates, convert data, generate code, and prepare text and images for AI workflows with local processing.
 
 ![DevTools — everyday developer tools in one free, offline app for macOS, Windows, and Linux. Your data never leaves your computer.](assets/readme-banner.jpg)
 
@@ -139,6 +139,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Color Palette** - Convert any CSS color to HEX, RGB, HSL, HWB, OKLCH, and HSV with alpha. Build shades and harmony palettes from that color and copy them as CSS variables or JSON. Check WCAG contrast with a suggested fix, simulate color blindness on colors and images, and reuse the last 8 colors. Build linear and radial CSS gradients in the Gradient tab
 - **Image Converter** - Convert and compress single images or batches locally to JPEG (MozJPEG), PNG (OxiPNG), WebP, or AVIF. Resize with Lanczos3 and other filters, and reduce the color palette. Crop, rotate, and flip an image in the Edit Image tab
 - **QR Reader** - Read a QR code from an image file, a dropped image, or a pasted screenshot
+- **PDF Tools** - Merge PDFs, split or extract pages, reorder, rotate, and delete pages, turn images into a PDF, and save pages as PNG or JPEG. The new PDF keeps no document metadata from the source files
 
 ### Text Tools
 
