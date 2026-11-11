@@ -2,11 +2,13 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileUp, ImageOff } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { CodeTextarea, EditorPane, PaneEmpty, ToolWorkspace } from "@/components/tools/ToolWorkspace";
 import { formatBytes } from "@/utils/hash";
 import { byteLength, convertSvg, type SvgResult } from "@/utils/svg-to-css";
+import { loadSvgOptimizer, type SvgOptimizer } from "@/utils/svg-optimize";
 
 const FAQ_ITEMS: ToolFaqItem[] = [
   {
@@ -16,6 +18,10 @@ const FAQ_ITEMS: ToolFaqItem[] = [
   {
     q: "How does the mask snippet tint an icon?",
     a: "The SVG becomes a mask, and `background-color: currentColor` fills it. The icon takes the text color, so you can change it with `color` or on hover.",
+  },
+  {
+    q: "What does Optimize with SVGO change?",
+    a: "SVGO shortens path data and numbers, merges paths and groups, converts shapes to paths, shortens colors, and removes hidden elements and default values. It keeps the `viewBox` and `<title>`, so the icon still scales and keeps its accessible name. Turn it off to keep the original structure, for example when CSS or JavaScript selects elements by ID.",
   },
   {
     q: "What does the tool remove?",
@@ -38,7 +44,26 @@ export function SvgToCss() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const text = useDebouncedValue(input);
 
-  const result = useMemo<SvgResult | null>(() => (text.trim() ? convertSvg(text) : null), [text]);
+  const [optimize, setOptimize] = useState(true);
+  const [optimizer, setOptimizer] = useState<SvgOptimizer | null>(null);
+  const [optimizerError, setOptimizerError] = useState(false);
+  useEffect(() => {
+    if (!optimize || optimizer || optimizerError) return;
+    let active = true;
+    loadSvgOptimizer()
+      .then((fn) => active && setOptimizer(() => fn))
+      .catch(() => active && setOptimizerError(true));
+    return () => {
+      active = false;
+    };
+  }, [optimize, optimizer, optimizerError]);
+  // Wait for SVGO before showing results, so the outputs do not change a moment later.
+  const pending = optimize && !optimizer && !optimizerError;
+
+  const result = useMemo<SvgResult | null>(
+    () => (text.trim() && !pending ? convertSvg(text, { optimize: optimize && optimizer ? optimizer : undefined }) : null),
+    [text, pending, optimize, optimizer],
+  );
   const conversion = result && "svg" in result ? result : null;
   const error = result && "error" in result ? result.error : "";
 
@@ -62,7 +87,7 @@ export function SvgToCss() {
         { key: "background", label: "CSS background", value: conversion.backgroundCss },
         { key: "mask", label: "CSS mask (tintable icon)", value: conversion.maskCss },
         { key: "img", label: "HTML img tag", value: conversion.imgTag },
-        { key: "svg", label: "Optimized SVG", value: conversion.svg },
+        { key: "svg", label: conversion.optimized ? "Optimized SVG" : "Cleaned SVG", value: conversion.svg },
       ]
     : [];
 
@@ -92,6 +117,12 @@ export function SvgToCss() {
     : "";
 
   const inputBytes = byteLength(text);
+  const outputBytes = conversion ? byteLength(conversion.svg) : 0;
+  const saved = inputBytes > 0 ? Math.round((1 - outputBytes / inputBytes) * 100) : 0;
+  const notes = [
+    ...(conversion?.notes ?? []),
+    optimize && optimizerError ? "SVGO could not load. The outputs use the cleaned SVG." : "",
+  ].filter(Boolean);
 
   return (
     <ToolWorkspace
@@ -99,9 +130,9 @@ export function SvgToCss() {
       notice={
         error ? (
           <div className="workspace-notice" data-tone="error" role="alert">{error}</div>
-        ) : warning || conversion?.notes.length ? (
+        ) : warning || notes.length ? (
           <div className="workspace-notice" role="status">
-            {[warning, ...(conversion?.notes ?? [])].filter(Boolean).join(" ")}
+            {[warning, ...notes].filter(Boolean).join(" ")}
           </div>
         ) : undefined
       }
@@ -136,7 +167,15 @@ export function SvgToCss() {
         </EditorPane>
       }
       second={
-        <EditorPane title="Data URI and CSS">
+        <EditorPane
+          title="Data URI and CSS"
+          actions={
+            <label className="option-switch" htmlFor="svg-to-css-optimize">
+              Optimize with SVGO
+              <Switch id="svg-to-css-optimize" checked={optimize} onCheckedChange={setOptimize} />
+            </label>
+          }
+        >
           {conversion ? (
             <div className="result-list" ref={listRef}>
               <div className="flex items-center gap-4 border-b border-border px-4 py-3">
@@ -146,8 +185,11 @@ export function SvgToCss() {
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Input</dt>
                   <dd>{formatBytes(inputBytes)}</dd>
-                  <dt className="text-muted-foreground">Optimized</dt>
-                  <dd>{formatBytes(byteLength(conversion.svg))}</dd>
+                  <dt className="text-muted-foreground">{conversion.optimized ? "Optimized" : "Cleaned"}</dt>
+                  <dd>
+                    {formatBytes(outputBytes)}
+                    {saved > 0 && <span className="text-success"> ({saved}% smaller)</span>}
+                  </dd>
                   <dt className="text-muted-foreground">Size</dt>
                   <dd>{conversion.width && conversion.height ? `${conversion.width} × ${conversion.height}` : "Not set"}</dd>
                 </dl>
@@ -173,8 +215,8 @@ export function SvgToCss() {
           ) : (
             <PaneEmpty
               icon={error ? <ImageOff size={20} aria-hidden="true" /> : undefined}
-              title={error ? "Fix the SVG to see the outputs" : "Data URIs and CSS appear here"}
-              hint={error ? undefined : "Paste SVG markup or open an .svg file."}
+              title={error ? "Fix the SVG to see the outputs" : pending && text.trim() ? "Loading SVGO…" : "Data URIs and CSS appear here"}
+              hint={error || (pending && text.trim()) ? undefined : "Paste SVG markup or open an .svg file."}
             />
           )}
         </EditorPane>

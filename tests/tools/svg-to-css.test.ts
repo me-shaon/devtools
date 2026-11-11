@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { convertSvg, encodeMiniSvg, type SvgConversion } from "@/utils/svg-to-css";
+import { loadSvgOptimizer } from "@/utils/svg-optimize";
 
 const ICON = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- Generator: an editor -->
@@ -94,5 +95,35 @@ describe("convertSvg", () => {
 
   it("encodes whitespace and special characters", () => {
     expect(encodeMiniSvg("<a b='#'>\n{50%}\"</a>")).toBe("%3Ca b='%23'%3E %7B50%25%7D%22%3C/a%3E");
+  });
+});
+
+describe("convertSvg with SVGO", () => {
+  it("optimizes after the cleanup and keeps the viewBox and title", async () => {
+    const optimize = await loadSvgOptimizer();
+    let seen = "";
+    const result = convertSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" onload="x()"><title>Alert</title><script>y()</script><g><rect x="0.000" y="0" width="24" height="24" fill="#ff0000"/></g></svg>',
+      { optimize: (svg) => (seen = svg, optimize(svg)) },
+    );
+    if (!result.ok) throw new Error(result.error);
+    expect(seen).not.toMatch(/script|onload/);
+    expect(result).toMatchObject({ optimized: true, scripts: 1, handlers: 1, width: "24", height: "24" });
+    expect(result.svg).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>Alert</title><path fill="red" d="M0 0h24v24H0z"/></svg>');
+    expect(result.miniDataUri).toContain("fill='red'");
+  });
+
+  it("uses the cleaned SVG when the optimizer fails or returns something that is not SVG", () => {
+    for (const optimize of [() => { throw new Error("boom"); }, () => "<html/>", () => "<svg"]) {
+      const result = convertSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>', { optimize });
+      if (!result.ok) throw new Error(result.error);
+      expect(result.optimized).toBe(false);
+      expect(result.svg).toBe('<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>');
+      expect(result.notes).toContain("SVGO could not optimize this SVG. The outputs use the cleaned SVG.");
+    }
+  });
+
+  it("does not optimize without an optimizer", () => {
+    expect(convert('<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>').optimized).toBe(false);
   });
 });

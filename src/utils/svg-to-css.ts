@@ -38,6 +38,13 @@ export interface SvgConversion {
   handlers: number;
   /** Notes about changes the tool made, such as an added namespace. */
   notes: string[];
+  /** True when the optimizer ran and its output is used. */
+  optimized: boolean;
+}
+
+export interface ConvertOptions {
+  /** Runs after the cleanup, so it never sees scripts or event handlers. */
+  optimize?: (svg: string) => string;
 }
 
 export type SvgResult = SvgConversion | { ok: false; error: string };
@@ -180,8 +187,20 @@ const plainSize = (value: string | null) => {
   return match ? match[1] : null;
 };
 
+/** Runs the optimizer and reads its output back. Returns null when the optimizer fails or breaks the SVG. */
+const runOptimizer = (root: Element, optimize: NonNullable<ConvertOptions["optimize"]>): Element | null => {
+  try {
+    const doc = new DOMParser().parseFromString(optimize(serializeSvg(root, '"')), "image/svg+xml");
+    const next = doc.documentElement;
+    if (doc.getElementsByTagName("parsererror").length || next.localName !== "svg" || next.namespaceURI !== SVG_NS) return null;
+    return next;
+  } catch {
+    return null;
+  }
+};
+
 /** Validates, cleans, and converts SVG markup. */
-export function convertSvg(input: string): SvgResult {
+export function convertSvg(input: string, options: ConvertOptions = {}): SvgResult {
   if (!input.trim()) return { ok: false, error: "" };
   const notes: string[] = [];
   const source = addMissingNamespaces(input.trim(), notes);
@@ -189,12 +208,22 @@ export function convertSvg(input: string): SvgResult {
   const doc = new DOMParser().parseFromString(source, "image/svg+xml");
   const error = doc.getElementsByTagName("parsererror")[0];
   if (error) return { ok: false, error: parserMessage(error) };
-  const root = doc.documentElement;
+  let root: Element = doc.documentElement;
   if (root.localName !== "svg" || root.namespaceURI !== SVG_NS) {
     return { ok: false, error: `The root element is <${root.tagName}>. An SVG file starts with <svg>.` };
   }
 
   const { scripts, handlers } = clean(root);
+  let optimized = false;
+  if (options.optimize) {
+    const next = runOptimizer(root, options.optimize);
+    if (next) {
+      root = next;
+      optimized = true;
+    } else {
+      notes.push("SVGO could not optimize this SVG. The outputs use the cleaned SVG.");
+    }
+  }
   const svg = serializeSvg(root, '"');
   const miniDataUri = `data:image/svg+xml,${encodeMiniSvg(serializeSvg(root, "'"))}`;
   const base64DataUri = `data:image/svg+xml;base64,${toBase64(svg)}`;
@@ -220,7 +249,7 @@ export function convertSvg(input: string): SvgResult {
   const size = `${width ? ` width="${width}"` : ""}${height ? ` height="${height}"` : ""}`;
   const imgTag = `<img src="${escapeHtmlAttribute(miniDataUri)}" alt=""${size}>`;
 
-  return { ok: true, svg, miniDataUri, base64DataUri, backgroundCss, maskCss, imgTag, width, height, scripts, handlers, notes };
+  return { ok: true, svg, miniDataUri, base64DataUri, backgroundCss, maskCss, imgTag, width, height, scripts, handlers, notes, optimized };
 }
 
 /** UTF-8 size of a string in bytes. */

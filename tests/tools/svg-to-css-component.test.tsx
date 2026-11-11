@@ -9,9 +9,22 @@ describe("SvgToCss", () => {
       target: { value: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#000"/></svg>' },
     });
     const mini = (await screen.findByLabelText(/URL-encoded data URI/, { selector: "textarea" })) as HTMLTextAreaElement;
-    expect(mini.value).toBe("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23000'/%3E%3C/svg%3E");
+    expect(mini.value).toBe("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M0 0h8v8H0z'/%3E%3C/svg%3E");
     expect(screen.getByAltText("Preview of the SVG")).toHaveAttribute("src", mini.value);
     expect((screen.getByLabelText(/Base64 data URI/, { selector: "textarea" }) as HTMLTextAreaElement).value).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(screen.getByText(/% smaller/)).toBeInTheDocument();
+  });
+
+  it("keeps the original structure with SVGO turned off", async () => {
+    render(<SvgToCss />);
+    fireEvent.change(screen.getByLabelText("SVG"), {
+      target: { value: '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">\n  <rect width="8" height="8" fill="#000"/>\n</svg>' },
+    });
+    await screen.findByLabelText(/Optimized SVG/, { selector: "textarea" });
+    fireEvent.click(screen.getByRole("switch", { name: "Optimize with SVGO" }));
+    const cleaned = (await screen.findByLabelText(/Cleaned SVG/, { selector: "textarea" })) as HTMLTextAreaElement;
+    expect(cleaned.value).toBe('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#000"/></svg>');
+    expect(screen.getByText("Cleaned")).toBeInTheDocument();
   });
 
   it("warns about scripts and reports parser errors inline", async () => {

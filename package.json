@@ -81,6 +81,7 @@
     "smol-toml": "^1.9.1",
     "sonner": "^1.7.4",
     "sql-formatter": "^15.9.0",
+    "svgo": "^4.1.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "yaml": "^2.9.1"

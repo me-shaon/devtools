@@ -113,7 +113,7 @@ From a terminal on macOS, run `open "devtoolsapp://open/hash-generator"`. On Lin
 - **Config Converter** - Convert between JSON, YAML, TOML, .env, Java .properties, and TOON files, including multi-document YAML, and see how many LLM tokens TOON saves against JSON
 - **Escape Tools** - Escape and unescape HTML entities, backslash strings, Unicode, and hex, and convert domain names to and from Punycode
 - **HTML to JSX** - Convert HTML markup into React JSX
-- **SVG to CSS** - Turn an SVG into a small data URI and ready CSS for backgrounds and masks
+- **SVG to CSS** - Shrink an SVG with SVGO, then turn it into a small data URI and ready CSS for backgrounds and masks
 - **PHP Tools** - Convert serialize() data, session data, and PHP arrays to JSON and back, and repair broken string lengths
 - **Compression** - Decompress GZIP, zlib, and raw deflate from Base64, hex, or a .gz file, and compress text back, with format detection
 - **cURL to Code** - Convert a cURL command to fetch, Node, Python, Go, PHP, Rust, or HTTPie code
