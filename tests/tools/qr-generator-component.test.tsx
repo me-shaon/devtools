@@ -133,6 +133,21 @@ describe("QrGenerator content", () => {
     expect(screen.queryByRole("button", { name: "Save PNG" })).not.toBeInTheDocument();
   });
 
+  it("draws the code again after the layout changes", async () => {
+    const drawn = new Set<HTMLCanvasElement>();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
+      drawn.add(this);
+      return null;
+    });
+    await renderWithText();
+
+    for (const name of ["Below", "Side"]) {
+      fireEvent.click(screen.getByRole("button", { name }));
+      const canvas = await screen.findByRole("img", { name: "QR code preview" });
+      await waitFor(() => expect(drawn.has(canvas as HTMLCanvasElement)).toBe(true));
+    }
+  });
+
   it("shows the version and the error correction level", async () => {
     await renderWithText("hello");
     expect(screen.getByText("Level M")).toBeInTheDocument();

@@ -172,7 +172,8 @@ export function QrGenerator() {
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null);
   const [logoError, setLogoError] = useState("");
   const [copied, setCopied] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // A state ref: the layout switch mounts a new canvas, and the code must be drawn on it again.
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -207,8 +208,8 @@ export function QrGenerator() {
   const qr = encoded.qr;
 
   useEffect(() => {
-    if (qr && canvasRef.current) drawQr(canvasRef.current, qr.matrix, size, logoImage);
-  }, [qr, size, logoImage]);
+    if (qr && canvas) drawQr(canvas, qr.matrix, size, logoImage);
+  }, [qr, size, logoImage, canvas]);
 
   useEffect(() => {
     if (!logo) {
@@ -246,7 +247,6 @@ export function QrGenerator() {
   };
 
   const savePng = async () => {
-    const canvas = canvasRef.current;
     if (!canvas) return;
     let blob: Blob;
     try {
@@ -275,7 +275,6 @@ export function QrGenerator() {
   };
 
   const copyImage = async () => {
-    const canvas = canvasRef.current;
     if (!canvas) return;
     try {
       // Safari needs the item made during the click, with the image as a promise.
@@ -562,7 +561,7 @@ export function QrGenerator() {
           {qr ? (
             <div className="flex justify-center p-6">
               <canvas
-                ref={canvasRef}
+                ref={setCanvas}
                 width={size}
                 height={size}
                 role="img"
