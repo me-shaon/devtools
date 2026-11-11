@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JsonViewer } from "@/components/tools/JsonViewer";
 
@@ -63,5 +63,20 @@ describe("JSON Viewer", () => {
     expect(screen.getByRole("button", { name: "Sort keys" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.change(input, { target: { value: '{"d":1,"c":2}' } });
     expect(text()).toBe('{\n  "c": 2,\n  "d": 1\n}');
+  });
+});
+
+describe("JSON Viewer undo", () => {
+  it("undoes Paste", async () => {
+    const input = setup('{"old":1}');
+    vi.spyOn(navigator.clipboard, "readText").mockResolvedValue('{"new":2}');
+    fireEvent.click(screen.getByRole("button", { name: "Paste" }));
+    await waitFor(() => expect(input.value).toBe('{"new":2}'));
+
+    const command = { metaKey: /Mac/.test(navigator.platform), ctrlKey: !/Mac/.test(navigator.platform) };
+    fireEvent.keyDown(input, { key: "z", ...command });
+    expect(input.value).toBe('{"old":1}');
+    fireEvent.keyDown(input, { key: "z", shiftKey: true, ...command });
+    expect(input.value).toBe('{"new":2}');
   });
 });

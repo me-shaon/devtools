@@ -1,4 +1,5 @@
-import { forwardRef, useState, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useTextHistory, type HistoryAvailability } from "@/hooks/useTextHistory";
 import { Columns2, Rows2, ShieldCheck } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
@@ -112,9 +113,20 @@ export function EditorPane({ title, htmlFor, titleId, actions, children, scroll 
   );
 }
 
-/** A code-style text area that fills its pane. */
-export const CodeTextarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function CodeTextarea(props, ref) {
-  return <textarea ref={ref} spellCheck={false} autoCapitalize="off" autoCorrect="off" {...props} className={`code-textarea ${props.className ?? ""}`} />;
+interface CodeTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  /** Reports when undo or redo becomes available, for example for toolbar buttons. */
+  onHistoryChange?: (availability: HistoryAvailability) => void;
+}
+
+/**
+ * A code-style text area that fills its pane. An editable, controlled text area keeps its
+ * own undo history, so Undo also reverts changes from buttons such as Clear and Paste.
+ */
+export const CodeTextarea = forwardRef<HTMLTextAreaElement, CodeTextareaProps>(function CodeTextarea({ onHistoryChange, ...props }, ref) {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  useImperativeHandle(ref, () => textarea.current as HTMLTextAreaElement);
+  useTextHistory(textarea, props.value, { enabled: !props.readOnly && !props.disabled, onAvailabilityChange: onHistoryChange });
+  return <textarea ref={textarea} spellCheck={false} autoCapitalize="off" autoCorrect="off" {...props} className={`code-textarea ${props.className ?? ""}`} />;
 });
 
 /** Placeholder for an empty result pane. */

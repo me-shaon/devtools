@@ -4,6 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { describeJsonValue, getJsonPaths, renderJsonView, type JsonViewMode } from "@/utils/json";
 import { errorExcerpt, readJson } from "@/utils/json-repair";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useTextHistory } from "@/hooks/useTextHistory";
 import { toast } from "sonner";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { ToolFaqSection, type ToolFaqItem } from "@/components/tools/ToolFaq";
@@ -47,6 +48,8 @@ export function JsonViewer() {
   const [mode, setMode] = useState<JsonViewMode>("format");
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Undo also reverts Paste and the other changes that buttons make
+  useTextHistory(inputRef, input);
   const debouncedInput = useDebouncedValue(input, 300);
   const source = input.length > LIVE_LIMIT ? debouncedInput : input;
 
