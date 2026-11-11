@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MermaidRenderer } from "@/components/tools/MermaidRenderer";
 import { MERMAID_TEMPLATES } from "@/utils/mermaid-templates";
 
@@ -9,6 +9,18 @@ vi.mock("@/utils/mermaid-render", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/utils/mermaid-render")>()),
   renderMermaid,
 }));
+
+beforeAll(() => {
+  // React Flow measures nodes. jsdom has no layout, so these stubs give it fixed sizes.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  globalThis.DOMMatrixReadOnly ??= class {
+    m22 = 1;
+  } as unknown as typeof DOMMatrixReadOnly;
+});
 
 const editor = () => screen.getByLabelText("Mermaid") as HTMLTextAreaElement;
 
@@ -67,5 +79,89 @@ describe("MermaidRenderer", () => {
     await screen.findByRole("img");
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(await screen.findByText("The diagram appears here")).toBeInTheDocument();
+  });
+
+  describe("Draw mode", () => {
+    const nodeIds = () => [...document.querySelectorAll(".react-flow__node")].map((node) => node.getAttribute("data-id"));
+    const node = (id: string) => document.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement;
+    const draw = () => {
+      render(<MermaidRenderer />);
+      fireEvent.click(screen.getByRole("button", { name: "Draw" }));
+    };
+
+    it("draws the nodes of the flowchart", () => {
+      draw();
+      expect(nodeIds()).toEqual(["A", "B", "C", "D", "E"]);
+      expect(screen.getByText("5 nodes")).toBeInTheDocument();
+      expect(screen.getByText("6 links")).toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Zoom" })).not.toBeInTheDocument();
+    });
+
+    it("adds a node and writes it to the text", () => {
+      draw();
+      fireEvent.change(screen.getByRole("combobox", { name: "New node shape" }), { target: { value: "diamond" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add node" }));
+      expect(editor().value).toMatch(/\n {4}F\{New node\}$/);
+      expect(screen.getByRole("complementary", { name: "Node" })).toHaveTextContent("F");
+    });
+
+    it("renames a node, changes its shape, and links a new node to it", () => {
+      draw();
+      fireEvent.click(within(node("A")).getByText("Request"));
+      const inspector = screen.getByRole("complementary", { name: "Node" });
+      const label = within(inspector).getByLabelText("Label");
+      fireEvent.change(label, { target: { value: "Incoming request" } });
+      fireEvent.blur(label);
+      expect(editor().value).toContain("A[Incoming request] --> B{Signed in?}");
+
+      fireEvent.change(within(inspector).getByLabelText("Shape"), { target: { value: "stadium" } });
+      expect(editor().value).toContain("A([Incoming request])");
+
+      fireEvent.click(within(inspector).getByRole("button", { name: "Add linked node" }));
+      expect(editor().value).toContain("A --> F[New node]");
+      expect(nodeIds()).toContain("F");
+    });
+
+    it("deletes a node with its links", () => {
+      draw();
+      fireEvent.click(within(node("D")).getByText("Show sign-in page"));
+      fireEvent.click(screen.getByRole("button", { name: "Delete node" }));
+      expect(editor().value).not.toMatch(/\bD\b/);
+      expect(screen.getByText("3 links")).toBeInTheDocument();
+    });
+
+    it("changes the direction", () => {
+      draw();
+      fireEvent.change(screen.getByRole("combobox", { name: "Direction" }), { target: { value: "LR" } });
+      expect(editor().value).toMatch(/^flowchart LR\n/);
+    });
+
+    it("follows the typed text", () => {
+      draw();
+      fireEvent.change(editor(), { target: { value: "graph LR\n  x --> y & z" } });
+      expect(nodeIds()).toEqual(["x", "y", "z"]);
+      expect(screen.getByText("2 links")).toBeInTheDocument();
+    });
+
+    it("keeps the last flowchart and refuses canvas edits while the text has a subgraph", () => {
+      draw();
+      fireEvent.change(editor(), { target: { value: "flowchart TD\n  subgraph one\n  A\n  end" } });
+      expect(screen.getByRole("alert")).toHaveTextContent("Draw mode cannot edit subgraph lines yet.");
+      expect(nodeIds()).toHaveLength(5);
+      fireEvent.click(screen.getByRole("button", { name: "Add node" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Correct the text before you edit on the canvas.");
+      expect(editor().value).toContain("subgraph one");
+    });
+
+    it("offers a new flowchart for other diagram types", () => {
+      draw();
+      fireEvent.change(editor(), { target: { value: "sequenceDiagram\n  A->>B: hi" } });
+      expect(screen.getByText("Draw mode edits flowcharts")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Start a flowchart" }));
+      expect(editor().value).toMatch(/^flowchart TD\n/);
+      expect(nodeIds()).toEqual(["A", "B"]);
+      fireEvent.click(screen.getByRole("button", { name: "Undo template" }));
+      expect(editor().value).toMatch(/^sequenceDiagram/);
+    });
   });
 });

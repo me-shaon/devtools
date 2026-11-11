@@ -121,7 +121,7 @@ export const ALL_TOOLS = [
   { icon: FileSearch, name: "ASN.1 Inspector", id: "asn1-inspector", category: "Development Tools", keywords: ["asn1", "asn.1", "der", "ber", "pem", "oid", "binary"] },
   { icon: Clock, name: "Stopwatch", id: "stopwatch", category: "Time & Date", keywords: ["stopwatch", "timer", "elapsed", "laps", "split"] },
   { icon: Earth, name: "Time Zone Converter", id: "time-zone-converter", category: "Time & Date", keywords: ["timezone", "time zone", "convert", "utc to local", "local to utc", "world clock", "dst", "daylight saving", "meeting time"] },
-  { icon: Workflow, name: "Mermaid Renderer", id: "mermaid-renderer", category: "Development Tools", keywords: ["mermaid", "diagram", "flowchart", "sequence diagram", "class diagram", "er diagram", "gantt", "mind map", "svg", "png"] },
+  { icon: Workflow, name: "Mermaid Renderer", id: "mermaid-renderer", category: "Development Tools", keywords: ["mermaid", "diagram", "flowchart", "sequence diagram", "class diagram", "er diagram", "gantt", "mind map", "svg", "png", "draw", "flowchart editor", "visual editor"] },
   { icon: DatabaseZap, name: "DB Diagram", id: "db-diagram", category: "Development Tools", keywords: ["dbml", "erd", "er diagram", "entity relationship", "database diagram", "schema", "dbdiagram", "drawsql", "sql", "ddl", "create table", "postgres", "mysql", "sql server", "sqlite", "foreign key"] },
 ] as const;
 

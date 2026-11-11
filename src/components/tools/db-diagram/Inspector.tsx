@@ -19,7 +19,7 @@ const HEADER_COLORS = ["#475569", "#b91c1c", "#c2410c", "#a16207", "#15803d", "#
 const CARDINALITY_LABELS: Record<Cardinality, string> = { one: "one", "zero-or-one": "zero or one", many: "many", "zero-or-many": "zero or many" };
 
 /** A text field that applies its value on Enter or when it loses focus. */
-function CommitField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => boolean }) {
+export function CommitField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => boolean }) {
   const [draft, setDraft] = useState(value);
   const commit = () => {
     if (draft.trim() === value) return setDraft(value);
