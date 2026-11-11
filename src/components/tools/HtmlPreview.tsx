@@ -1,4 +1,5 @@
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePreviewScrollSync } from "@/hooks/usePreviewScrollSync";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, Minimize2, Moon, RotateCw, Sun } from "lucide-react";
@@ -174,6 +175,10 @@ export function HtmlPreview() {
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef({ x: 0, width: 0 });
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Works only while scripts are off. A frame that runs scripts gets no same-origin access.
+  const { onEditorScroll, onFrameLoad } = usePreviewScrollSync(editorRef, iframeRef);
   const html = useDebouncedValue(input, 300);
 
   const srcDoc = useMemo(
@@ -247,8 +252,12 @@ export function HtmlPreview() {
         <iframe
           // A new frame applies the sandbox flags when scripts are turned on or off
           key={scripts ? "scripts" : "static"}
+          ref={iframeRef}
           title="HTML preview"
-          sandbox={previewSandbox(scripts)}
+          // Without scripts, allow-same-origin only lets this page read the scroll position.
+          // With scripts, the frame keeps an opaque origin, so its code cannot reach the app.
+          sandbox={scripts ? previewSandbox(true) : "allow-same-origin"}
+          onLoad={onFrameLoad}
           referrerPolicy="no-referrer"
           srcDoc={srcDoc}
           className="bg-background"
@@ -322,7 +331,15 @@ export function HtmlPreview() {
           scroll={false}
           actions={input ? <button type="button" className="toolbar-text-button" onClick={() => setInput("")}>Clear</button> : undefined}
         >
-          <CodeTextarea id="html-preview-input" wrap="off" placeholder={PLACEHOLDER} value={input} onChange={(e) => setInput(e.target.value)} />
+          <CodeTextarea
+            ref={editorRef}
+            id="html-preview-input"
+            wrap="off"
+            placeholder={PLACEHOLDER}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onScroll={onEditorScroll}
+          />
         </EditorPane>
       }
       second={

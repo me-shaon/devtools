@@ -12,7 +12,8 @@ describe("HtmlPreview", () => {
     await waitFor(() => expect(screen.getByTitle("HTML preview")).toBeInTheDocument());
 
     expect(frame().hasAttribute("sandbox")).toBe(true);
-    expect(frame().getAttribute("sandbox")).toBe("");
+    // Same-origin access without scripts, so the app can sync the scroll position
+    expect(frame().getAttribute("sandbox")).toBe("allow-same-origin");
     const srcdoc = frame().getAttribute("srcdoc") ?? "";
     expect(srcdoc).toContain('http-equiv="Content-Security-Policy"');
     expect(srcdoc).toContain("default-src 'none'");
@@ -26,7 +27,7 @@ describe("HtmlPreview", () => {
     expect(screen.getByText(/Scripts run in an isolated frame/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("switch", { name: "Run scripts" }));
-    await waitFor(() => expect(frame().getAttribute("sandbox")).toBe(""));
+    await waitFor(() => expect(frame().getAttribute("sandbox")).toBe("allow-same-origin"));
   });
 
   it("sets the frame size from a device and rotates it", async () => {
@@ -113,5 +114,37 @@ describe("HtmlPreview", () => {
     expect(doc).not.toContain('target="_self"');
     expect(doc).toContain('<base target="_blank">');
     expect(doc).toContain("color-scheme:dark");
+  });
+});
+
+describe("HtmlPreview editing", () => {
+  const editor = () => screen.getByLabelText("HTML") as HTMLTextAreaElement;
+  const sizes = (element: Element, scrollHeight: number, clientHeight: number) => {
+    Object.defineProperty(element, "scrollHeight", { configurable: true, value: scrollHeight });
+    Object.defineProperty(element, "clientHeight", { configurable: true, value: clientHeight });
+  };
+
+  it("scrolls the preview with the editor while scripts are off", async () => {
+    render(<HtmlPreview />);
+    fireEvent.change(editor(), { target: { value: "<p>x</p>" } });
+    await waitFor(() => expect(frame()).toBeInTheDocument());
+    const doc = frame().contentDocument!;
+    const page = doc.scrollingElement ?? doc.documentElement;
+    sizes(editor(), 1200, 200);
+    sizes(page, 2200, 200);
+    fireEvent.load(frame());
+
+    editor().scrollTop = 500;
+    fireEvent.scroll(editor());
+    expect(page.scrollTop).toBe(1000);
+  });
+
+  it("undoes Clear", () => {
+    render(<HtmlPreview />);
+    fireEvent.change(editor(), { target: { value: "<p>keep</p>" } });
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(editor().value).toBe("");
+    fireEvent.keyDown(editor(), { key: "z", metaKey: /Mac/.test(navigator.platform), ctrlKey: !/Mac/.test(navigator.platform) });
+    expect(editor().value).toBe("<p>keep</p>");
   });
 });
