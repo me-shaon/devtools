@@ -52,6 +52,13 @@ describe("detectPastedContent", () => {
     expect(first('{"log": "just a message"}')).toBe("json-viewer");
   });
 
+  it("sends pasted email headers to the header analyzer", () => {
+    const headers = "Delivered-To: bob@example.org\nReceived: from a.example by b.example; Tue, 10 Mar 2026 16:00:00 +0000\nSubject: Hi";
+    expect(detectPastedContent(headers, ids)[0]).toMatchObject({ toolId: "email-headers", label: "email headers" });
+    expect(first("Authentication-Results: mx.example;\n spf=pass smtp.mailfrom=a.example")).toBe("email-headers");
+    expect(first("name: Received\nvalue: 1")).not.toBe("email-headers");
+  });
+
   it("sends IP blocks and IPv6 addresses to the CIDR calculator", () => {
     expect(detectPastedContent("10.0.0.0/8", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "a CIDR block" });
     expect(detectPastedContent("fe80::1", ids)[0]).toMatchObject({ toolId: "ip-cidr", label: "an IPv6 address" });

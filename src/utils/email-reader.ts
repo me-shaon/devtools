@@ -232,7 +232,7 @@ export function parseParameterised(raw: string): HeaderParams {
 }
 
 /** Splits a header block into unfolded name and value pairs. */
-function parseHeaderBlock(block: string): EmailHeader[] {
+export function parseHeaderBlock(block: string): EmailHeader[] {
   const headers: EmailHeader[] = [];
   for (const line of block.split(/\r?\n/)) {
     if (/^[ \t]/.test(line) && headers.length) {
