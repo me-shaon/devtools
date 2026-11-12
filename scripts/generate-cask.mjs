@@ -65,13 +65,11 @@ const caskContent = `cask "devtools" do
 
   url "https://github.com/${repo}/releases/download/v#{version}/${PRODUCT_NAME}-macos-#{arch}.dmg"
   name "DevTools"
-  desc "Offline-first developer utilities"
+  desc "Collection of developer utilities"
   homepage "https://github.com/${repo}"
 
-  livecheck do
-    url :url
-    strategy :github_latest
-  end
+  auto_updates true
+  depends_on :macos
 
   app "${PRODUCT_NAME}.app"
 
