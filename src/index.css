@@ -93,7 +93,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .workspace-titlebar { display: flex; flex-shrink: 0; align-items: center; gap: 8px; height: 56px; padding: 0 12px; background: linear-gradient(hsl(var(--card) / .65), transparent), var(--surface-chrome); border-bottom: 1px solid hsl(var(--border)); }
 .chrome-button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 6px; color: hsl(var(--muted-foreground)); }
 .chrome-button:hover { background: hsl(var(--foreground) / .06); color: hsl(var(--foreground)); }
-.workspace-tabs { display: flex; align-self: stretch; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.workspace-tabs { display: flex; align-self: stretch; min-width: 0; overflow-x: auto; }
 .workspace-tab-placeholder { align-self: center; font-weight: 600; padding: 0 12px; }
 .workspace-tab-wrap { display: flex; position: relative; align-items: center; flex-shrink: 0; padding-right: 22px; }
 .workspace-tab-wrap + .workspace-tab-wrap::before { content: ''; height: 18px; width: 1px; background: hsl(var(--border)); }
@@ -159,12 +159,22 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .dark { color-scheme: dark; }
 .workspace-tabs { scrollbar-width: none; }
 .workspace-tabs::-webkit-scrollbar { display: none; }
-.command-surface > div { scrollbar-width: thin; }
 .tool-panel-form .font-mono { font-family: var(--font-code); }
 /* Desktop panes own their scrolling, so switching tools preserves scroll position. */
 .workspace-content { overflow: hidden; }
 .tool-panel-form { height: 100%; overflow: auto; }
 .workspace-home { height: 100%; overflow: auto; }
+/* One thin, low-contrast scrollbar for every scroller. Chromium (Electron) and
+   WebKit (Tauri on macOS) read the pseudo-elements. Firefox reads the standard
+   properties. Chromium ignores the pseudo-elements when the standard properties
+   are set, so they apply only where the pseudo-elements are not supported. */
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--foreground) / .13); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--foreground) / .26); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: hsl(var(--foreground) / .18) transparent; }
+}
 .json-info { padding: 8px 20px; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .4); border-bottom: 1px solid hsl(var(--border)); font-size: 12px; }
 @media (min-width: 640px) and (max-width: 900px) {
   .workspace-sidebar { width: 200px; }
@@ -199,7 +209,6 @@ body:has(.workspace[data-platform="darwin"]) #root,
 .release-backdrop { background: rgb(18 23 32 / .18); backdrop-filter: blur(5px); }
 .release-sheet { background: linear-gradient(hsl(var(--card) / .96), hsl(var(--background) / .94)); backdrop-filter: blur(40px) saturate(1.3); box-shadow: 0 24px 80px rgb(0 0 0 / .22), 0 2px 8px rgb(0 0 0 / .10), inset 0 1px rgb(255 255 255 / .5); border-color: hsl(var(--foreground) / .14); }
 .release-sheet h2 { letter-spacing: -.01em; }
-.release-body { scrollbar-width: thin; }
 @media (prefers-reduced-transparency: reduce) {
   .release-sheet { background: hsl(var(--card)); backdrop-filter: none; }
   .release-backdrop { backdrop-filter: none; }
@@ -248,7 +257,8 @@ button.sidebar-version:hover { color: hsl(var(--foreground)); background: hsl(va
 .sidebar-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; color: hsl(var(--muted-foreground)); transition: color .15s ease, background-color .15s ease; }
 .sidebar-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--foreground) / .055); }
 .sidebar-icon-button[aria-label="Support DevTools"]:hover { color: hsl(350 75% 55%); }
-.workspace-home { width: 100%; max-width: 650px; padding: clamp(36px, 7vh, 68px) 36px 36px; }
+/* The home pane scrolls at the card edge; side padding centers a 578px column. */
+.workspace-home { --home-gutter: 36px; width: 100%; max-width: none; padding: clamp(36px, 7vh, 68px) 0 36px; padding-inline: max(var(--home-gutter), calc((100% - 578px) / 2)); }
 .workspace-home > div:first-child { margin-bottom: 25px; }
 .workspace-home h1 { font-size: 22px; line-height: 28px; letter-spacing: -.02em; font-weight: 650; }
 .workspace-home h1 + p { font-size: 13px; line-height: 1.6; margin-top: 10px; }
@@ -264,8 +274,8 @@ button.sidebar-version:hover { color: hsl(var(--foreground)); background: hsl(va
 .home-tool-icon svg { stroke-width: 1.65; }
 .home-tool-arrow { margin-left: auto; color: hsl(var(--muted-foreground)); opacity: 0; }
 .home-tool-row:hover .home-tool-arrow, .home-tool-row:focus-visible .home-tool-arrow { opacity: 1; }
-@media (max-width: 900px) { .workspace-home { padding: 36px 24px; }.home-tool-list { grid-template-columns: 1fr; }.home-tool-row:nth-child(n+2) { border-top: 1px solid hsl(var(--foreground) / .06); } }
-@media (max-width: 639px) { .workspace > main { padding-left: 8px; padding-right: 8px; }.workspace-home { padding: 28px 20px; } }
+@media (max-width: 900px) { .workspace-home { --home-gutter: 24px; padding-block: 36px; }.home-tool-list { grid-template-columns: 1fr; }.home-tool-row:nth-child(n+2) { border-top: 1px solid hsl(var(--foreground) / .06); } }
+@media (max-width: 639px) { .workspace > main { padding-left: 8px; padding-right: 8px; }.workspace-home { --home-gutter: 20px; padding-block: 28px; } }
 @media (prefers-reduced-transparency: reduce) {
   .workspace, .workspace[data-platform="darwin"],
   .dark .workspace, .dark .workspace[data-platform="darwin"] {
@@ -281,7 +291,7 @@ button.sidebar-version:hover { color: hsl(var(--foreground)); background: hsl(va
 .modal-header h2 { font-size: 17px; letter-spacing: -.01em; }
 .modal-header p { font-size: 12px; line-height: 1.5; }
 .modal-footer { border-top: 1px solid hsl(var(--foreground) / .08); padding-top: 12px; padding-bottom: 12px; }
-.modal-body { background: hsl(var(--card)); scrollbar-width: thin; }
+.modal-body { background: hsl(var(--card)); }
 .shortcut-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 14px 0; }
 .shortcut-row + .shortcut-row { border-top: 1px solid hsl(var(--foreground) / .07); }
 .shortcut-description { font-size: 12px; line-height: 1.5; margin-top: 3px; max-width: 40ch; }

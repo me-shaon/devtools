@@ -1032,7 +1032,7 @@ const DevToolsApp = () => {
         {/* Content */}
         <div className={`workspace-content ${!selectedTool ? "is-home" : ""}`}>
           {!selectedTool ? (
-            <div className="workspace-home max-w-3xl mx-auto">
+            <div className="workspace-home">
               {/* Welcome */}
               <div className="mb-6 md:mb-8">
                 <h1 className={`text-xl md:text-2xl font-bold ${theme.text} mb-2`}>
