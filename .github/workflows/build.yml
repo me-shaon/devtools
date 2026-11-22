@@ -100,6 +100,14 @@ jobs:
       - name: Create Electron updater manifests
         run: node scripts/create-electron-bridge.mjs "${{ needs.test.outputs.tag }}" --assets release-assets
 
+      # Generates the Homebrew Cask formula from the built macOS DMG bundles.
+      - name: Generate Homebrew Cask
+        run: |
+          if ls release-assets/DevToolsApp-macos-*.dmg >/dev/null 2>&1; then
+            node scripts/generate-cask.mjs "${{ needs.test.outputs.tag }}" --assets release-assets --out release-assets/devtools.rb
+            cat release-assets/devtools.rb
+          fi
+
       - name: Upload release assets (dry run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
@@ -123,3 +131,14 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump Homebrew Cask
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && env.HOMEBREW_BUMP_TOKEN != ''
+        uses: Homebrew/actions/bump-cask-pr@master
+        continue-on-error: true
+        with:
+          token: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
+          cask: devtools
+          livecheck: true
+        env:
+          HOMEBREW_BUMP_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN }}

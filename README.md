@@ -35,6 +35,14 @@ Get the latest release for your platform:
 - **[Linux — .AppImage (x64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-x86_64.AppImage)**
 - **[Linux — .AppImage (arm64)](https://github.com/me-shaon/devtools/releases/latest/download/DevToolsApp-linux-arm64.AppImage)**
 
+### Homebrew (macOS)
+
+You can install DevTools on macOS using [Homebrew](https://brew.sh/):
+
+```sh
+brew install --cask devtools
+```
+
 ### Automatic updates
 
 DevTools checks for updates on startup and every six hours, downloads new versions in the background, and installs them when you quit. Use **Restart now** to install a downloaded update immediately, or turn off **Update automatically** in the sidebar to manage updates yourself. Update checks and downloads require an internet connection.

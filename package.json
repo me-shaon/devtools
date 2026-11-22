@@ -28,6 +28,7 @@
     "release:check": "node scripts/check-release.mjs",
     "release:collect": "node scripts/collect-release-assets.mjs",
     "release:manifest": "node scripts/create-updater-manifest.mjs",
+    "release:cask": "node scripts/generate-cask.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "brand:build": "node scripts/build-brand.mjs"
